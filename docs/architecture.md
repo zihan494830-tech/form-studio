@@ -66,6 +66,8 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 当前 `inputBag` 是单进程内存列表，只能证明“校验后追加提交信封”的合同，不能证明多人持久保存、老师权限或真实 agent 消费。第 2 段完成 2C 后，第 3 段按以下端口推进：
 
+第 1b 已经有 `form-1` 这类临时新生 id、发布 URL 和下架行为，因此 2C 的工程目标不是再生成一次 id，而是引入持久 repository：服务重启后同一 agent、草稿、已发布版本、绑定和提交仍可恢复。这是为了消除文档与代码的重复完成定义而作的项目拍板项。
+
 ```text
 学生用户页面
   -> SubmitToAgent 用例
@@ -82,3 +84,22 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - Poffices 目前公开材料证明 Creator Studio 可创建、配置、测试和发布 agent，但没有给出本项目可依赖的公开输入 API；参考 [Poffices Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。因此 adapter 是明确升级点，不是假装已完成的接口。
 
 当前低档位是“持久库 + outbox 表 + 单 relay”；升级触发条件是正式 Poffices 输入合同、跨进程投递需求或实测吞吐 / 重试压力。这样先打通 Alan 所说的学生提交、老师可见，再把同一信封投递给真实 agent，不为尚未出现的规模提前堆消息系统。
+
+### 输入能力与字段映射
+
+Form Studio 不能从 agent 名字或内部变量猜运行时请求。第 3 段新增的合同边界如下；当前均为待实现设计，不冒充现有能力：
+
+| 合同 | 回答什么 | 不负责 |
+|---|---|---|
+| `owner-agent-identity/v1` | agent 是谁、来源是什么 | 它需要哪些输入 |
+| `form-ledger/v1` | 用户页面收哪些稳定字段 | agent 内部怎么跑 |
+| `agent-input-profile/v1` | agent 的 skill、输入模式、transport、认证引用和可选 schema | 自动决定页面栏位、保存密钥 |
+| `agent-input-mapping/v1` | 某一 `formVersion` 的 `values[id]` 如何映射为目标请求 | 改写原提交信封、静默追随 agent 变化 |
+
+发现顺序：
+
+1. 优先读取平台发布的机器合同，例如 Agent Card、OpenAPI 或 JSON Schema。A2A 的 Agent Card 谱系可声明 identity、skills、输入模式、接口和认证要求；参考 [A2A Protocol Specification](https://github.com/a2aproject/A2A/blob/main/docs/specification.md)。结构化请求约束使用 [JSON Schema Specification](https://json-schema.org/specification)，不自造一套验证语言。
+2. 平台没有机器合同时，由 agent 作者人工提供任务说明、必填信息、示例输入、endpoint / SDK、认证方式和成功输出。
+3. 静态说明不能替代运行证据；必须在获授权 sandbox 用至少一条成功样例复核。若只接受 `text/plain`，首版 mapper 可显式把多个 `values[id]` 组合为一段版本化文本；这比引入完整 A2A 便宜，也保留以后升级机器发现的路径。
+
+完整 Block Diagram JSON 可用于诊断 block、edge、变量来源、分支和外部依赖，并产出“事实 / 推断 / 未知”清单。它不是 `form-ledger` 的来源；缺少 block 定义、schema/version、外部工具合同和 execution trace 时，不能证明真实运行语义。

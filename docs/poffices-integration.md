@@ -98,3 +98,18 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 若最终要求 Poffices 官方 URL 直接显示 Form Studio 已发布版本，还需平台另行提供正式、可授权、可回滚的入口映射能力。WordPress 官方说明 cookie 认证依赖登录会话和 `X-WP-Nonce`，只适用于站内登录上下文：[REST API Authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)。因此不得复制浏览器 cookie、不得因“进入第 2 段”就自动获得外部写权限。
 
 只有同时确认稳定路由（数字 id 还是 Key）、最小权限、发布/解绑/回滚合同和真实 sandbox，才允许实施平台入口适配；仍不得修改 agent 的 Overview、Variables、Block Diagram、prompts 或 Documentation。若这些条件未满足，只能报告“本地改装机制完成，平台入口未对接”，不能冒充 Poffices 官方入口已改变。
+
+## 真正调用 agent 仍缺的外部合同
+
+当前公开资料和只读身份接口只能确认 agent 存在，不能给出 Form Studio 可依赖的程序化输入 schema。进入 3B 前，需要 Alan / Poffices 针对一个获授权 sandbox 明确：
+
+1. 可调用的 agent id / Key 与环境；
+2. 接受 `text/plain`、结构化 JSON 还是其他模式；
+3. 正式 endpoint / SDK 与认证范围；
+4. 请求、响应和错误形状；
+5. 同步、异步、回调和任务状态规则；
+6. 重试、幂等和限流约束；
+7. 一条成功输入、输出和可核对的运行记录；
+8. 老师 agent 通过什么只读工具或查询端口访问学生提交。
+
+这些内容形成独立的 `agent-input-profile/v1`，不扩容 `owner-agent-identity/v1`。若对方只提供完整 Block Diagram JSON，Form Studio 可以审计数据流并提出候选 mapping，但仍需 block 类型说明、schema/version、外部工具合同和 sandbox trace 才能把推断升级为运行事实。任何 JSON 中的 token、cookie、API key 和密码都不得进入仓库。

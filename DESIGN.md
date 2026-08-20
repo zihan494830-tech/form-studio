@@ -1,10 +1,10 @@
 # Form Studio 项目设计
 
-> **版本：** v0.11 · 2026-08-20
+> **版本：** v0.12 · 2026-08-20
 > **性质：** 产品方向真相源。仓内不再保留内容重复副本。  
 > **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、只读 Poffices Creator Studio（v1.26.1）。
 > **不是：** Poffices 生产改动说明或外部写权授权令。
-> **相对 v0.10：** 修正把“Poffices 无写权”误当成“Form Studio 不可创建本地页面”的合同漂移。Official 身份也可建立隔离本地副本；它仍不产生任何 Poffices 写权。宽屏工作区改为设计 / 预览并排，中屏上下分区，小屏单列回流。
+> **相对 v0.11：** 修正 2C 与第 1b 段重复的问题：第 1b 已证明新生 id、发布入口和下架语义，2C 收紧为“持久新生身份”，必须跨服务重启保持身份、页面版本和提交。第 3 段补齐 agent 输入能力、字段映射和 Alan 课堂故事的真实闭环；Block Diagram JSON 只作诊断证据，不自动制表。人工为主、AI 为辅记为延期增强，不插队当前分期。
 
 ---
 
@@ -37,7 +37,7 @@ form-studio/
   scripts/                  ← 结构门禁
 ```
 
-第 0–1b、2A 和 2B-A / B / C 已落地：作者能按改装 / 新生进入设计，只读核对真实主人，为真实身份建立隔离的本地页面，并从旁路入口把提交信封追加进 `inputBag`。**当前下一切片是 2C「新生真实身份」**。手写基准示例留在 `tests/fixtures/` 做回归，不当万用模板。
+第 0–1b、2A 和 2B-A / B / C 已落地：作者能按改装 / 新生进入设计，只读核对真实主人，为真实身份建立隔离的本地页面，并从旁路入口把提交信封追加进 `inputBag`。**当前下一切片是 2C「持久新生身份」**：把现在会随进程消失的身份、页面版本和提交换成可重启恢复的本地事实。手写基准示例留在 `tests/fixtures/` 做回归，不当万用模板。
 
 ---
 
@@ -113,6 +113,8 @@ Form Studio 是和 Creator Studio 同一类的作者后台。作者**设计**一
 - Frankie / 课堂练习本身。那是 Form Studio 做完之后的应用。课堂故事最贴新生路径：老师创建一个练习 agent，做的就是画表。
 
 老师 05:59：*after the form studio is done*，接到 Frankie 的 daily outcome / report summarizer，做成课堂练习（学生在表里答题，老师在自己的 agent 里看统计和标准答案）。应用故事，不是产品身份。
+
+拿到某个 agent 的完整 Block Diagram JSON 后，可以只读分析 block、edge、入口变量、数据流和外部依赖，帮助建立运行时输入映射；它仍不直接决定用户页面栏位。JSON 没有同时给出 block 语义、schema/version、成功输入输出和运行 trace 时，不得声称已完整理解真实运行。
 
 ---
 
@@ -445,15 +447,15 @@ flowchart LR
 | **2B-B 本地绑定合同（已完成）** | `owner-agent-binding/v1` 只在本地把一个已核实只读身份与一个 form、一个已发布版本相连；Official 也可建隔离副本 | 无主非法；一表一 agent；绑定、解绑和历史 `inputBag` 可回滚；Poffices 对象零修改 | 用名字当主键、把本地绑定冒充平台授权、认证写回 |
 | **2B-C 本地旁路入口（已完成）** | 为已绑定真实身份提供 Form Studio 管理的用户入口；只渲染 `published`，提交信封追加进对应本地 `inputBag` | 草稿不泄漏、无输入框逃生门、信封 `ownerAgent` 与绑定一致、解绑可退 | 冒充 Poffices 官方 URL 已改变、接真实 Input Layer |
 | **2B-P 平台入口（条件项）** | 只有 Poffices 提供正式、可授权、可回滚的入口映射能力时，才把官方用户入口接到已发布版本；仍不改 agent 内部 | 真实 Poffices 入口先见表且可回滚，有平台证据 | 直接改官方 agent、复用浏览器 cookie、无授权探针 |
-| **2C 新生真实身份** | Form Studio 创建的 agent form 获得真实或明确旁路的可打开身份 | id 与表一起出生；未发布不可打开；发布后打开只见表；下架不伪装成恢复输入框 | 无主表、完整模型运行能力、Frankie |
+| **2C 持久新生身份** | 把第 1b 已有的本地新生 id 和旁路入口从内存演示升级为持久事实 | 创建、发布、提交后重启服务：同一 id 和 URL 仍存在、只见已发布版本、历史 `inputBag` 不丢；下架仍不可打开 | 注册 Poffices agent、改官方对象、完整模型运行能力、Frankie |
 
-2B-A / B / C 证明本地改装机制；若 Poffices 官方入口是最终验收的一部分，2B-P 未通过前不得宣布平台改装完成。2C 再补齐新生路径。所有切片共用同一份 `ownerAgent`、封闭控件词表、账本和提交信封合同，不各自发明实现。
+2B-A / B / C 证明本地改装机制；若 Poffices 官方入口是最终验收的一部分，2B-P 未通过前不得宣布平台改装完成。第 1b 已经证明新生的临时 id、发布 URL 和下架语义，2C 不得重复这些测试冒充进展，而要补上跨进程持久性。所有切片共用同一份 `ownerAgent`、封闭控件词表、账本和提交信封合同，不各自发明实现。
 
 **2A 落地证据（2026-08-20）：** Poffices 公开 Store detail 实时返回 `Market Analysis` 的 `id=18`；infrastructure 将它映射成只读 `owner-agent-identity/v1`，其中 `ownerAgent="18"`。401 / 403 / 404 / 上游异常已冻结失败映射。Creator Studio 页面另显示 Key=`marketanalyzer`，但公开响应不含该字段，所以它只作人工交叉核对，不静默替换 `ownerAgent`。该对象是 Official；这限制平台写回，不阻止 Form Studio 建立隔离本地页面。
 
 **2B-A / B / C 落地证据（2026-08-20）：** 起始页只呈现改装 / 新生；身份核对住在改装流内。发布产生可机读 `owner-agent-binding/v1`；使用面和提交端点都校验绑定的主人、表和已发布版本一致后才开放。E2E 证明 Official `Market Analysis / 18` 可创建 `local-shadow-only` 本地页面，sandbox 信封按 `values[id]` 追加进对应本地 `inputBag`。这只证明本地改装机制，不证明 Poffices 官方入口已改变。
 
-**当前下一件：** 2C 新生真实身份。不是 Poffices 写回，也不是 Frankie。
+**当前下一件：** 2C 持久新生身份。不是重复创建 `form-1`，不是 Poffices 写回，也不是 Frankie。
 
 #### 第 3 段：应用（2 完成后再做）
 
@@ -464,6 +466,12 @@ Frankie 课堂故事：学生打开练习 agent 填表；老师侧按 `submitter
 1. **3A 持久提交与老师视图：** 把当前单进程内存 `inputBag` 换成持久 submission repository；学生身份、班级 / 租户边界和老师查询权限可验证。当前 `inputBag` 只是演示证据，不是多用户生产存储。
 2. **3B agent 输入投递：** 定义 `AgentInputPort`；同一事务保存提交信封与待投递事件，再以幂等 relay 交给获官方支持的 Poffices adapter。信封形状不变；没有正式输入合同前只完成本地 port，不伪造真实交互。
 3. **3C 课堂故事：** 学生用户页面提交，老师视图看见对应记录，目标 agent 从受支持端口收到同一份输入，一条教学故事端到端走通。
+
+真实 agent 交互必须再分开四个对象：`owner-agent-identity/v1` 回答它是谁；`form-ledger/v1` 回答用户交哪些格子；待设计的 `agent-input-profile/v1` 回答 agent 接受文本还是结构化数据、支持什么 skill 和 transport；待设计的 `agent-input-mapping/v1` 显式把 `values[id]` 映射为运行时请求。后两份合同不得塞进身份合同，也不得靠名字或 Variables 猜出来。
+
+输入能力的证据顺序固定：平台提供的机器合同（Agent Card / OpenAPI / JSON Schema）优先；其次是 agent 作者声明的输入说明与成功样例；最后必须在获授权 sandbox 复核。若 agent 只接受自由文本，可由显式、版本化 mapper 把结构化字段组合成文本，但原提交信封不变。没有 endpoint、认证、请求/返回形状和成功样例，不得宣布已接入真实 agent。
+
+**延期增强：人工为主、AI 为辅。** AI 日后只可在独立建议区提出候选 `label`、控件、必填和稳定 `id`，作者逐项接受后才进入 `fields[]`；不得自动读取 Block Diagram 制表、覆盖既有字段或自动发布。该项不改变当前 `2C → 3A → 3B → 3C` 顺序。
 
 完成定义：一条教学故事能走通。  
 不做：把课堂练习写成 Form Studio 的定义；也不在第 3 段才回头补设计面。
