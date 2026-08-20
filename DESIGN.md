@@ -1,10 +1,10 @@
 # Form Studio 项目设计
 
-> **版本：** v0.16 · 2026-08-20
+> **版本：** v0.17 · 2026-08-20
 > **性质：** 产品方向真相源。仓内不再保留内容重复副本。  
 > **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、只读 Poffices Creator Studio（v1.26.1）。
 > **不是：** Poffices 生产改动说明或外部写权授权令。
-> **相对 v0.15：** 3B-A / B / C 已落地为 `agent-input-profile/v1`、`agent-input-mapping/v1`、同事务 outbox、幂等 relay 与本地 `AgentInputPort`；老师视图附带显示姓名、checkbox 展示值和投递状态。当前下一件前移到 3C 课堂端到端故事；Poffices adapter、正式登录身份与试点运维仍是外部条件项。
+> **相对 v0.16：** 澄清「产品面 vs 应用消费者」边界——产品面只有作者工作台 + 通用表单渲染器两个表面；读提交是外置消费者，提交台账是泛化的读提交能力，课堂只是第一个参考消费者。3C 顺带把课堂词汇从产品面移出；Poffices adapter、正式登录身份与试点运维仍是外部条件项。
 
 ---
 
@@ -115,6 +115,24 @@ Form Studio 是和 Creator Studio 同一类的作者后台。作者**设计**一
 老师 05:59：*after the form studio is done*，接到 Frankie 的 daily outcome / report summarizer，做成课堂练习（学生在表里答题，老师在自己的 agent 里看统计和标准答案）。应用故事，不是产品身份。
 
 拿到某个 agent 的完整 Block Diagram JSON 后，可以只读分析 block、edge、入口变量、数据流和外部依赖，帮助建立运行时输入映射；它仍不直接决定用户页面栏位。JSON 没有同时给出 block 语义、schema/version、成功输入输出和运行 trace 时，不得声称已完整理解真实运行。
+
+### 3.3 产品面、产物与消费者（应用外置）
+
+Form Studio 的产品面只有**两个表面**，其余都是外置的：
+
+| 表面 | 是什么 | 入口 |
+|---|---|---|
+| 作者工作台 | 产品本体：目录、设计器、预览、发布 | `/` |
+| 通用表单渲染器 | 产品的产物：一个渲染器 × N 个 agent，按账本渲染 | `/a/:ownerAgent` |
+
+「读提交」不是产品面本身，而是**消费者**。一个消费者 = 角色 + 作用域（tenant / class / agent）+ 读同一份提交合同的权限。课堂、CRM、分析台都是消费者，不是新页面：
+
+- 同一份 `submission-record/v1` 是唯一数据合同；
+- 新应用 = 新消费者，读同一合同 + 新作用域，不需要新页面；
+- `/classroom` 是 Frankie 课堂这个**参考消费者**，用来证明合同端到端可用，不是产品面的第三条腿；
+- `/session` 只是本地演示的测试脚手架，正式身份由外部提供，不属于产品。
+
+一句话：Form Studio 造表和收表；谁来看表，那是挂在外面按合同消费的应用。
 
 ---
 
@@ -339,6 +357,14 @@ flowchart TD
 - 改装对象未绑定时可以走空门；新生对象未发布或下架后，使用面不得继续把它作为可打开的 form 返回。
 - 作者正在编辑的字段属于 `draft`；只要尚未重新发布，就不得在账本或使用面上标成 `published`。
 
+### 7.6 提交记录与消费者
+
+`submission-record/v1` 是提交的物理真相源：独立记录 id、原提交信封、服务端验证的 actor context（含 `displayName`）、tenant / class scope 和接收时间。它按 `ownerAgent`、actor、scope 和时间查询，是消费者读取的唯一数据合同。
+
+消费者不修改提交，也不拥有字段定义。产品面内部提供一个**参数化的提交台账**：按 `ownerAgent` + 作用域浏览提交列表、详情和字段 `values[id]`。老师视图只是台账在「课堂作用域」下的一次参数化；课堂词汇不进入台账本体。
+
+新应用接入时不新增产品页面：它声明角色与作用域，读同一份提交合同。等出现第二个真实消费者时，才把「消费者配置」显式建模；过早抽象消费者框架是 YAGNI。
+
 ---
 
 ## 8. 已冻结的实现原则
@@ -372,7 +398,7 @@ flowchart LR
 | **1 改装挂上** | 预置有 id 的 mock agent。夹具表是它的首页（独占）。提交信封追加进它的 `inputBag`。workbench：选 agent、预览表、看见袋子、能解绑。 | 人能指着说：打开的是 A，填的是 A 的首页，三栏以 id 出现在 A 的袋子里 | 登 Poffices、改官方 agent、全库出表、设计面、新建 agent form |
 | **1b 设计 + 新生** | 作者在封闭词表内加栏 / 改栏 / 删栏 / 预览 / 发布。两条入口：改已有 mock 的页面；新建一个 agent form（新 id，天生是表）。抽账本与使用面仍走同一套合同。 | 人能不改夹具 HTML、只在工作台画出一张表并打开该 agent 填它；也能新建一个 form agent 打开就填 | 主题市场、自由 HTML、从 CS 框图生成表、真 Poffices 写回 |
 | **2 真身份** | 作者先在 Form Studio 本地为真实 `ownerAgent` 设计、预览和发布；不改 Poffices agent 本体。改装入口可先旁路，平台官方入口只有在存在正式授权接口时才对接。新生 agent form 也可先旁路。提交信封形状不变，使用面只渲染 `published`。 | 指定一个真实存在的 agent，打开 Form Studio 受控用户入口先填表；若声称 Poffices 官方入口已换门，必须有正式平台授权证据 | 直接修改官方 agent、在 CS 发明 form block、Frankie |
-| **3 应用** | 学生 agent 收表；老师 agent 读 `inputBag` 做统计 / 标准答案（Frankie 故事）。靠 `submitterId` 和 `values[id]`。 | 一条教学故事能走通 | 把课堂练习写成 Form Studio 的定义 |
+| **3 应用** | 学生 agent 收表；课堂作为**参考消费者**读提交台账做统计 / 标准答案（Frankie 故事）。靠 `submitterId` 和 `values[id]`。 | 一条教学故事能走通，课堂只作外置消费者 | 把课堂练习写成 Form Studio 的定义 |
 
 第 0 段、第 1 段已在本仓落地（分层测试绿）。第 1b 段已落地：每个 agent 自己的字段、工作台加栏、新建 agent form；发布用户页面作为该 agent 的用户 UI。基准夹具只留在 `tests/fixtures/exercise-1` 做第 0 段回归。
 
@@ -461,7 +487,7 @@ flowchart LR
 
 **3B-A / B / C 落地证据（2026-08-20）：** `agent-input-profile/v1` 与 `agent-input-mapping/v1` 已冻结，显式把某一 `formVersion` 的 `values[id]` 映射为结构化请求；未知字段、版本漂移和错控件类型 fail closed；没有配置时投递状态为 `not_configured`，不猜接口。提交与 outbox event 在同一 SQLite 事务落盘，序列化失败一起回滚；relay 以稳定幂等键投递并记录 pending / delivering / delivered / failed 与尝试次数，回执丢失可重试且目标不重复消费。本地 `AgentInputPort`（内存 + SQLite 双实现）跨重启按幂等键只保留一份输入，回执可追溯到 submission id、原信封与 mapping 版本。自动检查 69/69 通过，另以端到端故事证明学生提交 → 老师查看 → 本地端口收件同链。它证明 3B 本地机制，不证明 Poffices 真实 agent 收到输入。
 
-**当前下一件：** 3C 课堂端到端故事：学生用户页面提交，老师视图看见同一记录，目标 agent 从受支持端口收到同一份输入。3B-P Poffices adapter 仍是条件项，只有正式 endpoint、认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才实施；不是直接猜 endpoint、复用浏览器 cookie 或把 Block Diagram 当输入 schema。
+**当前下一件：** 3C 参考消费者故事：学生用户页面提交，课堂消费者（老师）从提交台账看见同一记录，目标 agent 从受支持端口收到同一份输入；并顺带把课堂词汇从产品面移出。3B-P Poffices adapter 仍是条件项，只有正式 endpoint、认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才实施；不是直接猜 endpoint、复用浏览器 cookie 或把 Block Diagram 当输入 schema。
 
 **当前阶段判定：** 作者设计、发布、入口校验、独立提交记录、本地 actor / scope、老师最小消费界面和本地 agent 输入投递机制（outbox → relay → `AgentInputPort`）已经成立，仍属于本地可演示 Alpha。真实身份提供方、跨机器运维和 Poffices 侧 agent 输入投递尚未成立，因此不得称为学生 / 老师可用的联网 MVP，也不得说“真实 agent 已交互”。
 
@@ -473,30 +499,31 @@ flowchart LR
 | 已解决 | P1 | 提交嵌在 agent JSON 的 `inputBag` | 无法可靠按学生、班级、时间查询 | 3A-A 已以独立 submission record / repository 接管；逻辑 `inputBag` 仅作兼容投影 |
 | 已解决 | P1 | 客户端可伪造 `submitterId` | 不能证明谁提交 | 3A-B 已改为服务端验证 actor；body 身份被忽略 |
 | 已解决 | P1 | 没有班级 / 租户和老师授权 | 可能跨范围读写 | 3A-B 已默认拒绝并逐资源复核 actor / scope |
-| 已解决 | P1 | 没有老师查询端口和最小视图 | 数据落盘但没有应用消费者 | 3A-C 已完成获授权列表、单条详情、学生筛选、空态与窄屏 |
+| 已解决 | P1 | 没有老师查询端口和最小视图 | 数据落盘但没有应用消费者 | 3A-C 已完成提交台账（获授权列表、单条详情、提交者筛选、空态与窄屏） |
 | 待解决 | P1 | 本地演示身份是内存会话，不是真实平台登录 | 服务重启会话失效；不能用于联网学生 / 老师试点 | 3C-P / 试点前：Alan / Poffices 决定可信身份与班级来源；会话绑定正式认证，仍默认拒绝 |
 | 已解决 | P1 | 没有 `agent-input-profile`、mapping、outbox 和 transport | 表单提交尚未进入任何可证明的 agent 输入端口 | 3B-A / B / C 已落地：两份输入合同冻结、提交与 outbox 同事务、幂等 relay、本地 `AgentInputPort` 可审计收件；正式 Poffices adapter 另需 sandbox trace |
 | 待解决 | P1 | Poffices 真实输入 endpoint、认证、schema 和成功样例缺失 | 无法证明真实 agent 交互，不能安全猜接口 | 3B-P 条件项：平台或 Alan 提供机器合同 / 作者声明，并在获授权 sandbox 验证 |
 | 待解决 | P2 | 历史记录只保存稳定字段 ID，详情暂以当前已发布 label 投影 | label 改名后，旧记录展示名可能不是提交当时文案 | 3B 前评估是否保存发布版本字段快照；机器查询仍以 `values[id]` 为准 |
 | 待解决 | P2 | 老师视图当前以 actor ID 显示学生 | 本地机制可判人，但真实课堂可读性不足 | 3B 已附带保存并显示本地演示姓名 + 稳定 ID；接入正式身份目录后替换姓名来源；姓名不得成为主键 |
+| 待解决 | P2 | 课堂应用词汇与 `/classroom` 页面混入产品面 | 产品被单一应用（课堂）污染，再来第二个应用就要再造页面 | 3C 收口时：提交台账泛化、消费者外置、措辞去课堂化；产品面保持「工作台 + 渲染器」两表面 |
 | 待解决 | P2 | `node:sqlite` 有实验性警告、无备份恢复演练、无多实例方案 | 本地 Alpha 可用，网络试点运维风险未收口 | 试点前完成备份恢复演练与异机 Git 远端；实测需要多实例时再升级存储 |
 
 #### 第 3 段：应用（3A / 3B 已完成，当前执行 3C）
 
-Frankie 课堂故事：学生打开练习 agent 填表；老师侧按 `submitterId` 和 `values[id]` 看提交与统计；需要 agent 处理时，再由明确的 `AgentInputPort` 把同一提交信封投递给对应 agent。
+Frankie 课堂是第一个**参考消费者**：学生打开练习 agent 填表；老师侧作为「课堂作用域」的消费者，读提交台账按 `submitterId` 和 `values[id]` 看提交与统计；需要 agent 处理时，再由明确的 `AgentInputPort` 把同一提交信封投递给对应 agent。产品面不因此新增课堂专属页面。
 
 第 3 段内部按数据风险拆三刀，不改变顶层 `1b → 2 → 3` 顺序：
 
-1. **3A 提交记录与老师视图（已完成）：** 独立 submission repository 保存原提交信封；服务端 actor / scope、逐资源权限和老师最小视图可验证。当前仍是单机本地演示，不是多用户生产存储。内部顺序为：
+1. **3A 提交记录与提交台账（已完成）：** 独立 submission repository 保存原提交信封；服务端 actor / scope、逐资源权限和参数化的提交台账（老师视图是其在课堂作用域下的一次实例）可验证。当前仍是单机本地演示，不是多用户生产存储。内部顺序为：
    - **3A-A 提交记录（已完成）：** 定义独立记录与 repository，原提交信封原样内嵌；迁移既有 `inputBag` 时不丢、不重复。
    - **3A-B 身份与权限（已完成）：** application 接受服务端验证的 actor / scope，不信任 body 中的用户、角色或租户；未命中规则默认拒绝。
-   - **3A-C 老师最小视图（已完成）：** 获授权提交列表、单条详情和学生 ID 筛选；没有扩成课堂统计大屏。
+   - **3A-C 提交台账（已完成）：** 参数化地按 `ownerAgent` + 作用域浏览获授权提交列表、单条详情和提交者筛选；老师视图是它在课堂作用域下的一次实例，没有扩成课堂统计大屏。
 2. **3B agent 输入投递（已完成）：** 定义 `AgentInputPort`；同一事务保存提交信封与待投递事件，再以幂等 relay 交给受支持 adapter。信封形状不变。内部顺序固定为：
    - **3B-A 输入合同与映射（已完成）：** `agent-input-profile/v1` 明确目标 skill、输入模式和 transport；`agent-input-mapping/v1` 显式把某一 `formVersion` 的 `values[id]` 映射为请求。没有合同就失败，不按名称或 Block Diagram 猜。
    - **3B-B 可靠投递（已完成）：** submission record 与 outbox event 同事务落盘；relay 以稳定幂等键投递，记录 pending / delivered / failed 和尝试次数，不覆盖提交。
    - **3B-C 本地受支持端口（已完成）：** 用可审计的本地 `AgentInputPort` 跑通同一信封的映射与消费，证明机制；它不是 Poffices 真交互。
    - **3B-P Poffices adapter（条件项）：** 只有正式 endpoint、认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才接入并宣布真实 agent 收到输入。
-3. **3C 课堂故事（当前执行）：** 学生用户页面提交，老师视图看见对应记录，目标 agent 从受支持端口收到同一份输入，一条教学故事端到端走通。
+3. **3C 参考消费者故事（当前执行）：** 学生用户页面提交，课堂消费者（老师）从提交台账看见对应记录，目标 agent 从受支持端口收到同一份输入；一条教学故事端到端走通，并顺带把课堂词汇从产品面移出（消费者外置 + 台账泛化 + 措辞去课堂化）。
 
 真实 agent 交互必须再分开四个对象：`owner-agent-identity/v1` 回答它是谁；`form-ledger/v1` 回答用户交哪些格子；待设计的 `agent-input-profile/v1` 回答 agent 接受文本还是结构化数据、支持什么 skill 和 transport；待设计的 `agent-input-mapping/v1` 显式把 `values[id]` 映射为运行时请求。后两份合同不得塞进身份合同，也不得靠名字或 Variables 猜出来。
 
@@ -504,8 +531,8 @@ Frankie 课堂故事：学生打开练习 agent 填表；老师侧按 `submitter
 
 **延期增强：人工为主、AI 为辅。** AI 日后只可在独立建议区提出候选 `label`、控件、必填和稳定 `id`，作者逐项接受后才进入 `fields[]`；不得自动读取 Block Diagram 制表、覆盖既有字段或自动发布。该项不改变当前 `3A → 3B → 3C` 顺序。
 
-完成定义：一条教学故事能走通。  
-不做：把课堂练习写成 Form Studio 的定义；也不在第 3 段才回头补设计面。
+完成定义：一条教学故事能走通，且课堂只作为外置的参考消费者挂在产品面之外。  
+不做：把课堂练习写成 Form Studio 的定义；为每个应用开产品页面；也不在第 3 段才回头补设计面。
 
 ---
 
@@ -526,7 +553,7 @@ Frankie 课堂故事：学生打开练习 agent 填表；老师侧按 `submitter
 
 ## 11. 已收口
 
-v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问是 v0.2 补收口。第 6 问是 v0.3 补收口。
+v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问是 v0.2 补收口。第 6 问是 v0.3 补收口。第 7 问是 v0.17 补收口。
 
 | # | 问题 | 决定 |
 |---|---|---|
@@ -536,6 +563,7 @@ v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问
 | 4 | 第 2 段旁路还是进 Input Layer | **先旁路。** 前提是提交信封稳定，换管道时 `values[id]` 不用改。 |
 | 5 | 作者面是挂夹具，还是设计 | **设计。** 第 0–1 段夹具只证明合同。产品要允许 design a web form。抽账本是运行时，不是作者工作方式。不从 CS 框图 / 变量读取出表。 |
 | 6 | 要不要做全库万用模板 | **不做。** 基准示例只是例子。通用的是控件词表、账本、信封、工作室。每个 agent 自己的用户 UI。允许「从例子复制」当起点，复制后与夹具脱钩。 |
+| 7 | 读提交的界面（老师视图 / 课堂）是不是产品面 | **不是。** 产品面只有作者工作台 + 通用表单渲染器两个表面。读提交是外置消费者，读同一份 `submission-record` 合同 + 作用域；课堂是第一个参考消费者。为第 N 个应用对接时不新增产品页面。 |
 
 若老师日后改第 2 条，只允许改成「解绑才恢复」（改装路径），不允许做成表与输入框同时可交。
 

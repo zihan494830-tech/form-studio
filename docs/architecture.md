@@ -64,7 +64,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 ## 从本地演示到真实使用的数据链路
 
-3A 已把提交从 agent JSON 拆到独立 submission 表；原信封、服务端 actor context、tenant / class scope 和接收时间一起保存。逻辑 `inputBag` 仍可读，但不再是物理真相源。老师查询投影只读取获授权范围；这仍不能证明真实登录、多实例共享或 agent 消费。第 3 段剩余链路如下：
+3A 已把提交从 agent JSON 拆到独立 submission 表；原信封、服务端 actor context、tenant / class scope 和接收时间一起保存。逻辑 `inputBag` 仍可读，但不再是物理真相源。提交台账投影（老师视图是其在课堂作用域下的一次参数化）只读取获授权范围；这仍不能证明真实登录、多实例共享或 agent 消费。第 3 段剩余链路如下：
 
 当前使用 Node 内置 `node:sqlite` 和单文件 SQLite；agent 与 submission 共用数据库文件，WAL、`synchronous=FULL` 和严格表结构明确落在适配器。依据 [Node.js SQLite](https://nodejs.org/api/sqlite.html) 与 [SQLite Atomic Commit](https://www.sqlite.org/atomiccommit.html)。这是当前单机规模的低档位选择；`node:sqlite` 仍会给出实验性警告，若运行时兼容性成为部署阻碍，再评估成熟驱动或外部数据库。
 
@@ -93,9 +93,15 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 权限规则已采用“默认拒绝、每次请求按具体资源复核”；老师列表、详情和 student 提交都同时校验 actor、role、ownerAgent、tenant 和 class，并在 repository 查询中带范围条件。该方向依据 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 与 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。具体认证供应商仍是外部拍板项。
 
-浏览器面分三条明确入口：`/` 是作者后台，`/a/:ownerAgent` 是已发布用户页面，`/classroom` 是老师最小视图；`/session` 只为本地课堂演示选择 actor。老师 HTTP API 只提供获授权页面列表、提交列表和单条详情，不把 agent repository 或全库 submission 暴露给前端。页面包含加载、空、错误与窄屏状态，但不承担真实认证或完整统计职责。
+浏览器面分两类产品表面，加一个参考消费者和一个测试脚手架：`/` 是作者工作台（产品面，`public/workbench`），`/a/:ownerAgent` 是通用表单渲染器渲染的已发布用户页面（产品产物，`public/face`）；`/classroom` 是 Frankie 课堂参考消费者（`public/classroom`，只通过提交台账 API 读数据，不是产品面本体）；`/session` 只是本地演示选择 actor 的测试脚手架（`public/session`），不进产品。提交台账 API 只提供获授权页面列表、提交列表和单条详情，不把 agent repository 或全库 submission 暴露给前端。页面包含加载、空、错误与窄屏状态，但不承担真实认证或完整统计职责。
 
 历史迁移已显式处理 2C 的嵌入式 `inputBag`：以 legacy key 保证同一信封只生成一条 submission record，成功导入后才清空物理旧袋并标记迁移版本。合同测试证明可重试、不丢、不重复；它不替代真实备份与恢复演练。
+
+### 提交台账与消费者边界
+
+产品面只有两个代码表面：`public/workbench/`（作者工作台）和 `public/face/`（通用表单渲染器）。`public/classroom/` 是外置的参考消费者，只通过提交台账 HTTP API 读数据，不进入产品面本体；`public/session/` 是测试脚手架，生产身份由外部提供。
+
+提交台账是 `read-teacher-submissions` 用例的参数化形态：按 `ownerAgent` + 作用域浏览提交记录。课堂只提供一组作用域实例（tenant / class + teacher 角色），不应把「课堂」词汇写进台账本体。等第二个消费者出现时，再把「消费者 = 角色 + 作用域 + 读提交合同」显式建模，当前不过早抽象（YAGNI）。
 
 ### 输入能力与字段映射
 

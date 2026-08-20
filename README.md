@@ -25,4 +25,4 @@ npm run test:e2e
 
 ## 当前阶段
 
-第 0 / 1 / 1b、第 2 段本地旁路、3A 和 3B-A/B/C 已落地。生产模式使用本地 SQLite；提交已成为带服务端 actor / scope 的独立记录；提交与 outbox 事件同事务落盘，经幂等 relay 投进本地 `AgentInputPort`；本地演示身份可完成学生提交、获授权老师查看与投递状态。Poffices 身份仍只读，真实 agent 尚未收到输入，因此当前仍是**本地可演示 Alpha**，不是联网学生 / 老师 MVP。下一件是 3C Alan 课堂端到端故事；Poffices adapter 只有在正式输入合同和获授权 sandbox trace 齐全后才实施。AI 制表继续延期。
+第 0 / 1 / 1b、第 2 段本地旁路、3A 和 3B-A/B/C 已落地。生产模式使用本地 SQLite；提交已成为带服务端 actor / scope 的独立记录；提交与 outbox 事件同事务落盘，经幂等 relay 投进本地 `AgentInputPort`；本地演示身份可完成学生提交、获授权老师查看与投递状态。Poffices 身份仍只读，真实 agent 尚未收到输入，因此当前仍是**本地可演示 Alpha**，不是联网学生 / 老师 MVP。下一件是 3C 课堂端到端故事（课堂作为外置的参考消费者读提交台账，不进入产品面）；Poffices adapter 只有在正式输入合同和获授权 sandbox trace 齐全后才实施。AI 制表继续延期。
