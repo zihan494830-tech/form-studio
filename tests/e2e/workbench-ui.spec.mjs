@@ -2,6 +2,29 @@ import { expect, test } from "@playwright/test";
 import { agentOf, resetStore } from "../support/project-fixture.mjs";
 
 test.describe("作者后台 UI 管理回归", () => {
+  test("2A 真实身份只读显示，不混入可编辑设计对象", async ({ page }) => {
+    await page.route("**/api/owner-identities/poffices/18", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: 200,
+        identity: {
+          version: "owner-agent-identity/v1", ownerAgent: "18", name: "Market Analysis",
+          origin: "retrofit", sourceSystem: "poffices", externalId: "18", agentType: "app",
+          official: true, readOnly: true,
+        },
+      }),
+    }));
+    await page.goto("/");
+    await page.getByRole("button", { name: "核对" }).click();
+    const card = page.locator("#identity-result");
+    await expect(card).toContainText("Market Analysis");
+    await expect(card).toContainText("ownerAgent 18");
+    await expect(card).toContainText("只读");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("先从左侧选一个，或新建一张表");
+    await expect(page.getByRole("button", { name: "发布为用户页面" })).toBeDisabled();
+  });
+
   test("未发布字段只进草稿预览，不能提交", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");

@@ -2,6 +2,7 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createFormStudioServer } from "./src/server/create-server.mjs";
+import { createPofficesAgentDirectory } from "./src/infrastructure/poffices-agent-directory.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = 4190;
@@ -9,7 +10,8 @@ const testMode = process.argv.includes("--test-mode");
 const testRouteHandler = testMode
   ? (await import("./tests/support/test-route-handler.mjs")).createTestRouteHandler(ROOT)
   : null;
-const server = createFormStudioServer({ root: ROOT, port: PORT, testRouteHandler });
+const identityDirectory = createPofficesAgentDirectory();
+const server = createFormStudioServer({ root: ROOT, port: PORT, identityDirectory, testRouteHandler });
 
 server.listen(PORT, "127.0.0.1", () => {
   process.stdout.write(`form-studio http://127.0.0.1:${PORT}\n`);

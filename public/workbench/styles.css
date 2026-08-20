@@ -110,6 +110,21 @@ aside {
 }
 .pane-label { margin-top: 20px; }
 .aside-hint, .pane-hint { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.identity-check {
+  margin: 0 0 18px;
+  padding: 11px;
+  border: 1px solid #b7caed;
+  border-radius: 9px;
+  background: #f4f7ff;
+}
+.identity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.identity-row input { width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid var(--line-strong); border-radius: 6px; }
+.identity-row button { padding: 7px 10px; color: var(--accent); background: #fff; border: 1px solid #9bb6e8; border-radius: 6px; cursor: pointer; }
+.identity-result { min-height: 18px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.identity-result[data-state="verified"] { display: grid; gap: 2px; color: var(--muted); }
+.identity-result[data-state="verified"] strong { color: var(--ink); font-size: 12px; }
+.identity-result[data-state="error"] { color: var(--danger); }
+.identity-owner code { color: var(--accent); font-family: ui-monospace, Consolas, monospace; }
 .create-row { display: grid; gap: 7px; margin-bottom: 16px; }
 .create-row button, .add-row button { padding: 8px 10px; }
 .create-row button, #add-field, #bind-btn { color: #fff; background: var(--accent); border-color: var(--accent); font-weight: 600; }

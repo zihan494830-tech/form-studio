@@ -8,6 +8,7 @@ Form Studio 是作者后台：作者为某一个 agent 设计可提交的 web �
 - 模块职责与依赖方向：[`docs/architecture.md`](./docs/architecture.md)
 - 测试分类与新增规则：[`docs/testing.md`](./docs/testing.md)
 - Git、文档生命周期与清理方法：[`docs/maintenance.md`](./docs/maintenance.md)
+- Poffices 只读身份边界：[`docs/poffices-integration.md`](./docs/poffices-integration.md)
 
 ## 常用命令
 
@@ -23,4 +24,4 @@ npm run test:e2e
 
 ## 当前阶段
 
-第 0 / 1 / 1b 段已经落地，第 2 段工程启动闸门也已完成并进入 Git 管理。现在按 `DESIGN.md` 第 9 节执行 **2A 真实身份只读纳管**，之后才是 2B 改装真实入口 → 2C 新生真实身份；不得先做 Frankie，也不得写回 Creator Studio block 图。
+第 0 / 1 / 1b 段和 **2A 真实身份只读纳管**已经落地，第 2 段下一切片是 2B 改装真实入口，之后才是 2C 新生真实身份；不得先做 Frankie，也不得写回 Creator Studio block 图。2A 的身份卡片只读，不代表真实入口已经绑定。

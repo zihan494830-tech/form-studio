@@ -22,8 +22,18 @@
     </header>
 
     <aside>
-      <div class="list-label">选一个 agent</div>
-      <p class="aside-hint">改已有的打开页面，或新建一张表（同时得到一个新 agent）。</p>
+      <section class="identity-check" aria-labelledby="identity-title">
+        <div id="identity-title" class="list-label">真实身份核对 · 2A</div>
+        <p class="aside-hint">只读确认候选主人，不会绑定、发布或修改 Poffices。</p>
+        <label class="search-label" for="identity-id">Poffices agent ID</label>
+        <div class="identity-row">
+          <input id="identity-id" inputmode="numeric" value="18" autocomplete="off" />
+          <button id="identity-check-btn" type="button">核对</button>
+        </div>
+        <div id="identity-result" class="identity-result" aria-live="polite"></div>
+      </section>
+      <div class="list-label">本地设计对象</div>
+      <p class="aside-hint">改已有的 mock 页面，或新建一张表（同时得到一个新 agent）。</p>
       <div class="create-row">
         <label class="sr-only" for="new-name">表的名称</label>
         <input id="new-name" type="text" placeholder="表的名称，例如课堂练习" autocomplete="off" />

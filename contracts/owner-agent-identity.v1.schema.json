@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "owner-agent-identity/v1",
+  "title": "Form Studio normalized owner agent identity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "ownerAgent",
+    "name",
+    "origin",
+    "sourceSystem",
+    "externalId",
+    "agentType",
+    "official",
+    "updatedAt",
+    "observedAt",
+    "readOnly"
+  ],
+  "properties": {
+    "version": { "const": "owner-agent-identity/v1" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "origin": { "const": "retrofit" },
+    "sourceSystem": { "type": "string", "minLength": 1 },
+    "externalId": { "type": "string", "minLength": 1 },
+    "agentType": { "type": ["string", "null"] },
+    "official": { "type": "boolean" },
+    "updatedAt": { "type": ["string", "null"] },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "readOnly": { "const": true }
+  }
+}

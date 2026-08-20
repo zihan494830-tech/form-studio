@@ -20,6 +20,8 @@ const recordsCloseBtn = $("records-close"), recordsScrim = $("records-scrim"), r
 const recordCountEl = $("record-count"), refreshBtn = $("refresh-btn"), userPageLink = $("user-page-link");
 const faceModeEl = $("face-mode"), splitterEl = $("splitter"), confirmDialog = $("confirm-dialog");
 const confirmTitle = $("confirm-title"), confirmBody = $("confirm-body"), confirmAccept = $("confirm-accept");
+const identityIdEl = $("identity-id"), identityCheckBtn = $("identity-check-btn");
+const identityResultEl = $("identity-result");
 
 let agents = [], selectedId = null, currentFacePath = null;
 let saveTail = Promise.resolve(), pendingSaves = 0;
@@ -42,6 +44,31 @@ function currentAgent() { return agents.find((item) => item.id === selectedId) |
 function replaceAgent(next) {
   const index = agents.findIndex((item) => item.id === next.id);
   if (index >= 0) agents[index] = next; else agents.push(next);
+}
+
+function renderIdentity(identity) {
+  identityResultEl.dataset.state = "verified";
+  identityResultEl.innerHTML = `<strong>${escapeHtml(identity.name)}</strong>
+    <span class="identity-owner">ownerAgent <code>${escapeHtml(identity.ownerAgent)}</code></span>
+    <span>${identity.official ? "官方" : "非官方"} · ${escapeHtml(identity.agentType || "类型未知")} · 只读</span>`;
+}
+
+async function checkIdentity() {
+  const id = identityIdEl.value.trim();
+  identityCheckBtn.disabled = true;
+  identityResultEl.dataset.state = "loading";
+  identityResultEl.textContent = "正在只读核对…";
+  try {
+    const res = await fetch(`/api/owner-identities/poffices/${encodeURIComponent(id)}`);
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || "真实身份核对失败");
+    renderIdentity(result.identity);
+  } catch (error) {
+    identityResultEl.dataset.state = "error";
+    identityResultEl.textContent = error.message || "真实身份核对失败";
+  } finally {
+    identityCheckBtn.disabled = false;
+  }
 }
 
 function renderList() {
@@ -282,6 +309,10 @@ createBtn.addEventListener("click", async () => {
   const agent = await res.json();
   if (!res.ok) return showError(agent.error || "无法新建");
   newNameEl.value = ""; replaceAgent(agent); select(agent.id, { reloadFace: true });
+});
+identityCheckBtn.addEventListener("click", checkIdentity);
+identityIdEl.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") checkIdentity();
 });
 
 fieldListEl.addEventListener("change", async (event) => {

@@ -23,6 +23,8 @@ presentation ──────────────────────�
 | `data` | 当前阶段 mock 种子 | 产品规格文档 |
 | `tests` | 按证据层分类的回归与夹具 | 生产模块 |
 
+Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
+
 依赖规则是本仓拍板项：外层可以依赖内层，`domain` 不反向依赖 `server`、`infrastructure` 或 `public`。第 2 段替换真实 agent 身份时，优先新增/替换 infrastructure 适配器，不改提交信封形状。
 
 ## 管理门禁
@@ -47,7 +49,7 @@ presentation ──────────────────────�
 - 文档检查守的是“产品金稿唯一、文档有归属”，不是一律禁止 `docs/` 下增加专题文档。
 - 行数阈值只作职责过载信号；改阈值时同步改脚本和本页即可。
 
-字段规范化、发布与 `formVersion` 规则现已位于 domain/application；内存仓储只实现 `list/get/save/appendEnvelope/nextBornFormId/reset` repository port。服务器通过组合注入仓储，2A 新增真实身份适配器时不得复制产品规则。`/fixture/exercise-1` 与 `/api/test/reset` 已移入 `tests/support`，只有显式 `--test-mode` 才动态注册。
+字段规范化、发布与 `formVersion` 规则现已位于 domain/application；内存仓储只实现 `list/get/save/appendEnvelope/nextBornFormId/reset` repository port。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射，没有复制发布、账本或提交规则。`/fixture/exercise-1` 与 `/api/test/reset` 已移入 `tests/support`，只有显式 `--test-mode` 才动态注册。
 
 ## 依据和暂不上项
 

@@ -2,6 +2,7 @@ import http from "node:http";
 import { join } from "node:path";
 import { createAgentAuthoring } from "../application/author-agent.mjs";
 import { decorateAgent } from "../application/agent-view.mjs";
+import { readOwnerIdentity } from "../application/read-owner-identity.mjs";
 import { submitToAgent } from "../application/submit-to-agent.mjs";
 import { inMemoryAgentRepository } from "../infrastructure/in-memory-agent-repository.mjs";
 import { renderFormHtml } from "../presentation/form/render-html.mjs";
@@ -20,6 +21,7 @@ export function createFormStudioServer({
   root,
   port = 4190,
   repository = inMemoryAgentRepository,
+  identityDirectory = null,
   testRouteHandler = null,
 }) {
   const authoring = createAgentAuthoring(repository);
@@ -74,6 +76,11 @@ export function createFormStudioServer({
       }
       if (method === "GET" && pathname === "/api/agents") {
         return sendJson(res, 200, authoring.listAgents().map(decorateAgent));
+      }
+      if (method === "GET" && pathname.startsWith("/api/owner-identities/poffices/")) {
+        const id = decodeURIComponent(pathname.slice("/api/owner-identities/poffices/".length));
+        const result = await readOwnerIdentity(identityDirectory, id);
+        return sendJson(res, result.status, result);
       }
       if (method === "PUT" && pathname.startsWith("/api/agents/") && pathname.endsWith("/fields")) {
         const result = authoring.setFields(agentIdFrom(pathname, "/fields"), (await readJsonBody(req)).fields);
