@@ -6,8 +6,8 @@ export function createOwnerFlow({ onCreated }) {
   const choice = $("path-choice"), retrofit = $("retrofit-flow"), born = $("born-flow");
   const retrofitStart = $("retrofit-start"), bornStart = $("born-start");
   const identityId = $("identity-id"), identityButton = $("identity-check-btn");
-  const identityResult = $("identity-result"), authorizationStep = $("authorization-step");
-  const authorizationConfirm = $("authorization-confirm"), createRetrofit = $("create-retrofit-btn");
+  const identityResult = $("identity-result"), localCopyStep = $("local-copy-step");
+  const createRetrofit = $("create-retrofit-btn");
   const newName = $("new-name"), createBorn = $("create-btn"), bornStatus = $("born-status");
   let verifiedIdentity = null;
 
@@ -25,8 +25,7 @@ export function createOwnerFlow({ onCreated }) {
     verifiedIdentity = null;
     identityResult.dataset.state = "idle";
     identityResult.textContent = "";
-    authorizationStep.hidden = true;
-    authorizationConfirm.checked = false;
+    localCopyStep.hidden = true;
     createRetrofit.disabled = true;
   }
 
@@ -38,17 +37,18 @@ export function createOwnerFlow({ onCreated }) {
 
   function renderIdentity(identity) {
     verifiedIdentity = identity;
-    const blocked = identity.official;
-    identityResult.dataset.state = blocked ? "blocked" : "verified";
+    identityResult.dataset.state = "verified";
     identityResult.innerHTML = `<div class="identity-card">
       <div><span class="context-label">候选主人</span><strong>${escapeHtml(identity.name)}</strong></div>
-      <span class="identity-state ${blocked ? "blocked" : "eligible"}">${blocked ? "Official · 仅可核对" : "可继续确认权限"}</span>
+      <span class="identity-state source">${identity.official ? "Official · 只读来源" : "Poffices · 只读来源"}</span>
+      <span class="identity-state eligible">可创建隔离的本地页面</span>
       <dl><div><dt>ownerAgent:</dt><dd>${escapeHtml(identity.ownerAgent)}</dd></div>
       <div><dt>来源:</dt><dd>Poffices · 只读</dd></div></dl>
-      ${blocked ? "<p><strong>身份信息已读取完整。</strong>但这是 Poffices 官方 agent，当前没有可验证的改装授权，所以 Form Studio 不会创建本地绑定。</p>" : ""}
+      <p><strong>不会改动 Poffices。</strong>Form Studio 只引用这个 ownerAgent，在自己的数据域内管理页面、版本和提交。</p>
     </div>`;
-    authorizationStep.hidden = blocked;
-    if (!blocked) authorizationConfirm.focus();
+    localCopyStep.hidden = false;
+    createRetrofit.disabled = false;
+    createRetrofit.focus();
   }
 
   async function checkIdentity() {
@@ -71,7 +71,7 @@ export function createOwnerFlow({ onCreated }) {
   }
 
   async function createRetrofitWorkspace() {
-    if (!verifiedIdentity || !authorizationConfirm.checked) return;
+    if (!verifiedIdentity) return;
     createRetrofit.disabled = true;
     identityResult.dataset.state = "loading";
     identityResult.textContent = "正在创建本地设计工作区…";
@@ -79,7 +79,7 @@ export function createOwnerFlow({ onCreated }) {
       const response = await fetch("/api/retrofits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerAgent: verifiedIdentity.ownerAgent, authorizationConfirmed: true }),
+        body: JSON.stringify({ ownerAgent: verifiedIdentity.ownerAgent }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || result.message || "无法创建本地工作区");
@@ -117,9 +117,6 @@ export function createOwnerFlow({ onCreated }) {
   document.querySelectorAll("[data-back-to-paths]").forEach((button) => button.addEventListener("click", showChoice));
   identityButton.addEventListener("click", checkIdentity);
   identityId.addEventListener("keydown", (event) => { if (event.key === "Enter") checkIdentity(); });
-  authorizationConfirm.addEventListener("change", () => {
-    createRetrofit.disabled = !authorizationConfirm.checked || !verifiedIdentity;
-  });
   createRetrofit.addEventListener("click", createRetrofitWorkspace);
   createBorn.addEventListener("click", createBornWorkspace);
   newName.addEventListener("keydown", (event) => { if (event.key === "Enter") createBornWorkspace(); });

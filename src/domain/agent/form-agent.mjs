@@ -21,13 +21,9 @@ export function newBornFormAgent({ id, name, createdAt = null }) {
   };
 }
 
-export function newRetrofitFormAgent({ identity, authorizationConfirmed, confirmedAt = null }) {
+export function newRetrofitFormAgent({ identity, linkedAt = null }) {
   if (!identity?.ownerAgent || identity.sourceSystem !== "poffices" || identity.readOnly !== true) {
     return { error: "真实身份合同无效", status: 400 };
-  }
-  if (identity.official) return { error: "Official agent 不允许本地改装", status: 403 };
-  if (authorizationConfirmed !== true) {
-    return { error: "请先确认拥有或获授权管理该 agent", status: 403 };
   }
   return {
     agent: {
@@ -36,7 +32,7 @@ export function newRetrofitFormAgent({ identity, authorizationConfirmed, confirm
       origin: "retrofit",
       sourceSystem: "poffices",
       ownerIdentity: clone(identity),
-      authorization: { basis: "author-confirmed", confirmedAt },
+      authorization: { basis: "local-shadow-only", confirmedAt: linkedAt },
       formVersion: 1,
       fields: [],
       published: null,

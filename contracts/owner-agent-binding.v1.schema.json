@@ -27,7 +27,7 @@
       "additionalProperties": false,
       "required": ["basis", "confirmedAt"],
       "properties": {
-        "basis": { "type": "string", "minLength": 1 },
+        "basis": { "enum": ["born-form", "local-fixture", "local-shadow-only"] },
         "confirmedAt": { "type": ["string", "null"] }
       }
     }

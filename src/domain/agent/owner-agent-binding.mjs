@@ -7,17 +7,20 @@ function denied(message) {
 }
 
 /**
- * 本地绑定默认拒绝。Poffices Official 永不进入绑定；非官方对象也必须先有作者权限确认。
- * 依据：https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html
+ * 这里只授权 Form Studio 自己的数据域：字段、发布版本、旁路入口与 inputBag。
+ * Poffices 身份始终只读；Official 也可建立隔离本地副本，但绝不因此获得平台写权。
+ * 依据：https://learn.microsoft.com/azure/architecture/patterns/anti-corruption-layer
  */
 export function bindingEligibility(agent) {
   if (!agent?.id) return denied("没有这个 agent");
   if (agent.origin === "born-form") return { allowed: true };
   if (agent.sourceSystem === "local-fixture") return { allowed: true };
   if (agent.sourceSystem !== "poffices") return denied("身份来源未授权绑定");
-  if (agent.ownerIdentity?.official) return denied("Official agent 不允许本地改装");
-  if (agent.authorization?.basis !== "author-confirmed") {
-    return denied("尚未确认拥有或获授权管理该 agent");
+  if (!agent.ownerIdentity?.ownerAgent || agent.ownerIdentity.readOnly !== true) {
+    return denied("只读身份快照无效");
+  }
+  if (agent.authorization?.basis !== "local-shadow-only") {
+    return denied("没有 Form Studio 本地绑定范围");
   }
   return { allowed: true };
 }

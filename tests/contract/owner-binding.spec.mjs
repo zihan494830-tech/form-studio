@@ -20,16 +20,30 @@ function identity(overrides = {}) {
 }
 
 test.describe("2B owner-agent-binding/v1 合同", () => {
-  test("Official 和未确认权限对象默认拒绝", () => {
-    expect(newRetrofitFormAgent({ identity: identity({ official: true }), authorizationConfirmed: true }))
-      .toMatchObject({ status: 403 });
-    expect(newRetrofitFormAgent({ identity: identity(), authorizationConfirmed: false }))
-      .toMatchObject({ status: 403 });
+  test("Official 只读身份可以创建隔离的本地副本", () => {
+    const created = newRetrofitFormAgent({
+      identity: identity({ ownerAgent: "18", externalId: "18", name: "Market Analysis", official: true }),
+      linkedAt: "2026-08-20T09:00:00.000Z",
+    });
+    expect(created.agent).toMatchObject({
+      id: "18",
+      name: "Market Analysis",
+      ownerIdentity: { ownerAgent: "18", official: true, readOnly: true },
+      authorization: { basis: "local-shadow-only", confirmedAt: "2026-08-20T09:00:00.000Z" },
+      fields: [],
+      published: null,
+      binding: null,
+    });
   });
 
-  test("获授权主人发布后形成一表一 agent 的本地绑定", () => {
+  test("无效或未知身份来源仍然拒绝创建本地副本", () => {
+    expect(newRetrofitFormAgent({ identity: identity({ readOnly: false }) })).toMatchObject({ status: 400 });
+    expect(newRetrofitFormAgent({ identity: identity({ sourceSystem: "unknown" }) })).toMatchObject({ status: 400 });
+  });
+
+  test("只读主人发布后形成一表一 agent 的本地绑定", () => {
     const created = newRetrofitFormAgent({
-      identity: identity(), authorizationConfirmed: true, confirmedAt: "2026-08-20T09:00:00.000Z",
+      identity: identity(), linkedAt: "2026-08-20T09:00:00.000Z",
     });
     const agent = {
       ...created.agent,
@@ -44,7 +58,7 @@ test.describe("2B owner-agent-binding/v1 合同", () => {
       publishedFormVersion: 1,
       entryMode: "form-studio-sidecar",
       status: "published",
-      authorization: { basis: "author-confirmed", confirmedAt: "2026-08-20T09:00:00.000Z" },
+      authorization: { basis: "local-shadow-only", confirmedAt: "2026-08-20T09:00:00.000Z" },
     });
     expect(activePublishedBinding(result.agent)).toEqual(result.agent.binding);
   });
@@ -52,7 +66,7 @@ test.describe("2B owner-agent-binding/v1 合同", () => {
   test("伪造主人或版本的绑定不能打开使用面", () => {
     const agent = {
       id: "42", sourceSystem: "poffices", origin: "retrofit", ownerIdentity: identity(),
-      authorization: { basis: "author-confirmed", confirmedAt: null },
+      authorization: { basis: "local-shadow-only", confirmedAt: null },
     };
     const binding = createOwnerAgentBinding(agent, {
       formVersion: 2, fields: [{ id: "q", label: "Q", control: "text", required: true }],

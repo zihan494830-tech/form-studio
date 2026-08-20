@@ -43,9 +43,9 @@ npm run check
 2B-A / B / C 按最低责任层保留证据，不把 UI 绿冒充平台对接：
 
 - E2E：起始页只有改装 / 新生两条主路径；候选身份不会与未绑定工作区形成视觉假绑定。
-- Contract：`owner-agent-binding/v1` 一表一 agent；Official / 权限未知 fail closed；解绑保留历史 `inputBag`。
+- Contract：`owner-agent-binding/v1` 一表一 agent；Official 可建 `local-shadow-only` 隔离副本；无效身份来源 fail closed；解绑保留历史 `inputBag`。
 - Runtime：真实 `ownerAgent` 的本地旁路入口只渲染 `published`；草稿不泄漏；提交信封形状不变并追加入袋。
 - 架构：Poffices adapter 只有 `getById`；本地发布、解绑没有可调用的 Poffices 写端口。
-- Accessibility：身份查询的空、加载、失败状态可读，主路径可键盘完成，窄屏无水平溢出。
+- Accessibility / Reflow：身份查询的空、加载、失败状态可读，主路径可键盘完成；宽屏设计 / 预览并排，中屏上下分区，窄屏无水平溢出。
 
 以上已由 `owner-binding.spec.mjs`、`workbench-ui.spec.mjs`、`agent-entry.spec.mjs` 和 `submission.spec.mjs` 覆盖。它们只证明本地改装机制。若将来实施条件式平台入口，必须增加独立真实环境证据；没有正式接口和授权时不得伪造。

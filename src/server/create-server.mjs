@@ -80,7 +80,7 @@ export function createFormStudioServer({
         const payload = await readJsonBody(req);
         const identityResult = await readOwnerIdentity(identityDirectory, payload.ownerAgent);
         if (identityResult.status !== 200) return sendJson(res, identityResult.status, identityResult);
-        const result = authoring.createRetrofit(identityResult.identity, payload.authorizationConfirmed);
+        const result = authoring.createRetrofit(identityResult.identity);
         return result.error
           ? sendJson(res, result.status, { error: result.error })
           : sendJson(res, 201, decorateAgent(result.agent));

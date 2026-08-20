@@ -23,11 +23,11 @@ export function createAgentAuthoring(repository, { now = () => new Date().toISOS
       const agent = newBornFormAgent({ id: repository.nextBornFormId(), name, createdAt: now() });
       return repository.save(agent);
     },
-    createRetrofit(identity, authorizationConfirmed) {
+    createRetrofit(identity) {
       if (repository.get(String(identity?.ownerAgent || ""))) {
         return { error: "该 ownerAgent 已有本地设计工作区", status: 409 };
       }
-      const result = newRetrofitFormAgent({ identity, authorizationConfirmed, confirmedAt: now() });
+      const result = newRetrofitFormAgent({ identity, linkedAt: now() });
       return result.error ? result : { agent: repository.save(result.agent) };
     },
     setFields(id, fields) {

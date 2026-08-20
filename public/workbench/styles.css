@@ -181,7 +181,7 @@ aside {
   min-height: 0;
   background: var(--stage);
 }
-.workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; container-type: inline-size; }
 .onboarding {
   flex: 1;
   overflow: auto;
@@ -227,15 +227,17 @@ aside {
 .identity-state { display: inline-flex; margin-top: 10px; padding: 5px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .identity-state.eligible { color: var(--ok); background: var(--ok-bg); }
 .identity-state.blocked { color: var(--danger); background: var(--danger-bg); }
+.identity-state.source { margin-right: 5px; color: var(--muted); background: #edf2f1; }
 .identity-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0 0; }
 .identity-card dl div { padding: 9px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
 .identity-card dt { color: var(--muted); font-size: 11px; }
 .identity-card dd { margin: 2px 0 0; font-family: ui-monospace, Consolas, monospace; }
-.identity-card p { margin: 12px 0 0; color: var(--danger); }
-.authorization-step { margin-top: 14px; padding: 14px; border: 1px solid #9ed2c7; border-radius: 12px; background: #f1faf7; }
-.authorization-step label { display: flex; gap: 9px; align-items: flex-start; color: var(--muted); line-height: 1.55; }
-.authorization-step input { margin-top: 3px; }
-.authorization-step .primary { margin-top: 14px; }
+.identity-card p { margin: 12px 0 0; color: var(--muted); line-height: 1.55; }
+.identity-card p strong { color: var(--ink); font-size: inherit; }
+.local-copy-step { margin-top: 14px; padding: 14px; border: 1px solid #9ed2c7; border-radius: 12px; background: #f1faf7; }
+.local-copy-step p { display: grid; gap: 3px; margin: 0; color: var(--muted); line-height: 1.55; }
+.local-copy-step p strong { color: var(--ink); }
+.local-copy-step .primary { margin-top: 14px; }
 #born-status { min-height: 22px; margin-top: 10px; color: var(--danger); }
 .stage-bar {
   display: flex;
@@ -322,6 +324,24 @@ body.resizing { cursor: row-resize; user-select: none; }
 iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--face-bg); }
 .hint { padding: 40px 28px; color: var(--muted); font-size: 14px; }
 .hint p { margin: 0 0 8px; }
+
+/* Wide workspaces adapt by component width, not by a device-specific viewport.
+   Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Containment/Container_queries */
+@container (min-width: 1280px) {
+  .split {
+    display: grid;
+    grid-template-columns: minmax(560px, 1.05fr) minmax(480px, 0.95fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .designer {
+    height: auto !important;
+    min-height: 0;
+    border-right: 1px solid var(--line);
+  }
+  .designer-head, #field-list, .add-row { width: 100%; }
+  .splitter { display: none !important; }
+  .face-panel { min-width: 0; min-height: 0; margin: 0 18px 18px; }
+}
 
 .records-scrim { position: fixed; inset: 0; z-index: 20; border: 0; background: rgba(23, 32, 51, 0.28); cursor: default; }
 #records {

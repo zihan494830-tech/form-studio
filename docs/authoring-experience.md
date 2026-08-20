@@ -28,7 +28,7 @@
 - 左侧页面库删去重复解释，增加“全部 / 已发布 / 草稿”筛选和结果数；列表项只保留名称、状态、出生路径与稳定 id。
 - “显示编号”改成“显示字段 ID”，并说明它只用于接口对接和排错。原实现复用了 `.show-ids` 类，误把整个设计区切成 flex 布局；现已拆成 `.id-toggle` 和 `.ids-visible`，切换前后设计区几何尺寸保持不变。
 - 草稿预览只保留一个状态说明，提交按钮改为“发布后可提交”；未发布时隐藏无意义的解除绑定动作并禁用用户页链接；产品文案统一使用“草稿 / 已发布版本”。
-- 字段编辑器限制在 900px 居中工作带，宽屏不再把字段名称拉成过长输入框；字段 ID 关闭时不预留空行，只在设计区内部按需展开。
+- 字段 ID 关闭时不预留空行，只在设计区内部按需展开。宽屏工作区不再把上下两块拉成很长页面：容器达到 1280px 时设计 / 预览并排；中屏保留可调上下分区；小屏单列回流。
 
 字段控件继续使用可见、可理解的标签，依据 [W3C WAI Form Labels](https://www.w3.org/WAI/tutorials/forms/labels/)；对可切换内容预留稳定空间，避免突发布局移动，依据 [web.dev Optimize Cumulative Layout Shift](https://web.dev/articles/optimize-cls)。采用的是标签清晰与稳定布局原则，不引入新的 UI 框架。
 
@@ -40,16 +40,16 @@
 你准备做什么？
 
 [ 改已有 agent 的页面 ]   [ 新建 agent form ]
-  选择一个获授权主人          agent 与 form 同时出生
+  核实一个真实主人            agent 与 form 同时出生
 ```
 
 改装路径：
 
 ```text
 输入精确 ID / 未来可验证 Key
-  → 展示名称、Key、Official / 所有权上下文
-  → 判断绑定资格
-  → 通过后立即创建本地工作区，写入 ownerAgent
+  → 展示名称、Key、Official / 来源上下文
+  → 明确“Poffices 只读、Form Studio 本地副本”
+  → 创建隔离本地工作区，写入 ownerAgent
 ```
 
 新生路径：
@@ -113,7 +113,7 @@ SurveyJS 提供 Basic / Advanced / Expert 渐进 UI preset，证明“先最小�
 ### 2B-B / C（已完成）：本地绑定和旁路入口
 
 - 冻结 `owner-agent-binding/v1`。
-- 只允许获授权真实身份建立本地设计对象；Official / 权限未知 fail closed。
+- 有效只读真实身份可建立 `local-shadow-only` 本地设计对象；Official 也可建，但不获得 Poffices 写权。
 - 本地入口只渲染 `published`；草稿只在作者面。
 - 提交信封按 `values[id]` 追加进绑定主人对应的本地 `inputBag`。
 
@@ -134,8 +134,11 @@ Alan 完成版到手后，先审计：
 - [x] 起始页只呈现改装 / 新生两条路径。
 - [x] 身份核对结果不与未绑定设计对象同时常驻。
 - [x] 当前工作区显著显示真实 `ownerAgent` 或新生 id。
-- [x] Official / 权限未知对象不能产生本地绑定。
+- [x] Official 可产生隔离本地绑定，界面不把它冒充为 Poffices 平台改动。
 - [x] 本地发布、解绑没有 Poffices 写端口可调用。
 - [x] 绑定合同保持一表一 agent，提交信封形状不变。
 - [x] `published` 独占使用入口，草稿不泄漏。
 - [x] 自动测试覆盖空、加载、失败、键盘和窄屏状态。
+- [x] 宽屏并排、中屏上下、小屏单列；换屏无水平溢出。
+
+响应式实现按工作区容器宽度选择布局，而不是猜设备型号，依据 [MDN Container Queries](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Containment/Container_queries)；小屏验收遵循内容无需双向滚动的 [WCAG 2.2 Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)。

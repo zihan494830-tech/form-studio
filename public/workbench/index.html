@@ -68,12 +68,9 @@
             <button id="identity-check-btn" type="button">查找 agent</button>
           </div>
           <div id="identity-result" class="identity-result" role="status"></div>
-          <div id="authorization-step" class="authorization-step" hidden>
-            <label>
-              <input id="authorization-confirm" type="checkbox" />
-              <span>我确认自己拥有或获授权管理该 agent。当前只创建本地绑定和旁路入口。</span>
-            </label>
-            <button id="create-retrofit-btn" class="primary" type="button" disabled>在本地开始设计</button>
+          <div id="local-copy-step" class="local-copy-step" hidden>
+            <p><strong>只创建 Form Studio 本地页面</strong><span>字段、发布版本和提交记录都留在本地，不修改 Poffices 的 agent 配置或官方入口。</span></p>
+            <button id="create-retrofit-btn" class="primary" type="button" disabled>创建本地页面</button>
           </div>
         </section>
 

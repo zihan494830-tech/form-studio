@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { agentOf, resetStore } from "../support/project-fixture.mjs";
 
 test.describe("作者后台 UI 管理回归", () => {
-  test("2B-A 起始页只呈现改装/新生，Official 候选不与工作区假绑定", async ({ page }) => {
+  test("2B-A Official 候选可创建隔离本地页面，且边界写清楚", async ({ page, request }) => {
+    await resetStore(request);
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "你准备为谁设计用户页面？" })).toBeVisible();
     await expect(page.getByRole("button", { name: /改已有 agent/ })).toBeVisible();
@@ -13,21 +14,32 @@ test.describe("作者后台 UI 管理回归", () => {
     const card = page.locator("#identity-result");
     await expect(card).toContainText("Market Analysis");
     await expect(card).toContainText("ownerAgent:18");
-    await expect(card).toContainText("Official · 仅可核对");
-    await expect(card).toContainText("身份信息已读取完整");
-    await expect(page.locator("#authorization-step")).toBeHidden();
-    await expect(page.locator("#workspace")).toBeHidden();
+    await expect(card).toContainText("Official · 只读来源");
+    await expect(card).toContainText("可创建隔离的本地页面");
+    await expect(card).toContainText("不会改动 Poffices");
+    await expect(page.locator("#local-copy-step")).toBeVisible();
+    await page.getByRole("button", { name: "创建本地页面" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Market Analysis" })).toBeVisible();
+    await expect(page.locator("#owner-context")).toContainText("ownerAgent:18");
+    await expect(page.locator("#owner-context")).toContainText("Poffices");
+    const local = await agentOf(request, "18");
+    expect(local).toMatchObject({
+      id: "18",
+      ownerIdentity: { official: true, readOnly: true },
+      authorization: { basis: "local-shadow-only" },
+      published: null,
+      binding: null,
+    });
   });
 
-  test("2B-B/C 获授权 sandbox 可建本地绑定，已发布版本从旁路入口入袋", async ({ page, request }) => {
+  test("2B-B/C 只读身份可建本地绑定，已发布版本从旁路入口入袋", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
     await page.getByRole("button", { name: /改已有 agent/ }).click();
     await page.locator("#identity-id").fill("42");
     await page.getByRole("button", { name: "查找 agent" }).click();
     await expect(page.locator("#identity-result")).toContainText("Research Sandbox");
-    await page.getByRole("checkbox", { name: /我确认自己拥有/ }).check();
-    await page.getByRole("button", { name: "在本地开始设计" }).click();
+    await page.getByRole("button", { name: "创建本地页面" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Research Sandbox" })).toBeVisible();
     await expect(page.locator("#owner-context")).toContainText("ownerAgent:42");
     await expect(page.locator("#owner-context")).toContainText("Poffices");
@@ -163,5 +175,41 @@ test.describe("作者后台 UI 管理回归", () => {
     expect(after.fieldTop).toBe(before.fieldTop);
     expect(after.fieldHeight).toBeGreaterThan(before.fieldHeight);
     expect(await page.locator("#field-list").evaluate((element) => element.getBoundingClientRect().width)).toBeLessThanOrEqual(900);
+  });
+
+  test("工作区按可用宽度在并排与上下布局间自适应", async ({ page, request }) => {
+    await resetStore(request);
+    await page.setViewportSize({ width: 1920, height: 900 });
+    await page.goto("/");
+    await page.getByRole("button", { name: /市场分析需求/ }).click();
+    const wide = await page.locator("#split").evaluate((split) => {
+      const designer = split.querySelector("#designer").getBoundingClientRect();
+      const face = split.querySelector(".face-panel").getBoundingClientRect();
+      return {
+        display: getComputedStyle(split).display,
+        designerLeft: designer.left,
+        designerRight: designer.right,
+        faceLeft: face.left,
+        pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+    expect(wide.display).toBe("grid");
+    expect(wide.faceLeft).toBeGreaterThanOrEqual(wide.designerRight);
+    expect(wide.pageOverflow).toBeLessThanOrEqual(0);
+
+    await page.setViewportSize({ width: 1100, height: 800 });
+    const stacked = await page.locator("#split").evaluate((split) => {
+      const designer = split.querySelector("#designer").getBoundingClientRect();
+      const face = split.querySelector(".face-panel").getBoundingClientRect();
+      return {
+        display: getComputedStyle(split).display,
+        designerBottom: designer.bottom,
+        faceTop: face.top,
+        pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+    expect(stacked.display).toBe("flex");
+    expect(stacked.faceTop).toBeGreaterThanOrEqual(stacked.designerBottom);
+    expect(stacked.pageOverflow).toBeLessThanOrEqual(0);
   });
 });

@@ -88,7 +88,7 @@ function select(id, { reloadFace = true } = {}) {
   onboardingEl.hidden = true; workspaceEl.hidden = false;
   renderList(); showError(""); renderDesigner(); renderContract(); updateStage(); updateActions();
   if (agent) loadFace(agent, reloadFace);
-  if (!splitterEl.hidden) resizeDesigner(designerEl.getBoundingClientRect().height);
+  if (!splitterEl.hidden && !isWideWorkspace()) resizeDesigner(designerEl.getBoundingClientRect().height);
   setSaveStatus(pendingSaves ? "保存中…" : "已保存", pendingSaves ? "saving" : "saved");
 }
 
@@ -340,13 +340,21 @@ userPageLink.addEventListener("click", (event) => {
 });
 
 function resizeDesigner(next) {
+  if (isWideWorkspace()) {
+    designerEl.style.removeProperty("height");
+    return;
+  }
   const min = 160, max = Math.max(min, window.innerHeight - 300), height = Math.min(Math.max(next, min), max);
   designerEl.style.height = `${height}px`;
   splitterEl.setAttribute("aria-valuemin", String(min));
   splitterEl.setAttribute("aria-valuemax", String(max));
   splitterEl.setAttribute("aria-valuenow", String(Math.round(height)));
 }
+function isWideWorkspace() {
+  return $("split").clientWidth >= 1280;
+}
 splitterEl.addEventListener("pointerdown", (event) => {
+  if (isWideWorkspace()) return;
   event.preventDefault();
   const startY = event.clientY, startH = designerEl.getBoundingClientRect().height;
   document.body.classList.add("resizing");
@@ -358,6 +366,7 @@ splitterEl.addEventListener("pointerdown", (event) => {
 });
 // WCAG 2.2 keyboard accessibility: https://www.w3.org/TR/WCAG22/#keyboard-accessible
 splitterEl.addEventListener("keydown", (event) => {
+  if (isWideWorkspace()) return;
   if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
   event.preventDefault();
   const current = designerEl.getBoundingClientRect().height;
@@ -365,6 +374,9 @@ splitterEl.addEventListener("keydown", (event) => {
   if (event.key === "ArrowDown") resizeDesigner(current + 24);
   if (event.key === "Home") resizeDesigner(160);
   if (event.key === "End") resizeDesigner(window.innerHeight);
+});
+window.addEventListener("resize", () => {
+  if (isWideWorkspace()) designerEl.style.removeProperty("height");
 });
 window.addEventListener("message", async (event) => {
   if (!event.data || event.data.type !== "form-studio:submitted") return;

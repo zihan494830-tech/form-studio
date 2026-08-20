@@ -25,7 +25,7 @@ presentation ──────────────────────�
 
 Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
 
-第 2 段保持三类对象分离：身份合同回答「主人是谁」，`form-ledger/v1` 回答「发布了哪些字段」，`owner-agent-binding/v1` 只回答「哪个本地已发布版本属于哪个获授权主人」。绑定规则位于 `src/domain/agent/owner-agent-binding.mjs`，不塞入 Poffices adapter，也不把远端详情复制成本地 agent 本体。作者面信息架构见 [`docs/authoring-experience.md`](./authoring-experience.md)。
+第 2 段保持三类对象分离：身份合同回答「主人是谁」，`form-ledger/v1` 回答「发布了哪些字段」，`owner-agent-binding/v1` 只回答「哪个本地已发布版本属于哪个只读主人」。绑定规则位于 `src/domain/agent/owner-agent-binding.mjs`，不塞入 Poffices adapter，也不把远端详情复制成本地 agent 本体。`local-shadow-only` 只授权 Form Studio 自己的数据域，不代表 Poffices 写权。作者面信息架构见 [`docs/authoring-experience.md`](./authoring-experience.md)。
 
 依赖规则是本仓拍板项：外层可以依赖内层，`domain` 不反向依赖 `server`、`infrastructure` 或 `public`。第 2 段替换真实 agent 身份时，优先新增/替换 infrastructure 适配器，不改提交信封形状。
 
@@ -61,3 +61,24 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 最小 repository port 和用例注入已经建立。升级触发条件：只有出现独立部署单元、第三种适配器或明确的多包复用需求时，才评估显式 interface package、package `exports` 或 workspace。当前不上依赖注入容器、DDD 全套、monorepo。
 
 `owner-agent-binding/v1` 已作为 domain 合同落地，与已发布版本一起保存在本地 agent 记录中。使用面和提交用例都通过 `activePublishedBinding()` 复核主人、表 id 和发布版本。Poffices infrastructure 仍只提供 `getById`，没有 save/publish/unpublish 端口。
+
+## 从本地演示到真实使用的数据链路
+
+当前 `inputBag` 是单进程内存列表，只能证明“校验后追加提交信封”的合同，不能证明多人持久保存、老师权限或真实 agent 消费。第 2 段完成 2C 后，第 3 段按以下端口推进：
+
+```text
+学生用户页面
+  -> SubmitToAgent 用例
+     -> 持久 SubmissionRepository ----> 老师查询投影 / 统计
+     -> 同事务 Outbox
+          -> 幂等 Relay
+               -> AgentInputPort
+                    -> Poffices adapter（仅在官方输入合同存在后）
+```
+
+- `SubmissionRepository` 保存原提交信封以及可验证的学生、班级 / 租户归属；老师界面读取投影，不直接抓浏览器或内存对象。
+- 提交信封和待投递事件必须一起落盘，避免“老师看见了、agent 没收到”或反过来的双写裂缝。该选择属于 Transactional Outbox 谱系，参考 [Microsoft Transactional Outbox](https://learn.microsoft.com/en-us/samples/azure-samples/cosmos-db-design-patterns/transactional-outbox/)；当前数据量先用同库表和后台 relay，不上消息平台。
+- `AgentInputPort` 只接受既有提交信封；它不理解 Variables / Block Diagram，也不改 `values[id]`。当并发量、独立消费者或跨服务隔离成为实测瓶颈，再升级为发布 / 订阅中间件；参考 [Azure Publisher-Subscriber pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/publisher-subscriber)。
+- Poffices 目前公开材料证明 Creator Studio 可创建、配置、测试和发布 agent，但没有给出本项目可依赖的公开输入 API；参考 [Poffices Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。因此 adapter 是明确升级点，不是假装已完成的接口。
+
+当前低档位是“持久库 + outbox 表 + 单 relay”；升级触发条件是正式 Poffices 输入合同、跨进程投递需求或实测吞吐 / 重试压力。这样先打通 Alan 所说的学生提交、老师可见，再把同一信封投递给真实 agent，不为尚未出现的规模提前堆消息系统。
