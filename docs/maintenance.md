@@ -22,6 +22,7 @@
 | `docs/testing.md` | 测试分层、证据范围、运行与新增规则 |
 | `docs/maintenance.md` | Git、文档生命周期、清理和规则变更方法 |
 | `docs/poffices-integration.md` | Poffices 适配事实、身份映射、失败合同与升级条件 |
+| `docs/authoring-experience.md` | 作者面信息架构、已证实可用性问题和渐进演进路线 |
 
 新增文档前先查现有文档能否容纳。不得复制整段产品定义；需要背景时链接到 `DESIGN.md` 的对应小节。临时分析默认不进入仓库；若结论会影响后续决策，把结论并入有负责人的现役文档，不长期保留多份会议稿、审计稿和“最终版 2”。
 

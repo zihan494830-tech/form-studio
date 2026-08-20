@@ -25,6 +25,8 @@ presentation ──────────────────────�
 
 Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
 
+第 2 段保持三类对象分离：身份合同回答「主人是谁」，`form-ledger/v1` 回答「发布了哪些字段」，待建的 `owner-agent-binding/v1` 只回答「哪个本地金稿属于哪个获授权主人」。绑定合同不得塞入 Poffices adapter，也不得把远端详情复制成本地 agent 本体。作者面信息架构和渐进路线见 [`docs/authoring-experience.md`](./authoring-experience.md)。
+
 依赖规则是本仓拍板项：外层可以依赖内层，`domain` 不反向依赖 `server`、`infrastructure` 或 `public`。第 2 段替换真实 agent 身份时，优先新增/替换 infrastructure 适配器，不改提交信封形状。
 
 ## 管理门禁
@@ -57,3 +59,5 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - 文档采用“用途分离”而不是复制正文：`DESIGN.md` 解释产品，架构文档描述机器结构，测试文档指导工作。这对应 Diátaxis 对 explanation / reference / how-to 边界的区分：[Diátaxis](https://diataxis.fr/start-here/)。
 
 最小 repository port 和用例注入已经建立。升级触发条件：只有出现独立部署单元、第三种适配器或明确的多包复用需求时，才评估显式 interface package、package `exports` 或 workspace。当前不上依赖注入容器、DDD 全套、monorepo。
+
+`owner-agent-binding/v1` 尚未实现。实施时应作为 domain/application 合同，由本地 repository 保存；Poffices infrastructure 在当前授权下只读，不新增 save/publish/unbind 端口。

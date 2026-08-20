@@ -1,9 +1,10 @@
 # Form Studio 项目设计
 
-> **版本：** v0.7 · 2026-08-20
+> **版本：** v0.8 · 2026-08-20
 > **性质：** 产品方向真相源。仓内不再保留内容重复副本。  
 > **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、只读 Poffices Creator Studio（v1.26.1）、对照 Web Studio 现状后的对齐。  
 > **不是：** Web Studio 现役进度、授权实施令、Poffices 生产改动说明。  
+> **相对 v0.7：** 不改「作者本地设计 → particular agent 用户 UI」；收紧 2B 为本地优先，Poffices 读取只服务选主人，禁止把改装解释成直接修改官方 agent。把左栏信息架构整理列为 2B 启动整理项。
 > **相对 v0.6：** 不改产品语义；2A 已用 `Market Analysis`（Poffices id=`18`）完成真实身份只读纳管，下一切片是 2B 改装真实入口。
 > **相对 v0.5：** 不改产品语义；第 2 段工程启动闸门已经补齐并进入 Git 管理，下一件收窄为 2A 真实身份只读纳管。
 > **相对 v0.4：** 不改 `1b → 2 → 3`；把第 2 段内部拆成可独立验收的 2A / 2B / 2C，并记录进入真实外部边界前的工程启动闸门。
@@ -42,7 +43,7 @@ form-studio/
   scripts/                  ← 结构门禁
 ```
 
-旧骨架已完成迁移。第 0–1b 段已落地：例子能挂上、作者能设计、新生 agent form 能出生并打开。第 2 段的 2A 已落地：可只读核对一个真实身份，但尚未换门。**当前下一切片是 2B「改装真实入口」**。金稿留在 `tests/fixtures/` 做回归，不再当「设为首页」的唯一表。
+旧骨架已完成迁移。第 0–1b 段已落地：例子能挂上、作者能设计、新生 agent form 能出生并打开。第 2 段的 2A 已落地：可只读核对一个真实身份，但尚未建立本地绑定。**当前下一切片是 2B-A「作者流整理」**。金稿留在 `tests/fixtures/` 做回归，不再当「设为首页」的唯一表。
 
 ---
 
@@ -383,7 +384,7 @@ flowchart LR
 | **0 真表** | 手写一张封闭词表内的表。空提交停住。填齐能交。DOM 按 `name=id` 抽字段。夹具账本带假 `ownerAgent`。成功写出提交信封。 | walk 三条绿：空 / 非法类型 / 信封入袋（列表追加） | LLM、工作台、真平台、Frankie、自由 HTML |
 | **1 改装挂上** | 预置有 id 的 mock agent。夹具表是它的首页（独占）。提交信封追加进它的 `inputBag`。workbench：选 agent、预览表、看见袋子、能解绑。 | 人能指着说：打开的是 A，填的是 A 的首页，三栏以 id 出现在 A 的袋子里 | 登 Poffices、改官方 agent、全库出表、设计面、新建 agent form |
 | **1b 设计 + 新生** | 作者在封闭词表内加栏 / 改栏 / 删栏 / 预览 / 发布。两条入口：改已有 mock 的页面；新建一个 agent form（新 id，天生是表）。抽账本与使用面仍走同一套合同。 | 人能不改夹具 HTML、只在工作台画出一张表并打开该 agent 填它；也能新建一个 form agent 打开就填 | 主题市场、自由 HTML、从 CS 框图生成表、真 Poffices 写回 |
-| **2 真身份** | 改装：`ownerAgent` 对上已有真实 agent id，打开先出表（独占）。新生：在本工作室创建的 agent form 有可打开的真实身份（形态可先旁路）。提交可先旁路进输入，信封形状不变，不改官方 block 图。使用面只渲染 `published`。 | 指定一个真实存在的 agent，打开它会先填表；或打开一个新生的 form agent 会先填表 | 在 CS 里发明 form block、改全部官方 agent、Frankie |
+| **2 真身份** | 作者先在 Form Studio 本地为真实 `ownerAgent` 设计、预览和发布；不改 Poffices agent 本体。改装入口可先旁路，平台官方入口只有在存在正式授权接口时才对接。新生 agent form 也可先旁路。提交信封形状不变，使用面只渲染 `published`。 | 指定一个真实存在且获授权的 agent，打开受控用户入口先填表；若声称 Poffices 官方入口已换门，必须有正式平台证据 | 直接修改官方 agent、在 CS 发明 form block、Frankie |
 | **3 应用** | 学生 agent 收表；老师 agent 读 `inputBag` 做统计 / 标准答案（Frankie 故事）。靠 `submitterId` 和 `values[id]`。 | 一条教学故事能走通 | 把课堂练习写成 Form Studio 的定义 |
 
 第 0 段、第 1 段已在本仓落地（分层测试绿）。第 1b 段已落地：每个 agent 自己的字段、工作台加栏、新建 agent form；「设为首页」发布该 agent 自己的表，不再挂金稿。金稿只留在 `tests/fixtures/exercise-1` 做第 0 段回归。
@@ -399,7 +400,7 @@ Web Studio 若再出现：只允许在第 1 段之后，围着同一份字段合
 | 0 | 空提交被拦；填齐有带 `id` 的提交信封；账本有假 `ownerAgent` | 好看但不能交的 HTML；`name` 仍是中文标签；无主 `{ name, value }` |
 | 1 | 表挂在 named agent 上；打开只出表；袋子追加可见；能解绑 | 只有本页回显；agent 只写在注释里；袋子要打开文件才知道；覆盖成单条快照 |
 | 1b | 工作台里加出新栏并出现在使用面；能新建 agent form 并打开；改装对象仍能改页面 | 仍在改夹具 HTML 才出栏；新建的是无主表；从 CS 变量列表「生成」了表 |
-| 2 | 打开一个真实 agent 使用面，先是表，没有输入框 | 只在本工作室预览里假装挂上；表和输入框并存 |
+| 2 | 打开一个真实且获授权 agent 的受控使用入口，先是表，没有输入框；官方 Poffices 入口声明另需平台证据 | 只在设计预览里假装挂上；表和输入框并存；把本地旁路冒充成 Poffices 官方入口已改变 |
 | 3 | 学生提交出现在老师侧，能按人、按字段 id 看 | 课堂 UI 很全但表仍无主人；统计按中文标签聚合 |
 
 刻意留给以后的（现在不要证明）：Typeform 级拖拽与主题、全库自动出表、`file` / richtext、多步表、角色分表、进 Creator Studio Input Layer、Frankie 课堂统计 UI。
@@ -440,15 +441,15 @@ Web Studio 若再出现：只允许在第 1 段之后，围着同一份字段合
 
 不做：拖拽画布、主题、自由 HTML、从 CS 框图生成、真登录写回。
 
-#### 第 2 段：真身份（当前执行，下一切片 2B）
+#### 第 2 段：真身份（当前执行，下一件 2B-A）
 
-合同形状不变，换主人从 mock id 到真实存在的 agent。
+`owner-agent-identity/v1` 只回答「主人是谁」。作者仍在 Form Studio 本地制作表；Poffices 详情不替作者决定栏位。换主人从 mock id 到真实存在且获授权的 agent，提交信封形状不变。
 
-- **改装：** 指定一个已有 Poffices agent id；打开它的使用面先出表，没有输入框。提交先旁路进输入，`values[id]` 不用改名。不改官方 block 图。  
+- **改装：** 指定一个已有且获授权的 Poffices agent id；在 Form Studio 本地建立一表一主的绑定、设计并发布金稿。先提供 Form Studio 管理的旁路入口，提交进本地 `inputBag`，`values[id]` 不用改名。不改 Poffices agent 本体或官方 block 图。
 - **新生：** 本工作室创建的 agent form 有可打开的真实身份（也可先旁路）。  
 - 使用面只渲染 `published`。草稿只在作者面。
 
-完成定义：指着一个真实 agent（或一个新生 form agent）说：打开先填表，信封进它的袋子。
+本地改装机制完成定义：指着一个真实 `ownerAgent` 说，Form Studio 管理的入口只显示它的 `published` 表，信封进它的本地袋子。若最终完成定义要求 Poffices 官方 URL 也直接出表，则必须另有正式入口映射接口与授权证据；旁路不得冒充官方入口已改变。
 
 不做：在 CS 里发明 form block、给全部官方 agent 换门、Frankie。
 
@@ -457,14 +458,17 @@ Web Studio 若再出现：只允许在第 1 段之后，围着同一份字段合
 | 切片 | 做什么 | 完成定义 | 不做 |
 |---|---|---|---|
 | **2A 真实身份只读纳管（已完成）** | 通过 infrastructure 适配器确认一个真实 agent id 存在，并映射为合法 `ownerAgent`；冻结外部身份合同 | 真 id 可读、可显示；不存在 / 无权限明确失败；内部账本和提交信封不因外部字段名改变 | 绑定真实入口、写回官方 agent、扫全库、从 Variables / Block Diagram 出表 |
-| **2B 改装真实入口** | 给一个明确选择的真实 agent 换门；用户入口只读 `published`，提交仍可旁路进 `inputBag` | 打开真实 agent 先见表、无输入框；草稿不泄漏；提交信封追加可见；解绑可回退 | 表与输入框并存、改官方 block 图、把真实 Input Layer 当通过前置 |
+| **2B-A 作者流整理（当前下一件）** | 把 2A 身份核对从主侧栏移入「改已有 agent」选择流程；起始页只保留改装 / 新生两条入口；工作区显著显示当前 `ownerAgent`、来源和本地状态 | 五秒内能回答正在改谁、改装还是新生、草稿还是金稿；不会误以为核对到的 Market Analysis 已绑定练习一 | 新控件、Poffices 写入、重做完整视觉系统 |
+| **2B-B 本地绑定合同** | 新增 `owner-agent-binding/v1`，只在本地把一个获授权真实身份与一个 form、一个已发布版本相连；Official / 权限未知对象默认不可绑 | 无主非法；一表一 agent；绑定、解绑和历史 `inputBag` 可回滚；Poffices 对象零修改 | 用名字当主键、给 Official 强行绑定、认证写回 |
+| **2B-C 本地旁路入口** | 为已绑定真实身份提供 Form Studio 管理的用户入口；只渲染 `published`，提交信封追加进对应本地 `inputBag` | 草稿不泄漏、无输入框逃生门、信封 `ownerAgent` 与绑定一致、解绑可退 | 冒充 Poffices 官方 URL 已改变、接真实 Input Layer |
+| **2B-P 平台入口（条件项）** | 只有 Poffices 提供正式、可授权、可回滚的入口映射能力时，才把官方用户入口接到已发布金稿；仍不改 agent 内部 | 真实 Poffices 入口先见表且可回滚，有平台证据 | 直接改官方 agent、复用浏览器 cookie、无授权探针 |
 | **2C 新生真实身份** | Form Studio 创建的 agent form 获得真实或明确旁路的可打开身份 | id 与表一起出生；未发布不可打开；发布后打开只见表；下架不伪装成恢复输入框 | 无主表、完整模型运行能力、Frankie |
 
-2B 通过即证明第 2 段的改装路径；2C 再补齐新生路径。两条路径共用同一份 `ownerAgent`、封闭控件词表、账本和提交信封合同，不各自发明实现。
+2B-A / B / C 证明本地改装机制；若 Poffices 官方入口是最终验收的一部分，2B-P 未通过前不得宣布平台改装完成。2C 再补齐新生路径。所有切片共用同一份 `ownerAgent`、封闭控件词表、账本和提交信封合同，不各自发明实现。
 
-**2A 落地证据（2026-08-20）：** Poffices 公开 Store detail 实时返回 `Market Analysis` 的 `id=18`；infrastructure 将它映射成只读 `owner-agent-identity/v1`，其中 `ownerAgent="18"`。作者面只显示候选主人卡片，不把它混进可编辑 mock，也没有绑定按钮；401 / 403 / 404 / 上游异常已冻结失败映射。Creator Studio 页面另显示 Key=`marketanalyzer`，但公开响应不含该字段，所以它只作人工交叉核对，不静默替换 `ownerAgent`。该对象是 Official 且当前不可编辑，只能承担 2A 证据，不能默认成为 2B 写入目标。适配事实与 2B 升级条件见 `docs/poffices-integration.md`。这证明 2A，不证明真实入口已经换门。
+**2A 落地证据（2026-08-20）：** Poffices 公开 Store detail 实时返回 `Market Analysis` 的 `id=18`；infrastructure 将它映射成只读 `owner-agent-identity/v1`，其中 `ownerAgent="18"`。作者面只显示候选主人卡片，不把它混进可编辑 mock，也没有绑定按钮；401 / 403 / 404 / 上游异常已冻结失败映射。Creator Studio 页面另显示 Key=`marketanalyzer`，但公开响应不含该字段，所以它只作人工交叉核对，不静默替换 `ownerAgent`。该对象是 Official 且当前不可编辑，只能承担 2A 证据，不能默认成为 2B 绑定对象。适配事实与 2B 升级条件见 `docs/poffices-integration.md`。这证明 2A，不证明真实入口已经换门。
 
-**启动闸门（工程前置，不是产品新阶段，2026-08-20 已完成）：** 已建立第 0–1b 段 Git 基线；结构门禁已覆盖测试命名、嵌套输出目录、文档归属和静态 import 方向；测试端点只在显式 `--test-mode` 下注册；字段规范化、发布和 `formVersion` 规则已经上提到 domain/application，内存仓储只保留 IO。闸门只保护变更，不得借机扩成平台治理项目。2A 也已完成，**当前下一件是 2B，不是继续建设门禁，也不是 2C/Frankie。**
+**启动闸门（工程前置，不是产品新阶段，2026-08-20 已完成）：** 已建立第 0–1b 段 Git 基线；结构门禁已覆盖测试命名、嵌套输出目录、文档归属和静态 import 方向；测试端点只在显式 `--test-mode` 下注册；字段规范化、发布和 `formVersion` 规则已经上提到 domain/application，内存仓储只保留 IO。闸门只保护变更，不得借机扩成平台治理项目。2A 也已完成，**当前下一件是 2B-A 作者流整理，不是 Poffices 写回，也不是 2C/Frankie。**
 
 #### 第 3 段：应用（2 完成后再做）
 
@@ -480,7 +484,7 @@ Frankie 课堂故事：学生打开练习 agent 填表；老师 agent 读 `input
 1. 新身份、新端口。建议 id=`form-studio`，端口 `4190`。  
 2. 不改 Web Studio 的 `.studio-target.json`、`check:core`、不重跑其已消耗 Live。  
 3. 密钥不落盘。只读观察 Poffices 时不改官方 agent、不点保存。  
-4. 第 2 段之前不依赖 Poffices 登录写回。  
+4. 第 2 段默认仍不依赖 Poffices 登录写回。任何平台入口变更都必须有独立授权、可回滚合同与真实证据；阶段编号本身不授予外部写权限。
 5. 单线：一个新仓，不并行再开第三份 Studio 大文件夹。  
 6. 第 0 段成功记录必须是 7.3 的提交信封；禁止再发明一套扁平 `{ name, value }` 再「以后升级」。  
 7. 作者面产出必须能被 `engine` 抽出合法账本。禁止设计面一套字段、使用面另一套 HTML。
@@ -488,6 +492,7 @@ Frankie 课堂故事：学生打开练习 agent 填表；老师 agent 读 `input
 9. 测试夹具与 reset 端点不得在真实运行配置中暴露；坏 JSON 应按客户端错误处理，不以 500 冒充服务故障。
 10. `ownerAgent`、封闭控件词表、一表一 agent、发布状态和 `formVersion` 等产品规则属于 domain/application；更换 infrastructure 只换 IO，不换语义。
 11. 结构门禁要校验真实声明的依赖方向；文件名、行数和文档位置规则是当前拍板项，可按 `docs/maintenance.md` 的变更机制调整，不是假装永恒的产品合同。
+12. Poffices 身份读取只服务确认主人、展示上下文和判断绑定资格；不读取 Variables / Block Diagram 自动制表。作者先在 Form Studio 本地设计，Official 或权限未知对象默认不可改装。
 
 ---
 

@@ -1,16 +1,33 @@
 # Poffices 外部边界
 
-本文只维护 Poffices 适配事实、身份映射和失败语义。产品边界与分期仍以 `DESIGN.md` 为准；这里不授权真实入口写回。
+本文只维护 Poffices 适配事实、身份映射、失败语义和本地绑定边界。产品边界与分期仍以 `DESIGN.md` 为准；这里不授权修改 Poffices 官方 agent。
 
-## 2A 当前范围
+## 为什么读取 Poffices
 
-只按明确 id 读取一个候选 agent，确认它能成为合法 `ownerAgent`。不列全库、不读取 Variables / Block Diagram、不保存浏览器登录态、不绑定真实入口。
+读取的唯一产品意义是「选择主人时做外键校验」：确认作者点名的 agent 真实存在、展示它是谁，并为后续判断是否允许本地绑定提供上下文。它不参与决定表上有哪些栏，也不从 Variables / Block Diagram / prompts 自动制表。
+
+没有这一步，作者仍能制作本地 form，但只能手写一个未经验证的 `ownerAgent`；系统无法区分不存在、选错、Official 或权限未知的对象。当前 2A 只证明存在与最小身份，**尚未证明允许绑定**。
+
+| 信息 | 当前用途 | 不代表 |
+|---|---|---|
+| `id` | 内部稳定 `ownerAgent` | 已获得编辑权 |
+| `name` | 给作者确认选中对象 | 可作主键 |
+| Key | 易读检索别名；当前公开详情不能按 Key 查询 | 已验证不可变 |
+| `agent_type` / `is_official` | 展示上下文、阻止把 Official 当默认改装对象 | 已知道完整权限 |
+| prompts / Variables / Block Diagram | 不读取、不保留 | form 字段来源 |
+
+因此 Poffices 查询应出现在「改已有 agent」选择流程中，或留在开发诊断区；不应固定占据作者主侧栏。作者选定且通过绑定资格后，才创建本地设计工作区。
+
+## 2A 已落地范围
+
+只按明确数字 id 读取一个候选 agent，确认它能映射为合法 `ownerAgent`。不列全库、不保存浏览器登录态、不绑定真实入口。
 
 2026-08-20 对 `Market Analysis` 的只读取证：
 
 - Creator Studio v1.26.1 当前 URL 为 `workspace?agent=18&tab=overview`；页面显示 Name=`Market Analysis`、Key=`marketanalyzer`，并把 Key 描述为唯一标识。
-- 该对象标为 Official，Overview 的保存与字段编辑均不可用；它适合做 2A 只读身份证据，不得默认升级成 2B 写入目标。
+- 该对象标为 Official，Overview 的保存与字段编辑均不可用；它适合做 2A 只读身份证据，不得默认升级成 2B 本地绑定对象。
 - 公开 Store detail `GET /wp-json/sen-bot-master/v1/agents/store/18` 返回 `id=18`、`name=Market Analysis`、`agent_type=app`、`is_official=true`；这是 2A 生产适配器实际依赖的最小外部响应。[实测端点](https://poffices.ai/wp-json/sen-bot-master/v1/agents/store/18)
+- 公开 Store detail 用 `marketanalyzer` 查询返回 404，受保护 agent detail 用该 Key 查询实测返回 500；所以当前 Key 只作人工别名，不能冒充已存在可靠 Key resolver。
 - Creator Workspace 的哈希前端包显示内部详情路由存在，但直接从自动化浏览器打开受保护详情接口被客户端拦截。因此 2A 不依赖登录 cookie、nonce 或该受保护路由。
 
 Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和发布 agent，并没有公开承诺上述插件端点的长期兼容性：[Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。端点形状属于“实测外部合同”，不是官方稳定性保证。
@@ -29,7 +46,7 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 把 Store detail 返回的 `id` 字符串化作为 `ownerAgent` 是本项目拍板项：它是当前可实时复核的真实 id，也与 Creator Studio URL 的 `agent=18` 对上。`marketanalyzer` 只作为本次人工交叉核对的 Creator Key，不写进适配结果、不冒充公开端点已经证明的字段。若 2B 的真实用户入口合同证明必须以 Key 路由，应在绑定前显式升级映射并迁移测试数据，不能静默改主键。
 
-适配器返回的是“候选主人”，不是可编辑 agent：没有 `fields`、`published`、`inputBag` 或绑定方法。作者面真实身份卡片也不提供发布按钮。这个隔离采用防腐层思路，让 Poffices 字段名变化不进入 `form-ledger/v1` 或提交信封；参考 [Microsoft Anti-Corruption Layer](https://learn.microsoft.com/azure/architecture/patterns/anti-corruption-layer)。
+适配器返回的是“候选主人”，不是可编辑 agent：没有 `fields`、`published`、`inputBag` 或绑定方法。这个隔离采用防腐层思路，让 Poffices 字段名变化不进入 `form-ledger/v1` 或提交信封；参考 [Microsoft Anti-Corruption Layer](https://learn.microsoft.com/azure/architecture/patterns/anti-corruption-layer)。当前作者面真实身份卡片只是 2A 证据，下一整理项是把它移入改装选择流程，避免与正在编辑的 mock 产生假绑定。
 
 ## 失败合同
 
@@ -47,13 +64,31 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 所有失败都 fail closed：不创建本地 agent、不产生账本、不写 `inputBag`。
 
-## 2B 前的升级触发条件
+## 2B 本地优先绑定
 
-2B 会接触认证与真实入口修改，不能复用 2A 的“公开详情可读”来假装写权限已经解决。WordPress 官方说明 cookie 认证依赖登录会话和 `X-WP-Nonce`，只适用于站内登录上下文；外部应用应使用明确支持的认证方式：[REST API Authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)。因此进入 2B 前必须另行确认：
+2B 首先建立 Form Studio 自己的本地关系，不把 Poffices 当可写仓储。拟新增的 `owner-agent-binding/v1` 是当前拍板项，实施前要以可机读 schema 和合同测试冻结：
 
-1. 先由人明确选择一个有编辑权限、允许回滚的 sandbox agent；`Market Analysis` 是官方只读对象，不是默认写入目标。再确认 Poffices 认可的认证方式与最小权限；密钥只走环境配置，不落盘。
-2. 用户入口的稳定路由究竟使用数值 id 还是 Key。
-3. 发布、解绑与回滚端点；先有可逆探针，才允许一次明确 agent 的写入。
-4. 草稿 / `published` 的真实入口读取位置；表必须独占，不能与输入框并存。
+```json
+{
+  "version": "owner-agent-binding/v1",
+  "ownerAgent": "42",
+  "sourceSystem": "poffices",
+  "formId": "form-market-input",
+  "publishedFormVersion": 1,
+  "entryMode": "form-studio-sidecar",
+  "status": "published"
+}
+```
 
-以上未确认前，2A 的只读卡片不得升级成“绑定”按钮。
+边界：
+
+1. 作者必须先明确选择一个自己拥有或获授权的 sandbox agent；Official 或权限未知对象 fail closed，不建立绑定。
+2. 选择通过后，Form Studio 本地创建设计工作区；字段、草稿、金稿、`formVersion`、提交信封和 `inputBag` 全由本仓管理。
+3. 本地旁路入口只渲染 `published`，没有输入框逃生门；解绑只修改本地映射并保留历史袋子。
+4. 2A 的“存在”不等于 2B 的“允许绑定”。在没有权限证据前，界面只能显示候选身份，不能出现会产生绑定的主操作。
+
+## 条件式平台入口
+
+若最终要求 Poffices 官方 URL 直接显示 Form Studio 金稿，还需平台另行提供正式、可授权、可回滚的入口映射能力。WordPress 官方说明 cookie 认证依赖登录会话和 `X-WP-Nonce`，只适用于站内登录上下文：[REST API Authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)。因此不得复制浏览器 cookie、不得因“进入第 2 段”就自动获得外部写权限。
+
+只有同时确认稳定路由（数字 id 还是 Key）、最小权限、发布/解绑/回滚合同和真实 sandbox，才允许实施平台入口适配；仍不得修改 agent 的 Overview、Variables、Block Diagram、prompts 或 Documentation。若这些条件未满足，只能报告“本地改装机制完成，平台入口未对接”，不能冒充 Poffices 官方入口已改变。

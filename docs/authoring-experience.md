@@ -1,0 +1,132 @@
+# 作者面信息架构与演进
+
+本文维护作者面已经观察到的可用性问题、界面结构和渐进实现路线。产品身份、逻辑对象和分期仍只以根目录 `DESIGN.md` 为准；这里不借 UI 重构扩大控件词表或 Poffices 权限。
+
+## 当前问题清单
+
+2026-08-20 当前工作台把三种任务堆在同一条左侧栏：
+
+1. 2A Poffices 真实身份核对；
+2. 新生 agent form；
+3. 本地 mock 设计对象选择。
+
+这不是单纯文案问题，而是对象关系表达错误。
+
+| 优先级 | 问题 | 用户可能误解 | 修正方向 |
+|---|---|---|---|
+| P0 | 顶部显示 `Market Analysis / ownerAgent 18`，同时下方选中并编辑 `exercise-1` | 练习一已经绑定 Market Analysis | 身份核对移入改装选择流程；工作区只显示当前真正 owner |
+| P1 | 改装、新生、搜索和诊断平铺在同一级 | 必须从上到下依次操作；搜索范围不明 | 起始页先选“改已有 / 新建”，再进入各自流程 |
+| P1 | 主标题只写表名，未显著显示来源、`ownerAgent` 和本地/平台状态 | 不知道正在改谁、是否影响 Poffices | 工作区标题固定展示主人、出生路径、草稿/金稿和入口模式 |
+| P1 | `发布为用户页面`、`解绑首页` 未写清本地边界 | 误以为会直接修改 Poffices Official agent | 平台未对接前用“发布本地金稿 / 解除本地绑定”等诚实文案 |
+| P2 | `mock`、2A、`agent ID` 等工程词直接暴露 | 不知道它们对作者有什么用 | mock 只留测试；真实身份查询解释为“选择页面主人” |
+| P2 | 左栏同时承担创建、连接、导航和状态 | 对象增多后无限纵向堆积 | 起始流程与工作区导航分开；高级诊断收进设置或开发区 |
+
+作者面最低可理解性标准：进入工作区后五秒内能回答「正在改谁」「改装还是新生」「草稿还是金稿」「当前只影响本地还是已接平台」。
+
+## 目标信息架构
+
+### 起始页
+
+```text
+你准备做什么？
+
+[ 改已有 agent 的页面 ]   [ 新建 agent form ]
+  选择一个获授权主人          agent 与 form 同时出生
+```
+
+改装路径：
+
+```text
+输入精确 ID / 未来可验证 Key
+  → 展示名称、Key、Official / 所有权上下文
+  → 判断绑定资格
+  → 通过后立即创建本地工作区，写入 ownerAgent
+```
+
+新生路径：
+
+```text
+输入名称
+  → 立即分配新 agent 身份
+  → 创建本地工作区
+```
+
+两条路径都不允许先产生无主 form。
+
+### 工作区
+
+```text
+左侧：我的设计工作区
+  - 一个条目就是一个 agent 的用户 UI
+
+顶部：My Sandbox Agent / 用户页面
+      Poffices · ownerAgent 42 · 本地改装 · 金稿 v1
+
+中间：设计 / 预览
+右侧或抽屉：账本 / 提交信封 / inputBag
+```
+
+2A 身份查询在这个结构里是改装向导的一步，不是常驻设计对象。开发阶段仍可保留独立诊断入口，但不得与当前工作区形成视觉绑定。
+
+## Alan 会议截图的理解
+
+截图显示 Gravity 品牌业务系统内的专业表单编辑器，界面与 SurveyJS Creator 高度相似：左侧 Toolbox、中央设计面、右侧 Property Grid，以及 Designer / Preview / JSON Editor / Translation。SurveyJS 官方说明也采用“工具箱拖入问题、属性面板修改配置”的结构：[End-User Interface](https://surveyjs.io/survey-creator/documentation/end-user-guide/user-interface)。工具箱条目会向 survey JSON schema 加入对应元素：[Toolbox Customization](https://surveyjs.io/survey-creator/documentation/toolbox-customization)。
+
+从截图可采信的方向：
+
+- form 由作者根据业务要求设计，不从 agent 内部详情自动生成；
+- 工具箱、画布、属性面板、预览是一条成熟作者流；
+- JSON 是设计结果的另一种视图，不是先写 JSON 再补页面；
+- Page、Matrix、Comment、Logic、Translation 说明成熟版本可能需要比当前 `fields[]` 更强的 form definition。
+
+不能仅凭截图采信的范围：
+
+- 截图不是 Alan 后续承诺提供的完成版源码或合同；
+- `file`、Dynamic Panel、Matrix、多页、Logic、Translation 仍超出当前封闭控件词表；
+- 高度相似不等于已确认采用 SurveyJS；若考虑直接复用，还需检查持久化格式、提交结构、包体和商业授权；
+- 参考实现的通用 Survey 能力不能覆盖 Form Studio 的 `ownerAgent`、一表一 agent、独占入口和提交信封合同。
+
+SurveyJS 提供 Basic / Advanced / Expert 渐进 UI preset，证明“先最小作者流、再按证据开放高级能力”在成熟工具中可行：[UI Preset Editor](https://surveyjs.io/survey-creator/documentation/ui-preset-editor)。这是方法依据，不是采用该库的决定。
+
+## 渐进实现路线
+
+### 2B-A：先修清流程
+
+- 起始页拆成改装 / 新生两个主动作。
+- 把 Poffices 核对卡移入改装选择流程或开发诊断区。
+- 工作区头部固定显示当前主人、来源、出生路径、发布状态和入口模式。
+- 平台未对接前，所有发布/解绑文案明确为本地操作。
+
+完成定义：不会再把 `Market Analysis` 候选身份误认为已经绑定 `exercise-1`；窄屏、键盘操作、空/加载/失败状态仍清楚。
+
+不做：新控件、拖拽、Poffices 写入、设计系统大重构。
+
+### 2B-B / C：本地绑定和旁路入口
+
+- 冻结 `owner-agent-binding/v1`。
+- 只允许获授权真实身份建立本地设计对象；Official / 权限未知 fail closed。
+- 本地入口只渲染 `published`；草稿只在作者面。
+- 提交信封按 `values[id]` 追加进绑定主人对应的本地 `inputBag`。
+
+### Designer 后续：按完成版证据扩展
+
+Alan 完成版到手后，先审计：
+
+1. 实际依赖和授权；
+2. JSON/schema 形状和版本；
+3. 控件、Page、Panel、Matrix、Logic、Translation 的真实必要性；
+4. 校验、提交和数据存储；
+5. 是否以及如何关联 agent 身份。
+
+只有出现明确业务样例（例如财务年度矩阵）且当前扁平字段无法表达时，才设计 `form-definition/v2`。`owner-agent-identity/v1` 继续只回答谁是主人；不得把表单结构塞进身份合同。
+
+## 下一阶段验收清单
+
+- [ ] 起始页只呈现改装 / 新生两条路径。
+- [ ] 身份核对结果不与未绑定设计对象同时常驻。
+- [ ] 当前工作区显著显示真实 `ownerAgent` 或新生 id。
+- [ ] Official / 权限未知对象不能产生本地绑定。
+- [ ] 本地发布、解绑不会调用 Poffices 写接口。
+- [ ] 绑定合同保持一表一 agent，提交信封形状不变。
+- [ ] `published` 独占使用入口，草稿不泄漏。
+- [ ] 自动测试覆盖空、加载、失败、键盘和窄屏状态。
