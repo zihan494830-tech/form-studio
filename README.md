@@ -25,4 +25,4 @@ npm run test:e2e
 
 ## 当前阶段
 
-第 0 / 1 / 1b、2A 和 **2B-A / B / C 本地改装机制**已落地。起始页拆清改装 / 新生，发布产生 `owner-agent-binding/v1`，本地旁路入口只渲染已发布版本并追加提交信封。第 1b 已证明临时新生 id 和旁路 URL；当前下一件是 **2C 持久新生身份**，使身份、页面版本和提交跨重启存在。随后按 3A 持久提交与老师视图 → 3B agent 输入投递 → 3C Alan 课堂故事推进。不得先做 AI 制表、直接修改 Poffices 官方 agent，或把本地 `inputBag` 冒充真实 agent 交互。
+第 0 / 1 / 1b 和第 2 段的当前本地旁路范围已落地。生产模式使用本地 SQLite，身份、草稿、已发布版本、绑定和 `inputBag` 可跨重启恢复；Poffices 身份仍只读。当前下一件是 **3A 提交记录与老师视图**，随后按 3B agent 输入投递 → 3C Alan 课堂故事推进。不得先做 AI 制表、直接修改 Poffices 官方 agent，或把本地持久 `inputBag` 冒充多用户提交系统或真实 agent 交互。

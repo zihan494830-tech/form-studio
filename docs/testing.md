@@ -7,7 +7,7 @@
 | 分类 | 路径 | 证明范围 | 命令 |
 |---|---|---|---|
 | Contract | `tests/contract` | 账本、字段 id/label、渲染/抽取同构 | `npm run test:contract` |
-| Runtime | `tests/runtime` | 浏览器校验、提交信封、inputBag 追加、封闭控件词表 | `npm run test:runtime` |
+| Runtime | `tests/runtime` | 浏览器校验、提交信封、持久恢复、封闭控件词表 | `npm run test:runtime` |
 | E2E | `tests/e2e` | 改装、新生、发布/解绑、作者后台显示与响应式 | `npm run test:e2e` |
 
 共享的 API reset、agent 查询和基准示例读取只放 `tests/support`；手写 HTML/JSON 只放 `tests/fixtures`。Playwright 官方建议把重复 setup 抽为可复用 fixture，使测试按意义分组，而不是按共同 setup 堆在一起：[Playwright Fixtures](https://playwright.dev/docs/test-fixtures)。
@@ -49,3 +49,14 @@ npm run check
 - Accessibility / Reflow：身份查询的空、加载、失败状态可读，主路径可键盘完成；宽屏设计 / 预览并排，中屏上下分区，窄屏无水平溢出。
 
 以上已由 `owner-binding.spec.mjs`、`workbench-ui.spec.mjs`、`agent-entry.spec.mjs` 和 `submission.spec.mjs` 覆盖。它们只证明本地改装机制。若将来实施条件式平台入口，必须增加独立真实环境证据；没有正式接口和授权时不得伪造。
+
+## 2C 已落地证据
+
+`tests/runtime/persistence.spec.mjs` 使用临时 SQLite 文件启动本地 HTTP 服务，完成新生、编辑、发布、继续改草稿和提交后关闭服务；再以同一数据库重启并验证：
+
+- 同一 `ownerAgent` 和 `/a/:id` 路径仍存在，新生编号继续递增；
+- 草稿字段不会泄漏到已发布用户页面；
+- 绑定、发布版本与历史 `inputBag` 一致恢复；
+- 下架后再次重启仍返回 404，但历史提交不丢。
+
+临时数据库在测试结束后删除；生产 `data/form-studio.sqlite` 不参与 reset，也不是测试夹具。该测试证明单机跨重启持久性，不证明多实例并发、用户鉴权、老师权限或 Poffices agent 已收到输入。

@@ -145,4 +145,4 @@ Alan 完成版到手后，先审计：
 
 ## 延期的 AI 辅助边界
 
-“人工为主、AI 为辅”可缓解空白表的起步成本，但当前不插入 2C 和真实应用闭环。日后若实施，AI 只在独立建议区生成候选字段，作者逐项接受、修改或拒绝后才写入 `fields[]`；不得读取 Creator Studio Block Diagram 自动制表、直接覆盖稳定 `id` 或自动发布。Google PAIR 建议在创意任务中平衡自动化与用户控制，并允许用户修改或关闭建议；参考 [Feedback + Control](https://pair.withgoogle.com/guidebook-v2/chapter/feedback-controls/)。Microsoft 的人机交互指南强调在 AI 出错时提供校正与控制；参考 [Guidelines for Human-AI Interaction](https://www.microsoft.com/en-us/research/project/guidelines-for-human-ai-interaction/)。
+“人工为主、AI 为辅”可缓解空白表的起步成本，但当前不插入 3A–3C 的真实应用闭环。日后若实施，AI 只在独立建议区生成候选字段，作者逐项接受、修改或拒绝后才写入 `fields[]`；不得读取 Creator Studio Block Diagram 自动制表、直接覆盖稳定 `id` 或自动发布。Google PAIR 建议在创意任务中平衡自动化与用户控制，并允许用户修改或关闭建议；参考 [Feedback + Control](https://pair.withgoogle.com/guidebook-v2/chapter/feedback-controls/)。Microsoft 的人机交互指南强调在 AI 出错时提供校正与控制；参考 [Guidelines for Human-AI Interaction](https://www.microsoft.com/en-us/research/project/guidelines-for-human-ai-interaction/)。

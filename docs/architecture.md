@@ -15,12 +15,12 @@ presentation ──────────────────────�
 |---|---|---|
 | `src/domain` | 字段合同、账本抽取、提交信封等纯规则 | HTTP、DOM 工作台状态、mock 文件路径 |
 | `src/application` | 编排一个产品用例，如提交到 agent、生成作者面投影 | 监听端口、读静态文件 |
-| `src/infrastructure` | 当前阶段可替换的内存仓储和 mock 数据适配 | UI 文案、页面渲染 |
+| `src/infrastructure` | 可替换仓储、Poffices 只读适配和持久化 IO | UI 文案、页面渲染 |
 | `src/presentation` | 把既有合同渲染为 HTML | 改写 agent、追加 inputBag |
 | `src/server` | HTTP 路由、JSON/文件传输 | 产品规则和字段发明 |
 | `public` | 浏览器资产；前端纯规则放 `modules` | Node 仓储实现、测试夹具 |
 | `contracts` | 可机读、带版本的外部合同 | 实现代码 |
-| `data` | 当前阶段 mock 种子 | 产品规格文档 |
+| `data` | mock 种子和被 Git 忽略的本地 SQLite 数据 | 产品规格文档、密钥 |
 | `tests` | 按证据层分类的回归与夹具 | 生产模块 |
 
 Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
@@ -51,7 +51,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - 文档检查守的是“产品真相源唯一、文档有归属”，不是一律禁止 `docs/` 下增加专题文档。
 - 行数阈值只作职责过载信号；改阈值时同步改脚本和本页即可。
 
-字段规范化、发布与 `formVersion` 规则现已位于 domain/application；内存仓储只实现 `list/get/save/appendEnvelope/nextBornFormId/reset` repository port。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射，没有复制发布、账本或提交规则。`/fixture/exercise-1` 与 `/api/test/reset` 已移入 `tests/support`，只有显式 `--test-mode` 才动态注册。
+字段规范化、发布与 `formVersion` 规则位于 domain/application；内存与 SQLite 仓储实现同一组 `list/get/save/appendEnvelope/nextBornFormId/reset` repository port。生产组合根默认打开 `data/form-studio.sqlite`，测试模式仍显式注入内存仓储。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射，没有复制发布、账本或提交规则。`/fixture/exercise-1` 与 `/api/test/reset` 已移入 `tests/support`，只有显式 `--test-mode` 才动态注册。
 
 ## 依据和暂不上项
 
@@ -64,9 +64,9 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 ## 从本地演示到真实使用的数据链路
 
-当前 `inputBag` 是单进程内存列表，只能证明“校验后追加提交信封”的合同，不能证明多人持久保存、老师权限或真实 agent 消费。第 2 段完成 2C 后，第 3 段按以下端口推进：
+当前 `inputBag` 已随 agent 记录持久写入本地 SQLite，能证明“校验后追加提交信封”和跨服务重启恢复；它仍不能证明学生 / 班级归属、老师查询权限、多实例共享或真实 agent 消费。第 3 段按以下端口推进：
 
-第 1b 已经有 `form-1` 这类临时新生 id、发布 URL 和下架行为，因此 2C 的工程目标不是再生成一次 id，而是引入持久 repository：服务重启后同一 agent、草稿、已发布版本、绑定和提交仍可恢复。这是为了消除文档与代码的重复完成定义而作的项目拍板项。
+2C 使用 Node 内置 `node:sqlite` 和单文件 SQLite：一次 `save` 是单条原子 upsert，`appendEnvelope` 在 `BEGIN IMMEDIATE` 事务中读改写；WAL、`synchronous=FULL` 和 schema version 明确落在适配器。依据 [Node.js SQLite](https://nodejs.org/api/sqlite.html) 与 [SQLite Atomic Commit](https://www.sqlite.org/atomiccommit.html)。这是当前单机规模的低档位选择；`node:sqlite` 在当前 Node 24 仍会给出实验性警告，若运行时兼容性成为部署阻碍，再评估成熟驱动或外部数据库，不因此提前引入服务。
 
 ```text
 学生用户页面
@@ -83,7 +83,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - `AgentInputPort` 只接受既有提交信封；它不理解 Variables / Block Diagram，也不改 `values[id]`。当并发量、独立消费者或跨服务隔离成为实测瓶颈，再升级为发布 / 订阅中间件；参考 [Azure Publisher-Subscriber pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/publisher-subscriber)。
 - Poffices 目前公开材料证明 Creator Studio 可创建、配置、测试和发布 agent，但没有给出本项目可依赖的公开输入 API；参考 [Poffices Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。因此 adapter 是明确升级点，不是假装已完成的接口。
 
-当前低档位是“持久库 + outbox 表 + 单 relay”；升级触发条件是正式 Poffices 输入合同、跨进程投递需求或实测吞吐 / 重试压力。这样先打通 Alan 所说的学生提交、老师可见，再把同一信封投递给真实 agent，不为尚未出现的规模提前堆消息系统。
+3A 的下一低档位是“同一 SQLite 中独立 submission 表 + 老师查询投影”；3B 再增加 outbox 表和单 relay。升级触发条件是正式 Poffices 输入合同、跨进程投递需求或实测吞吐 / 重试压力。这样先打通 Alan 所说的学生提交、老师可见，再把同一信封投递给真实 agent，不为尚未出现的规模提前堆消息系统。
 
 ### 输入能力与字段映射
 
