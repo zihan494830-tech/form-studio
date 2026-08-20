@@ -1,0 +1,27 @@
+[
+  {
+    "ownerAgent": "exercise-1",
+    "profile": {
+      "version": "agent-input-profile/v1",
+      "ownerAgent": "exercise-1",
+      "profileVersion": 1,
+      "skillId": "market-analysis",
+      "inputMode": "structured",
+      "transport": { "kind": "local-recording", "target": "market-analysis-local" }
+    },
+    "mapping": {
+      "version": "agent-input-mapping/v1",
+      "ownerAgent": "exercise-1",
+      "formVersion": 1,
+      "profileVersion": 1,
+      "inputMode": "structured",
+      "fields": [
+        { "fieldId": "company_name", "targetKey": "companyName", "transform": "string", "required": true },
+        { "fieldId": "analysis_goal", "targetKey": "analysisGoal", "transform": "string", "required": true },
+        { "fieldId": "target_market", "targetKey": "targetMarket", "transform": "string", "required": true },
+        { "fieldId": "budget_wan", "targetKey": "budgetWan", "transform": "number", "required": false },
+        { "fieldId": "include_competitors", "targetKey": "includeCompetitors", "transform": "boolean", "required": false }
+      ]
+    }
+  }
+]

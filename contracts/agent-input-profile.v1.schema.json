@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-input-profile/v1",
+  "title": "Form Studio agent input profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "ownerAgent", "profileVersion", "skillId", "inputMode", "transport"],
+  "properties": {
+    "version": { "const": "agent-input-profile/v1" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "profileVersion": { "type": "integer", "minimum": 1 },
+    "skillId": { "type": "string", "minLength": 1 },
+    "inputMode": { "const": "structured" },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "target"],
+      "properties": {
+        "kind": { "const": "local-recording" },
+        "target": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

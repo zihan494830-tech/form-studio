@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-input-mapping/v1",
+  "title": "Form Studio agent input mapping v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "ownerAgent", "formVersion", "profileVersion", "inputMode", "fields"],
+  "properties": {
+    "version": { "const": "agent-input-mapping/v1" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "formVersion": { "type": "integer", "minimum": 1 },
+    "profileVersion": { "type": "integer", "minimum": 1 },
+    "inputMode": { "const": "structured" },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fieldId", "targetKey", "transform", "required"],
+        "properties": {
+          "fieldId": { "type": "string", "minLength": 1 },
+          "targetKey": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+          "transform": { "enum": ["string", "number", "boolean"] },
+          "required": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
