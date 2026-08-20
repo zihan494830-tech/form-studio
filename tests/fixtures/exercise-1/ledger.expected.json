@@ -1,0 +1,12 @@
+{
+  "version": "form-ledger/v1",
+  "ownerAgent": "exercise-1",
+  "formVersion": 1,
+  "status": "published",
+  "fields": [
+    { "id": "q1", "label": "题目", "control": "text", "required": true },
+    { "id": "n1", "label": "得分", "control": "number", "required": true },
+    { "id": "a1", "label": "答案", "control": "textarea", "required": true }
+  ],
+  "submit": { "label": "提交", "to": "agent-input" }
+}

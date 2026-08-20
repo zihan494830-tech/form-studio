@@ -1,0 +1,374 @@
+import {
+  CONTROLS,
+  controlLabel,
+  escapeHtml,
+  isDirty,
+  nextFieldId,
+  originLabel,
+  publicationState,
+} from "/workbench/modules/form-model.js";
+
+const $ = (id) => document.getElementById(id);
+const listEl = $("agent-list"), hintEl = $("face-hint"), frameEl = $("face");
+const ledgerEl = $("ledger"), bagEl = $("bag"), bindBtn = $("bind-btn"), unbindBtn = $("unbind-btn");
+const stageTitle = $("stage-title"), stageStatus = $("stage-status"), saveStatusEl = $("save-status");
+const publicationBadge = $("publication-badge"), designerEl = $("designer"), fieldListEl = $("field-list");
+const addControlEl = $("add-control"), addFieldBtn = $("add-field"), copyExampleBtn = $("copy-example");
+const createBtn = $("create-btn"), newNameEl = $("new-name"), agentSearchEl = $("agent-search");
+const actionErrorEl = $("action-error"), recordsEl = $("records"), recordsBtn = $("records-btn");
+const recordsCloseBtn = $("records-close"), recordsScrim = $("records-scrim"), recordsSearchEl = $("records-search");
+const recordCountEl = $("record-count"), refreshBtn = $("refresh-btn"), userPageLink = $("user-page-link");
+const faceModeEl = $("face-mode"), splitterEl = $("splitter"), confirmDialog = $("confirm-dialog");
+const confirmTitle = $("confirm-title"), confirmBody = $("confirm-body"), confirmAccept = $("confirm-accept");
+
+let agents = [], selectedId = null, currentFacePath = null;
+let saveTail = Promise.resolve(), pendingSaves = 0;
+
+function showError(message) {
+  actionErrorEl.hidden = !message;
+  actionErrorEl.textContent = message || "";
+}
+function setSaveStatus(text, state = "idle") {
+  saveStatusEl.textContent = text;
+  saveStatusEl.dataset.state = state;
+}
+async function loadAgents() {
+  const res = await fetch("/api/agents");
+  if (!res.ok) throw new Error("无法读取 agent");
+  agents = await res.json();
+  renderList(); renderDesigner(); renderContract(); updateStage(); updateActions();
+}
+function currentAgent() { return agents.find((item) => item.id === selectedId) || null; }
+function replaceAgent(next) {
+  const index = agents.findIndex((item) => item.id === next.id);
+  if (index >= 0) agents[index] = next; else agents.push(next);
+}
+
+function renderList() {
+  const query = agentSearchEl.value.trim().toLocaleLowerCase("zh-CN");
+  listEl.innerHTML = "";
+  const visible = agents.filter((agent) => !query ||
+    `${agent.name} ${agent.id}`.toLocaleLowerCase("zh-CN").includes(query));
+  for (const agent of visible) {
+    const state = publicationState(agent);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "agent" + (agent.id === selectedId ? " active" : "");
+    btn.dataset.id = agent.id;
+    btn.innerHTML = `<strong>${escapeHtml(agent.name)}</strong><small>${escapeHtml(agent.id)}</small>
+      <span class="agent-meta"><span class="tag">${escapeHtml(originLabel(agent))}</span><span class="mini-status ${state.className}">${escapeHtml(state.label)}</span></span>`;
+    btn.addEventListener("click", () => select(agent.id));
+    listEl.appendChild(btn);
+  }
+  if (!visible.length) listEl.innerHTML = `<p class="empty-state">没有匹配的 agent。</p>`;
+}
+
+function facePathFor(agent) {
+  const draftPreview = !agent.formId || isDirty(agent);
+  return { path: `${draftPreview ? "/preview/" : "/a/"}${encodeURIComponent(agent.id)}`, draftPreview };
+}
+function loadFace(agent, force = true) {
+  if (!agent) return;
+  const { path, draftPreview } = facePathFor(agent);
+  currentFacePath = path;
+  hintEl.hidden = true;
+  if (force) {
+    frameEl.hidden = true;
+    frameEl.addEventListener("load", () => {
+      if (currentFacePath === path) frameEl.hidden = false;
+    }, { once: true });
+    frameEl.src = `${path}?r=${Date.now()}`;
+  } else {
+    frameEl.hidden = false;
+  }
+  faceModeEl.textContent = draftPreview ? "草稿预览 · 不可提交" : "已发布用户页面 · 可提交";
+  faceModeEl.className = `face-mode ${draftPreview ? "draft" : "published"}`;
+  userPageLink.href = `/a/${encodeURIComponent(agent.id)}`;
+  const unavailable = agent.origin === "born-form" && !agent.formId;
+  userPageLink.setAttribute("aria-disabled", String(unavailable));
+  userPageLink.tabIndex = unavailable ? -1 : 0;
+  refreshBtn.disabled = false;
+}
+function select(id, { reloadFace = true } = {}) {
+  selectedId = id;
+  const agent = currentAgent();
+  renderList(); showError(""); renderDesigner(); renderContract(); updateStage(); updateActions();
+  if (agent) loadFace(agent, reloadFace);
+  if (!splitterEl.hidden) resizeDesigner(designerEl.getBoundingClientRect().height);
+  setSaveStatus(pendingSaves ? "保存中…" : "已保存", pendingSaves ? "saving" : "saved");
+}
+
+function updateStage() {
+  const agent = currentAgent();
+  if (!agent) {
+    stageTitle.textContent = "先从左侧选一个，或新建一张表";
+    publicationBadge.hidden = true;
+    return;
+  }
+  const state = publicationState(agent);
+  stageTitle.textContent = agent.name;
+  publicationBadge.hidden = false;
+  publicationBadge.textContent = state.label;
+  publicationBadge.className = `status-badge ${state.className}`;
+  if (isDirty(agent)) stageStatus.textContent = "草稿已保存；用户入口仍只显示上一版金稿。发布后才切换。";
+  else if (agent.formId) stageStatus.textContent = "这张表独占该 agent 的用户入口。";
+  else if ((agent.fields || []).length) stageStatus.textContent = "草稿已有字段，但用户入口尚未发布。";
+  else stageStatus.textContent = agent.origin === "born-form"
+    ? "新生 agent form：先加字段，再发布为用户页面。"
+    : "改装路径：先加字段，再发布为这个 agent 的用户页面。";
+}
+function updateActions() {
+  const agent = currentAgent();
+  if (!agent) {
+    bindBtn.disabled = true; unbindBtn.disabled = true; bindBtn.textContent = "发布为用户页面";
+    return;
+  }
+  const dirty = isDirty(agent), hasFields = (agent.fields || []).length > 0;
+  bindBtn.disabled = !(hasFields && (!agent.formId || dirty));
+  bindBtn.textContent = agent.formId
+    ? dirty ? `发布新版本 v${agent.formVersion}` : `已发布 v${agent.published?.formVersion || agent.formVersion}`
+    : "发布为用户页面";
+  unbindBtn.disabled = !agent.formId;
+  unbindBtn.textContent = agent.origin === "born-form" ? "下架" : "解绑首页";
+}
+
+function renderDesigner() {
+  const agent = currentAgent();
+  if (!agent) {
+    designerEl.hidden = true; fieldListEl.innerHTML = ""; splitterEl.hidden = true; return;
+  }
+  designerEl.hidden = false; splitterEl.hidden = false;
+  const showIds = $("show-ids")?.checked;
+  designerEl.classList.toggle("show-ids", Boolean(showIds));
+  const fields = agent.fields || [];
+  if (!fields.length) {
+    fieldListEl.innerHTML = `<p class="empty-state">还没有字段。添加一个字段，或用课堂练习例子作为起点。</p>`;
+    return;
+  }
+  fieldListEl.innerHTML = fields.map((field, index) => {
+    const options = field.control === "select"
+      ? `<input class="design-options" data-k="options" data-index="${index}" value="${escapeAttr((field.options || []).join(", "))}" placeholder="选项，用逗号分开" aria-label="${escapeAttr(field.label)}的选项" />` : "";
+    const controlOpts = CONTROLS.map((item) =>
+      `<option value="${item.value}"${item.value === field.control ? " selected" : ""}>${item.label}</option>`).join("");
+    return `<div class="design-row${field.control === "select" ? " with-options" : ""}" role="group" aria-label="字段 ${index + 1}：${escapeAttr(field.label)}">
+      <div class="name-cell"><input data-k="label" data-index="${index}" value="${escapeAttr(field.label)}" aria-label="字段 ${index + 1} 的展示名称" placeholder="填写的人看到的名称" />
+        <label class="id-line">稳定 ID<input class="field-id" data-k="id" data-index="${index}" value="${escapeAttr(field.id)}" aria-label="${escapeAttr(field.label)}的稳定 ID" /></label></div>
+      <select data-k="control" data-index="${index}" aria-label="${escapeAttr(field.label)}的控件类型">${controlOpts}</select>
+      <label class="required-toggle"><input data-k="required" data-index="${index}" type="checkbox"${field.required ? " checked" : ""} /> 必填</label>
+      <button class="del" type="button" data-index="${index}" aria-label="删除字段 ${escapeAttr(field.label)}">删除</button>${options}</div>`;
+  }).join("");
+}
+function readDesignerFields() {
+  return [...fieldListEl.querySelectorAll(".design-row")].map((row) => {
+    const field = {
+      id: row.querySelector("[data-k=id]").value.trim(), label: row.querySelector("[data-k=label]").value.trim(),
+      control: row.querySelector("[data-k=control]").value, required: row.querySelector("[data-k=required]").checked,
+    };
+    const optionsEl = row.querySelector("[data-k=options]");
+    if (field.control === "select") field.options = optionsEl ? optionsEl.value : "";
+    return field;
+  });
+}
+
+function saveFields(fields) {
+  if (!selectedId) return Promise.resolve(false);
+  const agentId = selectedId, snapshot = JSON.parse(JSON.stringify(fields));
+  pendingSaves += 1; setSaveStatus("保存中…", "saving");
+  const task = saveTail.then(async () => {
+    const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/fields`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields: snapshot }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showError(data.error || "保存失败");
+      if (selectedId === agentId) setSaveStatus("保存失败，改动仍在本页", "error");
+      return false;
+    }
+    replaceAgent(data); showError("");
+    if (selectedId === agentId) {
+      renderList(); renderDesigner(); renderContract(); updateStage(); updateActions(); loadFace(data, true);
+    }
+    return true;
+  }).catch((error) => {
+    showError(error.message || "保存失败");
+    if (selectedId === agentId) setSaveStatus("保存失败，改动仍在本页", "error");
+    return false;
+  }).finally(() => {
+    pendingSaves -= 1;
+    if (selectedId === agentId && pendingSaves === 0 && !actionErrorEl.textContent) setSaveStatus("已保存", "saved");
+  });
+  saveTail = task.then(() => undefined);
+  return task;
+}
+
+function formatTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value || "") : date.toLocaleString("zh-CN", { hour12: false });
+}
+function renderContract() {
+  const agent = currentAgent();
+  if (!agent) {
+    ledgerEl.innerHTML = `<span class="muted">还没选</span>`; bagEl.innerHTML = ""; recordCountEl.textContent = ""; return;
+  }
+  if (!agent.ledger) ledgerEl.innerHTML = `<span class="muted">还没有字段</span>`;
+  else ledgerEl.innerHTML = `<div class="ledger-meta"><code>${escapeHtml(agent.ledger.ownerAgent)}</code><span>${escapeHtml(agent.ledger.status === "published" ? "已发布" : "草稿")} v${escapeHtml(agent.ledger.formVersion)}</span></div>${agent.ledger.fields.map((field) =>
+    `<div class="field-row"><div><strong>${escapeHtml(field.label)}</strong><code>${escapeHtml(field.id)}</code></div><span>${escapeHtml(controlLabel(field.control))}${field.required ? " · 必填" : ""}</span></div>`).join("")}`;
+  const all = [...(agent.inputBag || [])].reverse();
+  const query = recordsSearchEl.value.trim().toLocaleLowerCase("zh-CN");
+  const bag = all.filter((item) => !query || JSON.stringify(item).toLocaleLowerCase("zh-CN").includes(query));
+  recordCountEl.textContent = query ? `${bag.length}/${all.length}` : `${all.length} 条`;
+  if (!bag.length) {
+    bagEl.innerHTML = `<p class="empty-state">${all.length ? "没有匹配的填写记录。" : "还没有提交。"}</p>`; return;
+  }
+  bagEl.innerHTML = bag.map((item) => {
+    const values = Object.entries(item.values || {}).map(([id, value]) =>
+      `<div class="value-row"><code>${escapeHtml(id)}</code> <span>${escapeHtml(String(value))}</span></div>`).join("");
+    return `<section class="bag-item"><div class="bag-head"><strong>${escapeHtml(item.submitterId || "未知填写人")}</strong><time datetime="${escapeAttr(item.submittedAt || "")}">${escapeHtml(formatTime(item.submittedAt))}</time></div>
+      <div class="envelope-meta">ownerAgent <code>${escapeHtml(item.ownerAgent || agent.id)}</code> · 表 v${escapeHtml(item.formVersion || "?")}</div>${values}</section>`;
+  }).join("");
+}
+
+function confirmAction({ title, body, confirmLabel = "确认" }) {
+  confirmTitle.textContent = title; confirmBody.textContent = body; confirmAccept.textContent = confirmLabel;
+  confirmDialog.returnValue = "cancel"; confirmDialog.showModal();
+  return new Promise((resolve) => confirmDialog.addEventListener("close",
+    () => resolve(confirmDialog.returnValue === "confirm"), { once: true }));
+}
+
+bindBtn.addEventListener("click", async () => {
+  if (!selectedId) return;
+  await saveTail;
+  const id = selectedId, res = await fetch(`/api/agents/${encodeURIComponent(id)}/bind`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showError(data.error || "无法发布");
+  replaceAgent(data); select(id, { reloadFace: true }); setSaveStatus("已发布", "saved");
+});
+unbindBtn.addEventListener("click", async () => {
+  const agent = currentAgent(); if (!agent) return;
+  const isBorn = agent.origin === "born-form";
+  const ok = await confirmAction({
+    title: isBorn ? "下架这个 agent form？" : "解绑这个 agent 的首页表？",
+    body: `${isBorn ? "下架后用户将无法打开它" : "解绑后用户入口将恢复无表状态"}；已有提交信封仍保留在 inputBag。`,
+    confirmLabel: isBorn ? "确认下架" : "确认解绑",
+  });
+  if (!ok) return;
+  const res = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/unbind`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showError(data.error || "操作失败");
+  replaceAgent(data); select(agent.id, { reloadFace: true });
+});
+addFieldBtn.addEventListener("click", async () => {
+  const agent = currentAgent(); if (!agent) return;
+  const fields = [...(agent.fields || [])], control = addControlEl.value;
+  const next = { id: nextFieldId(fields), label: "未命名", control, required: true };
+  if (control === "select") next.options = ["选项一", "选项二"];
+  fields.push(next); await saveFields(fields);
+});
+copyExampleBtn.addEventListener("click", async () => {
+  const agent = currentAgent(); if (!agent) return;
+  if ((agent.fields || []).length) {
+    const ok = await confirmAction({ title: "用例子覆盖当前字段？",
+      body: "当前字段将被课堂练习的三个示例字段替换；已发布金稿和历史提交不会立刻改变。", confirmLabel: "确认覆盖" });
+    if (!ok) return;
+  }
+  const res = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/copy-example`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showError(data.error || "复制失败");
+  replaceAgent(data); select(agent.id, { reloadFace: true });
+});
+createBtn.addEventListener("click", async () => {
+  const res = await fetch("/api/agents", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: newNameEl.value }) });
+  const agent = await res.json();
+  if (!res.ok) return showError(agent.error || "无法新建");
+  newNameEl.value = ""; replaceAgent(agent); select(agent.id, { reloadFace: true });
+});
+
+fieldListEl.addEventListener("change", async (event) => {
+  const input = event.target.closest("[data-k]"); if (!input) return;
+  if (input.dataset.k === "id") {
+    const index = Number(input.dataset.index), oldId = currentAgent()?.fields?.[index]?.id || "", nextId = input.value.trim();
+    if (oldId && nextId !== oldId) {
+      const ok = await confirmAction({ title: "修改稳定 ID？",
+        body: `历史提交仍保留旧键 ${oldId}；新提交将改用 ${nextId || "空 ID"}。展示文案应优先改 label。`, confirmLabel: "确认修改 ID" });
+      if (!ok) { input.value = oldId; return; }
+    }
+  }
+  await saveFields(readDesignerFields());
+});
+fieldListEl.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".del"); if (!btn) return;
+  const index = Number(btn.dataset.index), agent = currentAgent(), field = agent?.fields?.[index];
+  if (!agent || !field) return;
+  const ok = await confirmAction({ title: `删除字段「${field.label}」？`,
+    body: `草稿将不再包含稳定 ID ${field.id}；历史提交信封仍按旧 values[id] 保留。`, confirmLabel: "确认删除" });
+  if (!ok) return;
+  const fields = [...agent.fields]; fields.splice(index, 1); await saveFields(fields);
+});
+
+$("show-ids").addEventListener("change", renderDesigner);
+agentSearchEl.addEventListener("input", renderList);
+recordsSearchEl.addEventListener("input", renderContract);
+function setRecordsOpen(open) {
+  recordsEl.hidden = !open; recordsScrim.hidden = !open;
+  recordsBtn.setAttribute("aria-expanded", String(open));
+  document.body.classList.toggle("records-open", open);
+  if (open) recordsCloseBtn.focus(); else recordsBtn.focus();
+}
+recordsBtn.addEventListener("click", () => setRecordsOpen(recordsEl.hidden));
+recordsCloseBtn.addEventListener("click", () => setRecordsOpen(false));
+recordsScrim.addEventListener("click", () => setRecordsOpen(false));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !recordsEl.hidden && !confirmDialog.open) setRecordsOpen(false);
+});
+refreshBtn.addEventListener("click", () => {
+  if (currentFacePath) frameEl.src = `${currentFacePath}?r=${Date.now()}`;
+});
+userPageLink.addEventListener("click", (event) => {
+  if (userPageLink.getAttribute("aria-disabled") === "true") event.preventDefault();
+});
+
+function resizeDesigner(next) {
+  const min = 160, max = Math.max(min, window.innerHeight - 300), height = Math.min(Math.max(next, min), max);
+  designerEl.style.height = `${height}px`;
+  splitterEl.setAttribute("aria-valuemin", String(min));
+  splitterEl.setAttribute("aria-valuemax", String(max));
+  splitterEl.setAttribute("aria-valuenow", String(Math.round(height)));
+}
+splitterEl.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  const startY = event.clientY, startH = designerEl.getBoundingClientRect().height;
+  document.body.classList.add("resizing");
+  const move = (ev) => resizeDesigner(startH + ev.clientY - startY);
+  const up = () => {
+    document.body.classList.remove("resizing"); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+  };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+});
+// WCAG 2.2 keyboard accessibility: https://www.w3.org/TR/WCAG22/#keyboard-accessible
+splitterEl.addEventListener("keydown", (event) => {
+  if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  const current = designerEl.getBoundingClientRect().height;
+  if (event.key === "ArrowUp") resizeDesigner(current - 24);
+  if (event.key === "ArrowDown") resizeDesigner(current + 24);
+  if (event.key === "Home") resizeDesigner(160);
+  if (event.key === "End") resizeDesigner(window.innerHeight);
+});
+window.addEventListener("message", async (event) => {
+  if (!event.data || event.data.type !== "form-studio:submitted") return;
+  const id = String(event.data.agentId || "");
+  const local = agents.find((agent) => agent.id === id);
+  const envelope = event.data.envelope;
+  if (local && envelope && !(local.inputBag || []).some((item) => item.submittedAt === envelope.submittedAt)) {
+    local.inputBag = [...(local.inputBag || []), envelope];
+    if (selectedId === id) renderContract();
+  }
+  const res = await fetch(`/api/agents/${encodeURIComponent(id)}`);
+  if (!res.ok) return;
+  replaceAgent(await res.json());
+  renderList();
+  if (selectedId === id) renderContract();
+});
+function escapeAttr(value) { return escapeHtml(value); }
+loadAgents().catch((error) => showError(error.message));

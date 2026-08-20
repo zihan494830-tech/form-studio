@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Form Studio</title>
+  <link rel="stylesheet" href="/workbench/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main-stage">跳到设计区</a>
+  <div id="app">
+    <header>
+      <div class="brand">
+        <strong>Form Studio</strong>
+        <span class="brand-sub">作者后台</span>
+      </div>
+      <p class="phase" title="给某一个 agent 设计打开时看到的表。">
+        设计打开时的表
+      </p>
+      <p class="header-note">中间上面改栏，下面是打开时看到的页面。</p>
+      <button id="records-btn" type="button" aria-controls="records" aria-expanded="false">填写记录</button>
+    </header>
+
+    <aside>
+      <div class="list-label">选一个 agent</div>
+      <p class="aside-hint">改已有的打开页面，或新建一张表（同时得到一个新 agent）。</p>
+      <div class="create-row">
+        <label class="sr-only" for="new-name">表的名称</label>
+        <input id="new-name" type="text" placeholder="表的名称，例如课堂练习" autocomplete="off" />
+        <button id="create-btn" type="button">新建 agent form</button>
+      </div>
+      <label class="search-label" for="agent-search">搜索 agent</label>
+      <input id="agent-search" class="search-input" type="search" placeholder="名称或 ID" autocomplete="off" />
+      <div id="agent-list"></div>
+    </aside>
+
+    <main id="main-stage" class="stage" tabindex="-1">
+      <div class="stage-bar">
+        <div>
+          <div class="list-label">要填写的栏</div>
+          <div class="title-line">
+            <h1 id="stage-title">先从左侧选一个，或新建一张表</h1>
+            <span id="publication-badge" class="status-badge" hidden></span>
+          </div>
+          <p id="stage-status" class="stage-status">加好栏之后，点「设为首页」，下面才会变成要填的表。</p>
+          <p id="save-status" class="save-status" aria-live="polite">尚未选择</p>
+        </div>
+        <div class="stage-actions">
+          <button id="bind-btn" type="button" disabled>发布为用户页面</button>
+          <button id="unbind-btn" class="danger" type="button" disabled>解绑首页</button>
+        </div>
+      </div>
+      <p id="action-error" class="action-error" hidden></p>
+      <div id="split" class="split">
+        <div id="designer" class="designer" hidden>
+          <div class="designer-head">
+            <div>
+              <div class="list-label">要填写的栏</div>
+              <p class="pane-hint">先写给别人看的名称，再选栏的类型。加完后点「设为首页」。</p>
+            </div>
+            <label class="show-ids" title="编号给机器对栏用，填写的人看不见。改名称不会改编号。">
+              <input id="show-ids" type="checkbox" /> 显示编号
+            </label>
+          </div>
+          <div id="field-list"></div>
+          <div class="add-row">
+            <label class="sr-only" for="add-control">栏的类型</label>
+            <select id="add-control">
+              <option value="text">单行文字</option>
+              <option value="textarea">多行文字</option>
+              <option value="number">数字</option>
+              <option value="select">下拉选择</option>
+              <option value="checkbox">勾选</option>
+            </select>
+            <button id="add-field" type="button">加栏</button>
+            <button id="copy-example" type="button">从例子复制</button>
+          </div>
+        </div>
+        <div id="splitter" class="splitter" hidden role="separator" aria-orientation="horizontal" aria-label="调整设计区高度" aria-valuemin="160" aria-valuenow="320" tabindex="0"></div>
+        <div class="face-panel">
+          <div class="face-bar">
+            <div>
+              <div class="list-label">打开时看到的页面</div>
+              <span id="face-mode" class="face-mode"></span>
+            </div>
+            <div class="face-actions">
+              <a id="user-page-link" href="#" target="_blank" rel="noopener" aria-disabled="true">另开用户页面</a>
+              <button id="refresh-btn" type="button" disabled>刷新</button>
+            </div>
+          </div>
+          <div class="face-wrap">
+            <div id="face-hint" class="hint">
+              <p>从左边选一个 agent，或新建一张表。</p>
+              <p>课堂练习那三栏只是例子，不是所有表都要长那样。</p>
+            </div>
+            <iframe id="face" name="face" title="打开时看到的页面" hidden></iframe>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <button id="records-scrim" class="records-scrim" type="button" aria-label="关闭填写记录" hidden></button>
+    <article id="records" aria-labelledby="records-title" hidden>
+      <div class="drawer-head">
+        <div>
+          <div class="pane-label">记录与账本</div>
+          <h2 id="records-title">填写记录</h2>
+        </div>
+        <button id="records-close" type="button" aria-label="关闭填写记录">关闭</button>
+      </div>
+      <div class="pane-label">当前账本</div>
+      <p class="pane-hint">名称给填写的人看。未设为首页时，打开 agent 还看不到。</p>
+      <div id="ledger" class="fields"><span class="muted">还没选</span></div>
+      <div class="records-section-head">
+        <div class="pane-label">收到的填写</div>
+        <span id="record-count" class="record-count"></span>
+      </div>
+      <p class="pane-hint">提交会留在这里。拿掉首页表也不会清空。</p>
+      <label class="sr-only" for="records-search">搜索填写记录</label>
+      <input id="records-search" class="search-input" type="search" placeholder="搜索填写人、字段或内容" autocomplete="off" />
+      <div id="bag"></div>
+    </article>
+  </div>
+
+  <dialog id="confirm-dialog" class="confirm-dialog">
+    <form method="dialog">
+      <h2 id="confirm-title">确认操作</h2>
+      <p id="confirm-body"></p>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit">取消</button>
+        <button id="confirm-accept" class="danger-solid" value="confirm" type="submit">确认</button>
+      </div>
+    </form>
+  </dialog>
+  <script type="module" src="/workbench/main.js"></script>
+</body>
+</html>

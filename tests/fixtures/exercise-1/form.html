@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>课堂练习</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f1eb;
+      --card: #fff;
+      --ink: #171717;
+      --muted: #5c5c5c;
+      --line: #d6d3cb;
+      --accent: #1d4ed8;
+      --on-accent: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    .top {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .kicker {
+      margin: 0;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .top h1 {
+      margin: 0.15rem 0 0;
+      font-size: 1.05rem;
+      font-weight: 650;
+    }
+    main {
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .lead { color: var(--muted); margin: 0 0 1.1rem; font-size: 0.95rem; }
+    form {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    label { display: block; font-weight: 600; margin: 0 0 0.35rem; }
+    .req { color: #b91c1c; }
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      font: inherit;
+      padding: 0.5rem 0.6rem;
+      border: 1px solid #171717;
+      background: #fff;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+    input:focus-visible,
+    textarea:focus-visible,
+    button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    input:user-invalid,
+    textarea:user-invalid {
+      outline: 2px solid #b91c1c;
+      outline-offset: 1px;
+    }
+    textarea { min-height: 6rem; resize: vertical; }
+    button[type="submit"] {
+      width: 100%;
+      font: inherit;
+      font-weight: 650;
+      padding: 0.65rem;
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--on-accent);
+      cursor: pointer;
+    }
+    button[type="submit"]:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .receipt {
+      display: none;
+      margin: 0 0 1rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #bbf7d0;
+      background: #ecfdf3;
+      color: #14532d;
+      border-radius: 6px;
+    }
+    .receipt.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <p class="kicker">打开时看到的页面</p>
+    <h1 id="face-title">练习一</h1>
+  </div>
+  <main>
+    <p class="lead">请填完后提交。空着或格式不对，交不出去。</p>
+    <p id="receipt" class="receipt" role="status"></p>
+    <form
+      id="agent-form"
+      data-owner-agent="exercise-1"
+      data-agent-name="练习一"
+      data-form-version="1"
+    >
+      <input type="hidden" name="submitterId" value="student-mock-1" />
+
+      <label for="q1">题目 <span class="req">*</span></label>
+      <input id="q1" name="q1" type="text" required autocomplete="off" />
+
+      <label for="n1">得分 <span class="req">*</span></label>
+      <input id="n1" name="n1" type="number" required />
+
+      <label for="a1">答案 <span class="req">*</span></label>
+      <textarea id="a1" name="a1" required></textarea>
+
+      <button type="submit">提交</button>
+    </form>
+  </main>
+</body>
+</html>
