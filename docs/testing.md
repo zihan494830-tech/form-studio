@@ -60,3 +60,13 @@ npm run check
 - 下架后再次重启仍返回 404，但历史提交不丢。
 
 临时数据库在测试结束后删除；生产 `data/form-studio.sqlite` 不参与 reset，也不是测试夹具。该测试证明单机跨重启持久性，不证明多实例并发、用户鉴权、老师权限或 Poffices agent 已收到输入。
+
+## 3A 待建立证据
+
+3A 不以“老师页面能打开”作为单独完成证据，必须按三刀建立最低层测试：
+
+1. **3A-A：** 同一提交只形成一条 submission record；原信封不变；既有 `inputBag` 迁移可重试且不丢、不重复；能按 `ownerAgent`、actor、scope 和时间查询。
+2. **3A-B：** body 中伪造 `submitterId`、角色或租户不能改变服务端 actor context；未登录、跨班级、跨租户和无老师权限默认拒绝；每个读写请求都检查具体资源归属。
+3. **3A-C：** 获授权老师能看列表和单条 `values[id]`，学生或其他老师不能越权；空态、错误态和窄屏仍可理解。
+
+自动测试之后还需要一条明确标注为试用证据的故事：一个学生身份提交，一名获授权老师看到同一条记录。没有真实身份来源时只能报告“3A 机制就绪”，不能报告“学生 / 老师 MVP 已完成”。权限测试方向参考 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 和 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。

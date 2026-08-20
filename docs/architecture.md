@@ -85,6 +85,16 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 3A 的下一低档位是“同一 SQLite 中独立 submission 表 + 老师查询投影”；3B 再增加 outbox 表和单 relay。升级触发条件是正式 Poffices 输入合同、跨进程投递需求或实测吞吐 / 重试压力。这样先打通 Alan 所说的学生提交、老师可见，再把同一信封投递给真实 agent，不为尚未出现的规模提前堆消息系统。
 
+### 3A 数据与权限边界
+
+当前 `makeEnvelope()` 接受请求中的 `submitterId`，缺失时回退到 `student-mock-1`；这是第 0–2 段测试身份，不是登录或授权证据。3A 不直接把更多用户字段塞进既有提交信封，而是在外层增加待冻结的 `submission-record/v1`：它保存独立记录 id、原信封、服务端确认的 actor context、班级 / 租户 scope 和接收时间。原信封形状保持不变，3B 仍消费同一信封。
+
+3A 的身份提供方目前是外部事实空白：需要 Alan / Poffices 明确学生、老师、班级和租户上下文从登录会话、平台 token 还是受控名单产生。在此之前允许测试适配器，不允许把 body、query 或自定义 header 中的 `userId` / `tenantId` 当成已验证身份。
+
+权限规则采用“默认拒绝、每次请求按具体资源复核”；老师查询必须同时带已验证 actor 和 scope，并在 repository 查询中包含范围条件。该方向依据 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)；多租户上下文不得直接信任客户端，应绑定到已认证会话，依据 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。具体认证供应商仍是外部拍板项，不在 3A-A 中提前绑定。
+
+历史迁移必须显式处理 2C 的嵌入式 `inputBag`：同一信封只生成一条 submission record，成功写入后才标记迁移版本；失败可重试且不得清空原袋。当前实际运行实例尚无真实提交，因此这首先是兼容性保护，不冒充已完成的数据迁移。
+
 ### 输入能力与字段映射
 
 Form Studio 不能从 agent 名字或内部变量猜运行时请求。第 3 段新增的合同边界如下；当前均为待实现设计，不冒充现有能力：
