@@ -10,7 +10,7 @@
 | Runtime | `tests/runtime` | 浏览器校验、提交信封、inputBag 追加、封闭控件词表 | `npm run test:runtime` |
 | E2E | `tests/e2e` | 改装、新生、发布/解绑、作者后台显示与响应式 | `npm run test:e2e` |
 
-共享的 API reset、agent 查询和金稿读取只放 `tests/support`；手写 HTML/JSON 只放 `tests/fixtures`。Playwright 官方建议把重复 setup 抽为可复用 fixture，使测试按意义分组，而不是按共同 setup 堆在一起：[Playwright Fixtures](https://playwright.dev/docs/test-fixtures)。
+共享的 API reset、agent 查询和基准示例读取只放 `tests/support`；手写 HTML/JSON 只放 `tests/fixtures`。Playwright 官方建议把重复 setup 抽为可复用 fixture，使测试按意义分组，而不是按共同 setup 堆在一起：[Playwright Fixtures](https://playwright.dev/docs/test-fixtures)。
 
 ## 新增测试的决策顺序
 

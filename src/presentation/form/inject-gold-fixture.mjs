@@ -1,4 +1,4 @@
-/** 第 0 段夹具适配；只用于测试金稿入口。 */
+/** 第 0 段夹具适配；只用于测试已发布示例入口。 */
 export function injectGoldFixture(html, { agentId, agentName }) {
   const escapeHtml = (value) =>
     String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");

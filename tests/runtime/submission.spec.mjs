@@ -13,9 +13,11 @@ test.describe("提交信封与封闭控件词表", () => {
   test("非法 number 不得入袋", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/fixture/exercise-1");
-    await page.locator("#q1").fill("第一题");
-    await page.locator("#a1").fill("学生作答");
-    await page.locator("#n1").evaluate((element) => { element.value = "abc"; });
+    await page.locator("#company_name").fill("星海科技");
+    await page.locator("#analysis_goal").fill("评估新市场");
+    await page.locator("#target_market").selectOption("香港");
+    await page.locator("#budget_wan").fill("1.5");
+    expect(await page.locator("#agent-form").evaluate((form) => form.checkValidity())).toBe(false);
     await page.getByRole("button", { name: "提交" }).click();
     expect((await agentOf(request)).inputBag).toHaveLength(0);
   });
@@ -23,15 +25,20 @@ test.describe("提交信封与封闭控件词表", () => {
   test("成功提交按 values[id] 追加信封", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/fixture/exercise-1");
-    await page.locator("#q1").fill("第一题");
-    await page.locator("#n1").fill("90");
-    await page.locator("#a1").fill("学生作答");
+    await page.locator("#company_name").fill("星海科技");
+    await page.locator("#analysis_goal").fill("评估香港市场进入机会");
+    await page.locator("#target_market").selectOption("香港");
+    await page.locator("#budget_wan").fill("20");
+    await page.locator("#include_competitors").check();
     await page.getByRole("button", { name: "提交" }).click();
     await expect(page.locator("#receipt")).toContainText("已交给");
     const envelope = (await agentOf(request)).inputBag[0];
     expect(envelope).toMatchObject({
       ownerAgent: "exercise-1", formVersion: 1, submitterId: "student-mock-1",
-      values: { q1: "第一题", n1: "90", a1: "学生作答" },
+      values: {
+        company_name: "星海科技", analysis_goal: "评估香港市场进入机会",
+        target_market: "香港", budget_wan: "20", include_competitors: "true",
+      },
     });
     expect(envelope.submittedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
@@ -39,16 +46,16 @@ test.describe("提交信封与封闭控件词表", () => {
   test("重复提交只追加，不覆盖旧信封", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/fixture/exercise-1");
-    await page.locator("#q1").fill("第一题");
-    await page.locator("#n1").fill("90");
-    await page.locator("#a1").fill("第一次");
+    await page.locator("#company_name").fill("星海科技");
+    await page.locator("#analysis_goal").fill("第一次");
+    await page.locator("#target_market").selectOption("香港");
     await page.getByRole("button", { name: "提交" }).click();
     await expect(page.locator("#receipt")).toContainText("已交给");
-    await page.locator("#a1").fill("第二次");
+    await page.locator("#analysis_goal").fill("第二次");
     await page.getByRole("button", { name: "提交" }).click();
     const bag = (await agentOf(request)).inputBag;
     expect(bag).toHaveLength(2);
-    expect(bag.map((item) => item.values.a1)).toEqual(["第一次", "第二次"]);
+    expect(bag.map((item) => item.values.analysis_goal)).toEqual(["第一次", "第二次"]);
   });
 
   test("五种控件能入袋，file 被拒绝", async ({ page, request }) => {

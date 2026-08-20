@@ -4,9 +4,11 @@
   "formVersion": 1,
   "status": "published",
   "fields": [
-    { "id": "q1", "label": "题目", "control": "text", "required": true },
-    { "id": "n1", "label": "得分", "control": "number", "required": true },
-    { "id": "a1", "label": "答案", "control": "textarea", "required": true }
+    { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
+    { "id": "analysis_goal", "label": "分析目标", "control": "textarea", "required": true },
+    { "id": "target_market", "label": "目标市场", "control": "select", "required": true, "options": ["中国内地", "香港", "东南亚", "北美", "欧洲"] },
+    { "id": "budget_wan", "label": "预算（万元）", "control": "number", "required": false },
+    { "id": "include_competitors", "label": "包含竞品对比", "control": "checkbox", "required": false }
   ],
   "submit": { "label": "提交", "to": "agent-input" }
 }

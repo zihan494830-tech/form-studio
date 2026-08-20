@@ -1,6 +1,6 @@
 /**
  * 把字段列表渲成使用面 HTML。必须能被 engine 抽出同一份账本。
- * 空字段保持为空；金稿只允许由 fixture 或显式“从例子复制”引入。
+ * 空字段保持为空；示例字段只允许由 fixture 或显式“从例子复制”引入。
  */
 
 function escapeHtml(value) {
@@ -92,11 +92,13 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false } =
     .preview-note {
       margin: 0 0 1rem;
       padding: 0.65rem 0.75rem;
-      color: #854d0e;
-      background: #fef9c3;
-      border: 1px solid #fde047;
+      color: #155e75;
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
       border-radius: 6px;
     }
+    .preview-note strong, .preview-note span { display: block; }
+    .preview-note span { margin-top: 0.15rem; font-size: 0.9rem; }
     form {
       background: var(--card);
       border: 1px solid var(--line);
@@ -164,8 +166,8 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false } =
     <h1 id="face-title">${escapeHtml(agent.name || agent.id)}</h1>
   </div>
   <main>
-    ${preview ? `<p class="preview-note" role="status">这是作者草稿预览，不是已发布用户入口，不能提交。</p>` : ""}
-    <p class="lead">${preview ? "检查字段名称、类型和顺序；发布后用户才会看到这一版。" : "请填完后提交。空着或格式不对，交不出去。"}</p>
+    ${preview ? `<p class="preview-note" role="status"><strong>当前是草稿预览</strong><span>仅作者可见；发布后才会成为可填写、可提交的用户页面。</span></p>` : ""}
+    ${preview ? "" : `<p class="lead">请填完后提交。空着或格式不对，交不出去。</p>`}
     <p id="receipt" class="receipt" role="status"></p>
     <form
       id="agent-form"
@@ -175,7 +177,7 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false } =
     >
       <input type="hidden" name="submitterId" value="student-mock-1" />
       ${rows}
-      ${preview ? `<button type="button" disabled>预览不可提交</button>` : `<button type="submit">提交</button>`}
+      ${preview ? `<button type="button" disabled>发布后可提交</button>` : `<button type="submit">提交</button>`}
     </form>
   </main>
   ${preview ? "" : `<script src="/runtime/face-submit.js"></script>`}

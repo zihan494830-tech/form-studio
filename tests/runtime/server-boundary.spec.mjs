@@ -8,7 +8,7 @@ import { ROOT } from "../support/project-fixture.mjs";
 function seed() {
   return [{
     id: "exercise-1",
-    name: "练习一",
+    name: "市场分析需求",
     origin: "retrofit",
     sourceSystem: "local-fixture",
     authorization: { basis: "local-fixture", confirmedAt: null },
@@ -26,7 +26,7 @@ function seed() {
     },
     inputBag: [],
   }, {
-    id: "exercise-2", name: "练习二", origin: "retrofit", sourceSystem: "local-fixture",
+    id: "exercise-2", name: "客户回访记录", origin: "retrofit", sourceSystem: "local-fixture",
     authorization: { basis: "local-fixture", confirmedAt: null }, formVersion: 1,
     fields: [], published: null, binding: null, inputBag: [],
   }];

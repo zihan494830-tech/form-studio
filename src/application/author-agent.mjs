@@ -5,7 +5,7 @@ import {
   publishForm,
   unpublishForm,
 } from "../domain/agent/form-agent.mjs";
-import { GOLD_FIELDS } from "./example-form.mjs";
+import { EXAMPLE_FIELDS } from "./example-form.mjs";
 
 /**
  * repository port: list/get/save/appendEnvelope/nextBornFormId/reset。
@@ -34,7 +34,7 @@ export function createAgentAuthoring(repository, { now = () => new Date().toISOS
       return saveResult(changeFields(repository.get(id), fields));
     },
     copyExample(id) {
-      return saveResult(changeFields(repository.get(id), GOLD_FIELDS));
+      return saveResult(changeFields(repository.get(id), EXAMPLE_FIELDS));
     },
     publish(id) {
       return saveResult(publishForm(repository.get(id)));

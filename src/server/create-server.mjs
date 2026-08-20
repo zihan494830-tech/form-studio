@@ -48,7 +48,7 @@ export function createFormStudioServer({
         const moduleName = pathname.slice("/workbench/modules/".length);
         return serveFile(res, root, join("public", "workbench", "modules", moduleName));
       }
-      // 作者面专用草稿预览；/a/:id 仍只读已发布金稿。
+      // 作者面专用草稿预览；/a/:id 仍只读已发布版本。
       if (method === "GET" && pathname.startsWith("/preview/")) {
         const id = decodeURIComponent(pathname.slice("/preview/".length));
         const agent = authoring.getAgent(id);

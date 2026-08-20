@@ -19,12 +19,19 @@
       <button id="records-btn" type="button" aria-controls="records" aria-expanded="false">填写记录</button>
     </header>
 
-    <aside aria-label="我的用户页面">
-      <div class="list-label">我的用户页面</div>
-      <p class="aside-hint">一个条目就是一个 agent 的用户 UI。</p>
-      <button id="new-workspace-btn" class="primary wide" type="button">+  创建用户页面</button>
-      <label class="search-label" for="agent-search">搜索 agent</label>
-      <input id="agent-search" class="search-input" type="search" placeholder="名称或 ID" autocomplete="off" />
+    <aside aria-label="用户页面">
+      <div class="aside-title-row">
+        <div class="list-label">用户页面</div>
+        <span id="list-count" class="list-count" aria-live="polite"></span>
+      </div>
+      <button id="new-workspace-btn" class="primary wide" type="button">+  新建</button>
+      <label class="sr-only" for="agent-search">搜索用户页面</label>
+      <input id="agent-search" class="search-input" type="search" placeholder="搜索名称或 ownerAgent" autocomplete="off" />
+      <div class="list-filters" role="group" aria-label="筛选用户页面">
+        <button class="list-filter active" type="button" data-list-filter="all" aria-pressed="true">全部</button>
+        <button class="list-filter" type="button" data-list-filter="published" aria-pressed="false">已发布</button>
+        <button class="list-filter" type="button" data-list-filter="draft" aria-pressed="false">草稿</button>
+      </div>
       <div id="agent-list"></div>
     </aside>
 
@@ -54,7 +61,7 @@
           <button class="back-btn" data-back-to-paths type="button">← 返回选择</button>
           <p class="eyebrow">改装</p>
           <h1 id="retrofit-title">选择页面的主人</h1>
-          <p class="flow-lead">当前只支持精确数字 ID。这一步只读核对身份，不读取 agent 内部栏位，也不修改 Poffices。</p>
+          <p class="flow-lead">当前接口只支持用数字 ID 精确查找。这一步读取名称和身份状态，用来确认页面主人；不读取 agent 内部栏位，也不修改 Poffices。</p>
           <label class="field-label" for="identity-id">Poffices agent ID</label>
           <div class="identity-row">
             <input id="identity-id" inputmode="numeric" autocomplete="off" placeholder="例如 42" />
@@ -95,7 +102,7 @@
           <p id="save-status" class="save-status" aria-live="polite">尚未选择</p>
         </div>
         <div class="stage-actions">
-          <button id="bind-btn" type="button" disabled>发布本地金稿</button>
+          <button id="bind-btn" type="button" disabled>发布用户页面</button>
           <button id="unbind-btn" class="danger" type="button" disabled>解除本地绑定</button>
         </div>
       </div>
@@ -107,8 +114,9 @@
               <div class="list-label">要填写的栏</div>
               <p class="pane-hint">先写给填写人看的名称，再选栏的类型。发布前只影响本地草稿。</p>
             </div>
-            <label class="show-ids" title="编号给机器对栏用，填写的人看不见。改名称不会改编号。">
-              <input id="show-ids" type="checkbox" /> 显示编号
+            <label class="id-toggle" title="字段 ID 用于接口对接和排错，填写的人看不见。改展示名称不会改字段 ID。">
+              <input id="show-ids" type="checkbox" />
+              <span><b>显示字段 ID</b><small>高级 · 对接与排错</small></span>
             </label>
           </div>
           <div id="field-list"></div>
@@ -139,7 +147,7 @@
           </div>
           <div class="face-wrap">
             <div id="face-hint" class="hint">
-              <p>选中一个本地工作区后，这里显示草稿预览或已发布金稿。</p>
+              <p>选中一个用户页面后，这里显示草稿预览或已发布版本。</p>
             </div>
             <iframe id="face" name="face" title="打开时看到的页面" hidden></iframe>
           </div>
@@ -158,7 +166,7 @@
         <button id="records-close" type="button" aria-label="关闭填写记录">关闭</button>
       </div>
       <div class="pane-label">当前账本</div>
-      <p class="pane-hint">名称给填写的人看。未发布金稿时，本地旁路入口还看不到。</p>
+      <p class="pane-hint">名称给填写的人看；字段 ID 用于提交信封对栏。未发布时用户入口不可用。</p>
       <div id="ledger" class="fields"><span class="muted">还没选</span></div>
       <div class="records-section-head">
         <div class="pane-label">收到的填写</div>

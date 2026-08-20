@@ -25,7 +25,7 @@ presentation ──────────────────────�
 
 Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
 
-第 2 段保持三类对象分离：身份合同回答「主人是谁」，`form-ledger/v1` 回答「发布了哪些字段」，`owner-agent-binding/v1` 只回答「哪个本地金稿属于哪个获授权主人」。绑定规则位于 `src/domain/agent/owner-agent-binding.mjs`，不塞入 Poffices adapter，也不把远端详情复制成本地 agent 本体。作者面信息架构见 [`docs/authoring-experience.md`](./authoring-experience.md)。
+第 2 段保持三类对象分离：身份合同回答「主人是谁」，`form-ledger/v1` 回答「发布了哪些字段」，`owner-agent-binding/v1` 只回答「哪个本地已发布版本属于哪个获授权主人」。绑定规则位于 `src/domain/agent/owner-agent-binding.mjs`，不塞入 Poffices adapter，也不把远端详情复制成本地 agent 本体。作者面信息架构见 [`docs/authoring-experience.md`](./authoring-experience.md)。
 
 依赖规则是本仓拍板项：外层可以依赖内层，`domain` 不反向依赖 `server`、`infrastructure` 或 `public`。第 2 段替换真实 agent 身份时，优先新增/替换 infrastructure 适配器，不改提交信封形状。
 
@@ -48,7 +48,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 - 测试文件无论大小写和支持的 JS 后缀，都必须进入已声明测试分类；测试输出目录只允许出现在批准位置。
 - `domain` 不得依赖 Node HTTP、server、infrastructure 或 public；application 不得反向依赖 server/public。
-- 文档检查守的是“产品金稿唯一、文档有归属”，不是一律禁止 `docs/` 下增加专题文档。
+- 文档检查守的是“产品真相源唯一、文档有归属”，不是一律禁止 `docs/` 下增加专题文档。
 - 行数阈值只作职责过载信号；改阈值时同步改脚本和本页即可。
 
 字段规范化、发布与 `formVersion` 规则现已位于 domain/application；内存仓储只实现 `list/get/save/appendEnvelope/nextBornFormId/reset` repository port。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射，没有复制发布、账本或提交规则。`/fixture/exercise-1` 与 `/api/test/reset` 已移入 `tests/support`，只有显式 `--test-mode` 才动态注册。
@@ -60,4 +60,4 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 最小 repository port 和用例注入已经建立。升级触发条件：只有出现独立部署单元、第三种适配器或明确的多包复用需求时，才评估显式 interface package、package `exports` 或 workspace。当前不上依赖注入容器、DDD 全套、monorepo。
 
-`owner-agent-binding/v1` 已作为 domain 合同落地，与金稿一起保存在本地 agent 记录中。使用面和提交用例都通过 `activePublishedBinding()` 复核主人、表 id 和金稿版本。Poffices infrastructure 仍只提供 `getById`，没有 save/publish/unpublish 端口。
+`owner-agent-binding/v1` 已作为 domain 合同落地，与已发布版本一起保存在本地 agent 记录中。使用面和提交用例都通过 `activePublishedBinding()` 复核主人、表 id 和发布版本。Poffices infrastructure 仍只提供 `getById`，没有 save/publish/unpublish 端口。

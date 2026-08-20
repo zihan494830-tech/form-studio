@@ -42,10 +42,10 @@ export function createOwnerFlow({ onCreated }) {
     identityResult.dataset.state = blocked ? "blocked" : "verified";
     identityResult.innerHTML = `<div class="identity-card">
       <div><span class="context-label">候选主人</span><strong>${escapeHtml(identity.name)}</strong></div>
-      <span class="identity-state ${blocked ? "blocked" : "eligible"}">${blocked ? "Official · 不可绑定" : "可继续确认"}</span>
+      <span class="identity-state ${blocked ? "blocked" : "eligible"}">${blocked ? "Official · 仅可核对" : "可继续确认权限"}</span>
       <dl><div><dt>ownerAgent:</dt><dd>${escapeHtml(identity.ownerAgent)}</dd></div>
       <div><dt>来源:</dt><dd>Poffices · 只读</dd></div></dl>
-      ${blocked ? "<p>Official agent 只能用于身份核对，不能在 Form Studio 建立本地改装。</p>" : ""}
+      ${blocked ? "<p><strong>身份信息已读取完整。</strong>但这是 Poffices 官方 agent，当前没有可验证的改装授权，所以 Form Studio 不会创建本地绑定。</p>" : ""}
     </div>`;
     authorizationStep.hidden = blocked;
     if (!blocked) authorizationConfirm.focus();

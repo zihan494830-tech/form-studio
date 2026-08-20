@@ -1,23 +1,27 @@
 [
   {
     "id": "exercise-1",
-    "name": "练习一",
+    "name": "市场分析需求",
     "origin": "retrofit",
     "sourceSystem": "local-fixture",
     "ownerIdentity": null,
     "authorization": { "basis": "local-fixture", "confirmedAt": null },
     "formVersion": 1,
     "fields": [
-      { "id": "q1", "label": "题目", "control": "text", "required": true },
-      { "id": "n1", "label": "得分", "control": "number", "required": true },
-      { "id": "a1", "label": "答案", "control": "textarea", "required": true }
+      { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
+      { "id": "analysis_goal", "label": "分析目标", "control": "textarea", "required": true },
+      { "id": "target_market", "label": "目标市场", "control": "select", "required": true, "options": ["中国内地", "香港", "东南亚", "北美", "欧洲"] },
+      { "id": "budget_wan", "label": "预算（万元）", "control": "number", "required": false },
+      { "id": "include_competitors", "label": "包含竞品对比", "control": "checkbox", "required": false }
     ],
     "published": {
       "formVersion": 1,
       "fields": [
-        { "id": "q1", "label": "题目", "control": "text", "required": true },
-        { "id": "n1", "label": "得分", "control": "number", "required": true },
-        { "id": "a1", "label": "答案", "control": "textarea", "required": true }
+        { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
+        { "id": "analysis_goal", "label": "分析目标", "control": "textarea", "required": true },
+        { "id": "target_market", "label": "目标市场", "control": "select", "required": true, "options": ["中国内地", "香港", "东南亚", "北美", "欧洲"] },
+        { "id": "budget_wan", "label": "预算（万元）", "control": "number", "required": false },
+        { "id": "include_competitors", "label": "包含竞品对比", "control": "checkbox", "required": false }
       ],
       "submit": { "label": "提交", "to": "agent-input" }
     },
@@ -35,13 +39,19 @@
   },
   {
     "id": "exercise-2",
-    "name": "练习二",
+    "name": "客户回访记录",
     "origin": "retrofit",
     "sourceSystem": "local-fixture",
     "ownerIdentity": null,
     "authorization": { "basis": "local-fixture", "confirmedAt": null },
     "formVersion": 1,
-    "fields": [],
+    "fields": [
+      { "id": "customer_name", "label": "客户名称", "control": "text", "required": true },
+      { "id": "contact_summary", "label": "沟通摘要", "control": "textarea", "required": true },
+      { "id": "satisfaction_score", "label": "满意度（1–10）", "control": "number", "required": true },
+      { "id": "next_action", "label": "下一步行动", "control": "select", "required": true, "options": ["发送资料", "安排会议", "报价跟进", "暂不跟进"] },
+      { "id": "needs_follow_up", "label": "需要再次跟进", "control": "checkbox", "required": false }
+    ],
     "published": null,
     "binding": null,
     "inputBag": []

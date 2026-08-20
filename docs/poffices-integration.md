@@ -86,13 +86,15 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 边界：
 
+“能否识别”与“能否改装”是两件事。对 `Market Analysis / id=18`，当前读取到的名称、数字 id、来源和 Official 状态已经足够完成主人核对；它被阻止不是因为详情缺失，而是因为 Official 状态明确且没有平台授权证据。更多描述、Key 或内部栏位也不会自动产生改装权。
+
 1. 作者必须先明确选择一个自己拥有或获授权的 sandbox agent；Official fail closed。当前公开详情不提供所有权字段，所以非官方对象还需作者显式确认权限，记为 `author-confirmed`。这是本地单用户阶段的权宜拍板，平台日后提供可验证权限后必须替换。
-2. 选择通过后，Form Studio 本地创建设计工作区；字段、草稿、金稿、`formVersion`、提交信封和 `inputBag` 全由本仓管理。
+2. 选择通过后，Form Studio 本地创建设计工作区；字段、草稿、已发布版本、`formVersion`、提交信封和 `inputBag` 全由本仓管理。
 3. 本地旁路入口只渲染 `published`，没有输入框逃生门；解绑只修改本地映射并保留历史袋子。
 4. 使用面和提交端点都会复核 `ownerAgent`、`formId` 与 `publishedFormVersion`；任一不一致即拒绝打开或入袋。授权规则采用默认拒绝，参考 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)。
 
 ## 条件式平台入口
 
-若最终要求 Poffices 官方 URL 直接显示 Form Studio 金稿，还需平台另行提供正式、可授权、可回滚的入口映射能力。WordPress 官方说明 cookie 认证依赖登录会话和 `X-WP-Nonce`，只适用于站内登录上下文：[REST API Authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)。因此不得复制浏览器 cookie、不得因“进入第 2 段”就自动获得外部写权限。
+若最终要求 Poffices 官方 URL 直接显示 Form Studio 已发布版本，还需平台另行提供正式、可授权、可回滚的入口映射能力。WordPress 官方说明 cookie 认证依赖登录会话和 `X-WP-Nonce`，只适用于站内登录上下文：[REST API Authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)。因此不得复制浏览器 cookie、不得因“进入第 2 段”就自动获得外部写权限。
 
 只有同时确认稳定路由（数字 id 还是 Key）、最小权限、发布/解绑/回滚合同和真实 sandbox，才允许实施平台入口适配；仍不得修改 agent 的 Overview、Variables、Block Diagram、prompts 或 Documentation。若这些条件未满足，只能报告“本地改装机制完成，平台入口未对接”，不能冒充 Poffices 官方入口已改变。

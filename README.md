@@ -25,4 +25,4 @@ npm run test:e2e
 
 ## 当前阶段
 
-第 0 / 1 / 1b、2A 和 **2B-A / B / C 本地改装机制**已落地。起始页拆清改装 / 新生，发布产生 `owner-agent-binding/v1`，本地旁路入口只渲染金稿并追加提交信封。当前下一件是 **2C 新生真实身份**。不得先做 Frankie，也不得直接修改 Poffices 官方 agent。
+第 0 / 1 / 1b、2A 和 **2B-A / B / C 本地改装机制**已落地。起始页拆清改装 / 新生，发布产生 `owner-agent-binding/v1`，本地旁路入口只渲染已发布版本并追加提交信封。当前下一件是 **2C 新生真实身份**。不得先做 Frankie，也不得直接修改 Poffices 官方 agent。

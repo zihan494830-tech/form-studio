@@ -25,7 +25,7 @@ export function bindingEligibility(agent) {
 export function createOwnerAgentBinding(agent, publishedForm) {
   const eligibility = bindingEligibility(agent);
   if (!eligibility.allowed) return eligibility;
-  if (!publishedForm?.fields?.length) return { error: "至少一栏才能发布本地金稿", status: 400 };
+  if (!publishedForm?.fields?.length) return { error: "至少添加一个字段才能发布用户页面", status: 400 };
   const version = Number(publishedForm.formVersion || 0);
   if (!Number.isInteger(version) || version < 1) return { error: "发布版本非法", status: 400 };
   return {

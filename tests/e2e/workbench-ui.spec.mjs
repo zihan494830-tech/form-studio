@@ -13,12 +13,13 @@ test.describe("作者后台 UI 管理回归", () => {
     const card = page.locator("#identity-result");
     await expect(card).toContainText("Market Analysis");
     await expect(card).toContainText("ownerAgent:18");
-    await expect(card).toContainText("Official · 不可绑定");
+    await expect(card).toContainText("Official · 仅可核对");
+    await expect(card).toContainText("身份信息已读取完整");
     await expect(page.locator("#authorization-step")).toBeHidden();
     await expect(page.locator("#workspace")).toBeHidden();
   });
 
-  test("2B-B/C 获授权 sandbox 可建本地绑定，金稿从旁路入口入袋", async ({ page, request }) => {
+  test("2B-B/C 获授权 sandbox 可建本地绑定，已发布版本从旁路入口入袋", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
     await page.getByRole("button", { name: /改已有 agent/ }).click();
@@ -31,7 +32,7 @@ test.describe("作者后台 UI 管理回归", () => {
     await expect(page.locator("#owner-context")).toContainText("ownerAgent:42");
     await expect(page.locator("#owner-context")).toContainText("Poffices");
     await page.getByRole("button", { name: "加栏" }).click();
-    await page.getByRole("button", { name: "发布本地金稿" }).click();
+    await page.getByRole("button", { name: "发布用户页面" }).click();
     const face = page.frameLocator('iframe[name="face"]');
     await face.locator("#f1").fill("真实主人的输入");
     await face.getByRole("button", { name: "提交" }).click();
@@ -76,38 +77,42 @@ test.describe("作者后台 UI 管理回归", () => {
   test("未发布字段只进草稿预览，不能提交", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /练习二/ }).click();
-    await page.getByRole("button", { name: "加栏" }).click();
+    await page.getByRole("button", { name: /客户回访记录/ }).click();
     const face = page.frameLocator('iframe[name="face"]');
-    await expect(face.locator("#f1")).toBeVisible();
-    await expect(face.getByText("作者草稿预览")).toBeVisible();
-    await expect(face.getByRole("button", { name: "预览不可提交" })).toBeDisabled();
+    await expect(face.locator("#customer_name")).toBeVisible();
+    await expect(face.getByText("当前是草稿预览")).toBeVisible();
+    await expect(face.getByText("仅作者可见；发布后才会成为可填写、可提交的用户页面。")).toBeVisible();
+    await expect(face.getByRole("button", { name: "发布后可提交" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "解除本地绑定" })).toBeHidden();
+    await expect(page.getByRole("link", { name: "另开用户页面" })).toHaveAttribute("aria-disabled", "true");
     expect(await (await request.get("/a/exercise-2")).text()).toContain("empty-note");
   });
 
   test("覆盖例子先确认，取消不会改草稿", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /练习一/ }).click();
+    await page.getByRole("button", { name: /市场分析需求/ }).click();
     await page.getByRole("button", { name: "从例子复制" }).click();
     await expect(page.getByRole("dialog")).toContainText("覆盖当前字段");
     await page.getByRole("button", { name: "取消" }).click();
-    expect((await agentOf(request)).fields.map((field) => field.id)).toEqual(["q1", "n1", "a1"]);
+    expect((await agentOf(request)).fields.map((field) => field.id)).toEqual([
+      "company_name", "analysis_goal", "target_market", "budget_wan", "include_competitors",
+    ]);
   });
 
   test("历史信封按自己的 values[id] 展示", async ({ page, request }) => {
     await resetStore(request);
     await request.post("/submit/exercise-1", {
-      data: { values: { q1: "旧题", n1: "88", a1: "旧答案" }, submitterId: "history-user" },
+      data: { values: { company_name: "旧公司", analysis_goal: "旧目标", target_market: "香港" }, submitterId: "history-user" },
     });
     const agent = await agentOf(request);
     await request.put("/api/agents/exercise-1/fields", {
-      data: { fields: agent.fields.filter((field) => field.id !== "q1") },
+      data: { fields: agent.fields.filter((field) => field.id !== "company_name") },
     });
     await page.goto("/");
-    await page.getByRole("button", { name: /练习一/ }).click();
+    await page.getByRole("button", { name: /市场分析需求/ }).click();
     await page.getByRole("button", { name: "填写记录" }).click();
-    await expect(page.locator(".bag-item")).toContainText("q1 旧题");
+    await expect(page.locator(".bag-item")).toContainText("company_name 旧公司");
     await expect(page.locator(".bag-item")).toContainText("表 v1");
   });
 
@@ -115,7 +120,7 @@ test.describe("作者后台 UI 管理回归", () => {
     await resetStore(request);
     await page.setViewportSize({ width: 768, height: 800 });
     await page.goto("/");
-    await page.getByRole("button", { name: /练习一/ }).click();
+    await page.getByRole("button", { name: /市场分析需求/ }).click();
     const splitter = page.getByRole("separator", { name: "调整设计区高度" });
     await splitter.focus();
     const before = Number(await splitter.getAttribute("aria-valuenow"));
@@ -128,5 +133,35 @@ test.describe("作者后台 UI 管理回归", () => {
     }));
     expect(overflow.page).toBeLessThanOrEqual(0);
     expect(overflow.stage).toBeLessThanOrEqual(0);
+  });
+
+  test("左侧可筛选页面，显示字段 ID 不改变设计区布局", async ({ page, request }) => {
+    await resetStore(request);
+    await page.goto("/");
+    await page.getByRole("button", { name: "已发布", exact: true }).click();
+    await expect(page.getByRole("button", { name: /市场分析需求/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /客户回访记录/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "草稿", exact: true }).click();
+    await expect(page.getByRole("button", { name: /客户回访记录/ })).toBeVisible();
+    await page.getByRole("button", { name: /客户回访记录/ }).click();
+    const before = await page.locator("#designer").evaluate((element) => ({
+      display: getComputedStyle(element).display,
+      height: element.getBoundingClientRect().height,
+      fieldTop: element.querySelector(".design-row").getBoundingClientRect().top,
+      fieldHeight: element.querySelector(".design-row").getBoundingClientRect().height,
+    }));
+    await page.getByRole("checkbox", { name: /显示字段 ID/ }).check();
+    await expect(page.locator(".id-line").first()).toBeVisible();
+    const after = await page.locator("#designer").evaluate((element) => ({
+      display: getComputedStyle(element).display,
+      height: element.getBoundingClientRect().height,
+      fieldTop: element.querySelector(".design-row").getBoundingClientRect().top,
+      fieldHeight: element.querySelector(".design-row").getBoundingClientRect().height,
+    }));
+    expect(after.display).toBe(before.display);
+    expect(after.height).toBe(before.height);
+    expect(after.fieldTop).toBe(before.fieldTop);
+    expect(after.fieldHeight).toBeGreaterThan(before.fieldHeight);
+    expect(await page.locator("#field-list").evaluate((element) => element.getBoundingClientRect().width)).toBeLessThanOrEqual(900);
   });
 });

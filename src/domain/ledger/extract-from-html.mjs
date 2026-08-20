@@ -10,7 +10,7 @@ export function extractFromHtml(html) {
   const { document } = parseHTML(html);
   const form = document.querySelector("form");
   if (!form) {
-    throw new Error("金稿里没有 form");
+    throw new Error("已发布页面里没有 form");
   }
   return extract(form);
 }

@@ -8,6 +8,7 @@ import {
   publicationState,
 } from "/workbench/modules/form-model.js";
 import { createOwnerFlow } from "/workbench/modules/owner-flow.js";
+import { renderWorkspaceList } from "/workbench/modules/workspace-list.js";
 
 const $ = (id) => document.getElementById(id);
 const listEl = $("agent-list"), hintEl = $("face-hint"), frameEl = $("face");
@@ -22,8 +23,10 @@ const recordCountEl = $("record-count"), refreshBtn = $("refresh-btn"), userPage
 const faceModeEl = $("face-mode"), splitterEl = $("splitter"), confirmDialog = $("confirm-dialog");
 const confirmTitle = $("confirm-title"), confirmBody = $("confirm-body"), confirmAccept = $("confirm-accept");
 const onboardingEl = $("onboarding"), workspaceEl = $("workspace"), ownerContextEl = $("owner-context");
+const listCountEl = $("list-count"), listFilterButtons = [...document.querySelectorAll("[data-list-filter]")];
 
 let agents = [], selectedId = null, currentFacePath = null;
+let listFilter = "all";
 let saveTail = Promise.resolve(), pendingSaves = 0;
 
 function showError(message) {
@@ -47,22 +50,10 @@ function replaceAgent(next) {
 }
 
 function renderList() {
-  const query = agentSearchEl.value.trim().toLocaleLowerCase("zh-CN");
-  listEl.innerHTML = "";
-  const visible = agents.filter((agent) => !query ||
-    `${agent.name} ${agent.id}`.toLocaleLowerCase("zh-CN").includes(query));
-  for (const agent of visible) {
-    const state = publicationState(agent);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "agent" + (agent.id === selectedId ? " active" : "");
-    btn.dataset.id = agent.id;
-    btn.innerHTML = `<strong>${escapeHtml(agent.name)}</strong><small>${escapeHtml(agent.id)}</small>
-      <span class="agent-meta"><span class="tag">${escapeHtml(originLabel(agent))}</span><span class="mini-status ${state.className}">${escapeHtml(state.label)}</span></span>`;
-    btn.addEventListener("click", () => select(agent.id));
-    listEl.appendChild(btn);
-  }
-  if (!visible.length) listEl.innerHTML = `<p class="empty-state">没有匹配的 agent。</p>`;
+  renderWorkspaceList({
+    agents, selectedId, query: agentSearchEl.value, filter: listFilter,
+    container: listEl, count: listCountEl, onSelect: (id) => select(id),
+  });
 }
 
 function facePathFor(agent) {
@@ -83,10 +74,10 @@ function loadFace(agent, force = true) {
   } else {
     frameEl.hidden = false;
   }
-  faceModeEl.textContent = draftPreview ? "草稿预览 · 不可提交" : "已发布用户页面 · 可提交";
+  faceModeEl.textContent = draftPreview ? "草稿预览" : "已发布用户页面 · 可提交";
   faceModeEl.className = `face-mode ${draftPreview ? "draft" : "published"}`;
   userPageLink.href = `/a/${encodeURIComponent(agent.id)}`;
-  const unavailable = agent.origin === "born-form" && !agent.binding;
+  const unavailable = !agent.binding;
   userPageLink.setAttribute("aria-disabled", String(unavailable));
   userPageLink.tabIndex = unavailable ? -1 : 0;
   refreshBtn.disabled = false;
@@ -117,25 +108,26 @@ function updateStage() {
   publicationBadge.hidden = false;
   publicationBadge.textContent = state.label;
   publicationBadge.className = `status-badge ${state.className}`;
-  if (isDirty(agent)) stageStatus.textContent = "草稿已保存；用户入口仍只显示上一版金稿。发布后才切换。";
-  else if (agent.binding) stageStatus.textContent = "金稿已发布到 Form Studio 本地旁路入口；不修改 Poffices agent 本体。";
+  if (isDirty(agent)) stageStatus.textContent = "改动已保存为草稿；用户入口仍显示上一已发布版本。再次发布后才会更新。";
+  else if (agent.binding) stageStatus.textContent = "当前版本已发布到 Form Studio 本地入口；不修改 Poffices agent 本体。";
   else if ((agent.fields || []).length) stageStatus.textContent = "草稿已有字段，但用户入口尚未发布。";
   else stageStatus.textContent = agent.origin === "born-form"
-    ? "新生 agent form：先加字段，再发布本地金稿。"
+    ? "新生 agent form：先加字段，再发布用户页面。"
     : "改装路径：先加字段，再发布到 Form Studio 本地旁路入口。";
 }
 function updateActions() {
   const agent = currentAgent();
   if (!agent) {
-    bindBtn.disabled = true; unbindBtn.disabled = true; bindBtn.textContent = "发布本地金稿";
+    bindBtn.disabled = true; unbindBtn.disabled = true; unbindBtn.hidden = true; bindBtn.textContent = "发布用户页面";
     return;
   }
   const dirty = isDirty(agent), hasFields = (agent.fields || []).length > 0;
   bindBtn.disabled = !(hasFields && (!agent.binding || dirty));
   bindBtn.textContent = agent.binding
     ? dirty ? `发布新版本 v${agent.formVersion}` : `已发布 v${agent.published?.formVersion || agent.formVersion}`
-    : "发布本地金稿";
+    : "发布用户页面";
   unbindBtn.disabled = !agent.binding;
+  unbindBtn.hidden = !agent.binding;
   unbindBtn.textContent = agent.origin === "born-form" ? "下架本地页面" : "解除本地绑定";
 }
 
@@ -146,10 +138,10 @@ function renderDesigner() {
   }
   designerEl.hidden = false; splitterEl.hidden = false;
   const showIds = $("show-ids")?.checked;
-  designerEl.classList.toggle("show-ids", Boolean(showIds));
+  designerEl.classList.toggle("ids-visible", Boolean(showIds));
   const fields = agent.fields || [];
   if (!fields.length) {
-    fieldListEl.innerHTML = `<p class="empty-state">还没有字段。添加一个字段，或用课堂练习例子作为起点。</p>`;
+    fieldListEl.innerHTML = `<p class="empty-state">还没有字段。可以添加字段，或复制完整示例作为起点。</p>`;
     return;
   }
   fieldListEl.innerHTML = fields.map((field, index) => {
@@ -267,7 +259,7 @@ unbindBtn.addEventListener("click", async () => {
 addFieldBtn.addEventListener("click", async () => {
   const agent = currentAgent(); if (!agent) return;
   const fields = [...(agent.fields || [])], control = addControlEl.value;
-  const next = { id: nextFieldId(fields), label: "未命名", control, required: true };
+  const next = { id: nextFieldId(fields), label: `字段 ${fields.length + 1}`, control, required: true };
   if (control === "select") next.options = ["选项一", "选项二"];
   fields.push(next); await saveFields(fields);
 });
@@ -275,7 +267,7 @@ copyExampleBtn.addEventListener("click", async () => {
   const agent = currentAgent(); if (!agent) return;
   if ((agent.fields || []).length) {
     const ok = await confirmAction({ title: "用例子覆盖当前字段？",
-      body: "当前字段将被课堂练习的三个示例字段替换；已发布金稿和历史提交不会立刻改变。", confirmLabel: "确认覆盖" });
+      body: "当前字段将被一套完整的市场分析需求字段替换；已发布版本和历史提交不会立刻改变。", confirmLabel: "确认覆盖" });
     if (!ok) return;
   }
   const res = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/copy-example`, { method: "POST" });
@@ -314,8 +306,19 @@ fieldListEl.addEventListener("click", async (event) => {
   const fields = [...agent.fields]; fields.splice(index, 1); await saveFields(fields);
 });
 
-$("show-ids").addEventListener("change", renderDesigner);
+$("show-ids").addEventListener("change", (event) => {
+  designerEl.classList.toggle("ids-visible", event.currentTarget.checked);
+});
 agentSearchEl.addEventListener("input", renderList);
+listFilterButtons.forEach((button) => button.addEventListener("click", () => {
+  listFilter = button.dataset.listFilter;
+  listFilterButtons.forEach((item) => {
+    const active = item === button;
+    item.classList.toggle("active", active);
+    item.setAttribute("aria-pressed", String(active));
+  });
+  renderList();
+}));
 recordsSearchEl.addEventListener("input", renderContract);
 function setRecordsOpen(open) {
   recordsEl.hidden = !open; recordsScrim.hidden = !open;

@@ -62,7 +62,7 @@ export function changeFields(agent, fields) {
 
 export function publishForm(agent) {
   if (!agent) return { error: "没有这个 agent", status: 404 };
-  if (!agent.fields?.length) return { error: "至少一栏才能发布本地金稿", status: 400 };
+  if (!agent.fields?.length) return { error: "至少添加一个字段才能发布用户页面", status: 400 };
   const published = {
     formVersion: agent.formVersion || 1,
     fields: clone(agent.fields),
