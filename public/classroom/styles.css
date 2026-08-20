@@ -47,7 +47,10 @@ h1, h2 { margin: 0; font-size: 18px; }
 .state { margin: 0; padding: 14px; color: var(--muted); background: #fff; border: 1px dashed #afc2bd; border-radius: 9px; }
 .state.error { color: var(--danger); border-color: #e7aaa5; background: #fff1f0; }
 .detail-meta { display: grid; gap: 3px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.detail-meta strong code { margin-left: 5px; color: var(--accent); font-size: 11px; font-weight: 400; }
 .detail-meta time, .detail-meta span { color: var(--muted); font-size: 12px; }
+.detail-meta .delivery-status { width: fit-content; margin-top: 5px; padding: 4px 7px; color: var(--accent); background: var(--accent-dim); border-radius: 999px; }
+.detail-meta .delivery-status.failed { color: var(--danger); background: #fff1f0; }
 .detail dl { margin: 0; }
 .detail dl div { padding: 13px 0; border-bottom: 1px solid var(--line); }
 .detail dt { font-weight: 650; }

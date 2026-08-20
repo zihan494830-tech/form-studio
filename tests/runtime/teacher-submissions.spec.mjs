@@ -39,10 +39,16 @@ test.describe("3A-C 老师查询端口", () => {
         ownerAgent: "exercise-1",
         actorId: "student-2",
         fields: expect.arrayContaining([
-          { id: "company_name", label: "公司或品牌", value: "星海科技" },
+          { id: "company_name", label: "公司或品牌", value: "星海科技", displayValue: "星海科技" },
         ]),
       },
     });
+    await expect.poll(async () => {
+      const latest = await request.get(`/api/teacher/submissions/${listBody.records[0].id}`, {
+        headers: actor("teacher-1"),
+      });
+      return (await latest.json()).record.delivery;
+    }).toMatchObject({ status: "delivered", target: "market-analysis-local", transport: "local-recording" });
   });
 
   test("学生、其他老师和其他班级默认不能读取", async ({ request }) => {

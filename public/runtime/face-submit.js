@@ -69,7 +69,9 @@
       }
       const result = await res.json();
       if (receipt) {
-        receipt.textContent = `已交给 ${agentName}`;
+        receipt.textContent = result.delivery?.status === "pending"
+          ? `提交已保存，正在交给 ${agentName}`
+          : `提交已保存到 ${agentName}`;
         receipt.classList.remove("error");
         receipt.classList.add("show");
       }

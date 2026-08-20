@@ -45,11 +45,16 @@ async function loadDetail(id) {
   try {
     const { record } = await json(`/api/teacher/submissions/${encodeURIComponent(id)}`);
     if (selectedRecord !== id) return;
+    const deliveryLabels = {
+      pending: "等待投递", delivering: "正在投递", delivered: "已送达本地 AgentInputPort",
+      failed: "投递失败，将重试", not_configured: "未配置 agent 输入端口",
+    };
     detailEl.innerHTML = `<div class="detail-meta">
-      <strong>${escapeHtml(record.actorId)}</strong>
+      <strong>${escapeHtml(record.actorName)}${record.actorName === record.actorId ? "" : ` <code>${escapeHtml(record.actorId)}</code>`}</strong>
       <time datetime="${escapeHtml(record.receivedAt)}">${escapeHtml(timeText(record.receivedAt))}</time>
       <span>${escapeHtml(record.pageName)} · 表 v${escapeHtml(record.formVersion)}</span>
-    </div><dl>${record.fields.map((field) => `<div><dt>${escapeHtml(field.label)}<code>${escapeHtml(field.id)}</code></dt><dd>${escapeHtml(field.value) || "（空）"}</dd></div>`).join("")}</dl>`;
+      <span class="delivery-status ${escapeHtml(record.delivery.status)}">${escapeHtml(deliveryLabels[record.delivery.status] || record.delivery.status)}${record.delivery.target ? ` · ${escapeHtml(record.delivery.target)}` : ""}</span>
+    </div><dl>${record.fields.map((field) => `<div><dt>${escapeHtml(field.label)}<code>${escapeHtml(field.id)}</code></dt><dd>${escapeHtml(field.displayValue) || "（空）"}</dd></div>`).join("")}</dl>`;
   } catch (error) {
     detailEl.innerHTML = `<p class="state error">${escapeHtml(error.message)}</p>`;
   }
@@ -71,7 +76,7 @@ async function loadSubmissions(agentId) {
     document.getElementById("records-context").textContent = `${result.records.length} 条提交 · ownerAgent ${result.page.ownerAgent} · 已发布 v${result.page.formVersion}`;
     submissionList.innerHTML = result.records.length ? result.records.map((record) => `
       <button class="submission-button" type="button" data-id="${escapeHtml(record.id)}" aria-pressed="false">
-        <span><strong>${escapeHtml(record.actorId)}</strong><small>${escapeHtml(record.id)} · ${escapeHtml(record.fieldCount)} 个字段</small></span>
+        <span><strong>${escapeHtml(record.actorName)}</strong><small>${record.actorName === record.actorId ? "" : `${escapeHtml(record.actorId)} · `}${escapeHtml(record.id)} · ${escapeHtml(record.fieldCount)} 个字段</small></span>
         <time datetime="${escapeHtml(record.receivedAt)}">${escapeHtml(timeText(record.receivedAt))}</time>
       </button>`).join("") : `<p class="state empty">${query ? "没有这个学生的提交。" : "这个页面还没有学生提交。"}</p>`;
   } catch (error) {

@@ -31,7 +31,7 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#budget_wan").fill("20");
     await page.locator("#include_competitors").check();
     await page.getByRole("button", { name: "提交" }).click();
-    await expect(page.locator("#receipt")).toContainText("已交给");
+    await expect(page.locator("#receipt")).toContainText("提交已保存");
     const envelope = (await agentOf(request)).inputBag[0];
     expect(envelope).toMatchObject({
       ownerAgent: "exercise-1", formVersion: 1, submitterId: "student-mock-1",
@@ -50,7 +50,7 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#analysis_goal").fill("第一次");
     await page.locator("#target_market").selectOption("香港");
     await page.getByRole("button", { name: "提交" }).click();
-    await expect(page.locator("#receipt")).toContainText("已交给");
+    await expect(page.locator("#receipt")).toContainText("提交已保存");
     await page.locator("#analysis_goal").fill("第二次");
     await page.getByRole("button", { name: "提交" }).click();
     const bag = (await agentOf(request)).inputBag;
@@ -76,7 +76,7 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#choice1").selectOption("甲");
     await page.locator("#agree1").check();
     await page.getByRole("button", { name: "提交" }).click();
-    await expect(page.locator("#receipt")).toContainText("已交给");
+    await expect(page.locator("#receipt")).toContainText("提交已保存");
     expect((await agentOf(request, "exercise-2")).inputBag[0].values).toEqual({
       text1: "文字", memo1: "长答案", num1: "7", choice1: "甲", agree1: "true",
     });

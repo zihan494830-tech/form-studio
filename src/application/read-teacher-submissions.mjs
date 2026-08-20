@@ -3,11 +3,16 @@ import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs"
 
 function fieldProjection(agent, values) {
   const fields = new Map((agent.published?.fields || []).map((field) => [field.id, field]));
-  return Object.entries(values || {}).map(([id, value]) => ({
-    id,
-    label: fields.get(id)?.label || id,
-    value: String(value ?? ""),
-  }));
+  return Object.entries(values || {}).map(([id, value]) => {
+    const field = fields.get(id);
+    const raw = String(value ?? "");
+    return {
+      id,
+      label: field?.label || id,
+      value: raw,
+      displayValue: field?.control === "checkbox" ? (raw === "true" ? "是" : "否") : raw,
+    };
+  });
 }
 
 function authorize(repository, ownerAgent, actor) {
@@ -59,6 +64,7 @@ export function createTeacherSubmissionReader(repository) {
           id: record.id,
           receivedAt: record.receivedAt,
           actorId: record.actor.id,
+          actorName: record.actor.displayName || record.actor.id,
           fieldCount: Object.keys(record.envelope.values || {}).length,
         })),
       };
@@ -72,6 +78,7 @@ export function createTeacherSubmissionReader(repository) {
       if (!visibleRecord(record, access.agent, actor)) {
         return { status: 403, error: "无权访问其他班级或租户的数据" };
       }
+      const delivery = repository.getDeliveryForSubmission?.(record.id) || null;
       return {
         status: 200,
         record: {
@@ -80,8 +87,17 @@ export function createTeacherSubmissionReader(repository) {
           pageName: access.agent.name,
           receivedAt: record.receivedAt,
           actorId: record.actor.id,
+          actorName: record.actor.displayName || record.actor.id,
           formVersion: record.envelope.formVersion,
           fields: fieldProjection(access.agent, record.envelope.values),
+          delivery: delivery ? {
+            status: delivery.status,
+            target: delivery.target.target,
+            transport: delivery.target.kind,
+            attempts: delivery.attempts,
+            receipt: delivery.receipt,
+            lastError: delivery.lastError,
+          } : { status: "not_configured" },
         },
       };
     },
