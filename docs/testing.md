@@ -71,11 +71,14 @@ npm run check
 
 2026-08-20 完整 `npm run check` 为 61/61。另以普通生产本地会话完成合成浏览器故事：选择“学生一”打开 `/a/exercise-1`，提交“星海科技”；再选择“授课老师”进入 `/classroom`，看到同一 `submission-1`、student-1 和五个 `values[id]`。桌面三栏与 390×844 窄屏重排均人工检查。该证据只允许报告“3A 本地机制就绪”，不能报告“学生 / 老师联网 MVP”或“真实 agent 已收到输入”。权限测试方向参考 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 和 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。
 
-## 3B 待建立证据
+## 3B 已建立证据
 
-3B 必须按 `3B-A → 3B-B → 3B-C → 3B-P（条件项）` 建证：
+3B 已按 `3B-A → 3B-B → 3B-C` 建证（`3B-P` 仍是外部条件项）：
 
-1. 输入 profile 与 mapping 都有版本，且只接受已声明的稳定字段 ID；缺字段、未知字段、formVersion 或 profileVersion 漂移 fail closed。
-2. submission record 与 outbox event 同事务写入；进程在任一边界中断后可恢复，重复 relay 不造成目标重复消费。
-3. 本地 `AgentInputPort` 收到的载荷能追溯到同一 submission id、原提交信封和 mapping version；机制证据不得标成 Poffices 证据。
-4. 只有 Poffices 正式 endpoint、认证、请求 / 返回 schema 与获授权 sandbox 成功 trace 齐全，才增加并通过 3B-P 外部适配测试。
+1. `tests/contract/agent-input-config.spec.mjs`：输入 profile 与 mapping 都有版本，只接受已声明的稳定字段 ID；缺字段、未知字段、formVersion / profileVersion 漂移和错控件类型 fail closed；outbox event 保存 submission、mapping 与幂等键。
+2. `tests/runtime/agent-input-delivery.spec.mjs`：SQLite 中 payload 无法序列化时 submission 与 outbox 一起回滚；relay 失败可重试，目标按幂等键只消费一次。
+3. 同文件：本地 `AgentInputPort` 跨重启按幂等键只保留一份输入，载荷可追溯到同一 submission id、原提交信封和 mapping version；机制证据不标成 Poffices 证据。
+4. `tests/e2e/classroom-story.spec.mjs`：学生提交、老师查看、本地 `AgentInputPort` 收件走同一条端到端故事；老师详情显示投递状态与 target。
+5. 只有 Poffices 正式 endpoint、认证、请求 / 返回 schema 与获授权 sandbox 成功 trace 齐全，才增加并通过 3B-P 外部适配测试。
+
+2026-08-20 完整 `npm run check` 为 69/69。

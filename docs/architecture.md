@@ -51,7 +51,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - 文档检查守的是“产品真相源唯一、文档有归属”，不是一律禁止 `docs/` 下增加专题文档。
 - 行数阈值只作职责过载信号；改阈值时同步改脚本和本页即可。
 
-字段规范化、发布与 `formVersion` 规则位于 domain/application；agent repository 管设计对象，submission repository 独立管理提交记录，`submission-aware-agent-repository` 只把记录投影成兼容的逻辑 `inputBag`。生产组合根默认打开 `data/form-studio.sqlite`，测试模式显式注入内存仓储和测试 actor resolver。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射。`/fixture/exercise-1` 与 `/api/test/reset` 只有显式 `--test-mode` 才动态注册。
+字段规范化、发布与 `formVersion` 规则位于 domain/application；agent repository 管设计对象，submission repository 独立管理提交记录并在同一事务保存 agent 输入 outbox 事件，`submission-aware-agent-repository` 只把记录投影成兼容的逻辑 `inputBag`。生产组合根默认打开 `data/form-studio.sqlite`，测试模式显式注入内存仓储和测试 actor resolver。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射。`/fixture/exercise-1` 与 `/api/test/reset` 只有显式 `--test-mode` 才动态注册。
 
 ## 依据和暂不上项
 
@@ -83,7 +83,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - `AgentInputPort` 只接受既有提交信封；它不理解 Variables / Block Diagram，也不改 `values[id]`。当并发量、独立消费者或跨服务隔离成为实测瓶颈，再升级为发布 / 订阅中间件；参考 [Azure Publisher-Subscriber pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/publisher-subscriber)。
 - Poffices 目前公开材料证明 Creator Studio 可创建、配置、测试和发布 agent，但没有给出本项目可依赖的公开输入 API；参考 [Poffices Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。因此 adapter 是明确升级点，不是假装已完成的接口。
 
-3A 的“独立 submission 表 + 老师查询投影”已经完成；3B 下一低档位是在同一 SQLite 增加 outbox 表和单 relay，并先用可审计的本地 `AgentInputPort` 验证机制。升级为 Poffices adapter 的触发条件是正式输入合同和获授权 sandbox trace；升级消息系统的触发条件则是实测跨进程吞吐或隔离压力。
+3A 的“独立 submission 表 + 老师查询投影”已经完成；3B 已按同一 SQLite 增加 outbox 表和单 relay，并先用可审计的本地 `AgentInputPort`（内存 + SQLite 双实现，按幂等键去重）验证机制。升级为 Poffices adapter 的触发条件是正式输入合同和获授权 sandbox trace；升级消息系统的触发条件则是实测跨进程吞吐或隔离压力。
 
 ### 3A 数据与权限边界
 
@@ -99,7 +99,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 ### 输入能力与字段映射
 
-Form Studio 不能从 agent 名字或内部变量猜运行时请求。下面前两份合同已存在，后两份是 3B-A 当前待实现边界：
+Form Studio 不能从 agent 名字或内部变量猜运行时请求。下面四份合同均已落地：
 
 | 合同 | 回答什么 | 不负责 |
 |---|---|---|
