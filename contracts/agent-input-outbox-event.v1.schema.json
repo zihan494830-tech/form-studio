@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-input-outbox-event/v1",
+  "title": "Form Studio agent input outbox event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "submissionId", "ownerAgent", "status", "createdAt", "updatedAt", "attempts", "idempotencyKey", "target", "profile", "mapping", "payload", "lastError", "receipt"],
+  "properties": {
+    "version": { "const": "agent-input-outbox-event/v1" },
+    "id": { "type": "string", "pattern": "^outbox-[1-9][0-9]*$" },
+    "submissionId": { "type": "string", "pattern": "^submission-[1-9][0-9]*$" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["pending", "delivering", "delivered", "failed"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "attempts": { "type": "integer", "minimum": 0 },
+    "idempotencyKey": { "type": "string", "minLength": 1 },
+    "target": { "type": "object" },
+    "profile": { "type": "object" },
+    "mapping": { "type": "object" },
+    "payload": { "type": "object" },
+    "lastError": { "type": ["string", "null"] },
+    "receipt": { "type": ["object", "null"] }
+  }
+}

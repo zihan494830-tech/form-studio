@@ -1,4 +1,5 @@
 import { makeSubmissionRecord } from "../domain/submission/submission-record.mjs";
+import { makeOutboxEvent } from "../domain/submission/outbox-event.mjs";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -6,6 +7,7 @@ function clone(value) {
 
 export function createInMemorySubmissionRepository(seed = []) {
   let records = clone(seed);
+  let deliveries = [];
   let nextSequence = records.reduce((max, item) => Math.max(max, Number(item.id?.split("-")[1]) || 0), 0) + 1;
   const legacyKeys = new Set();
 
@@ -21,7 +23,17 @@ export function createInMemorySubmissionRepository(seed = []) {
 
   function append(input) {
     const record = makeSubmissionRecord({ ...input, id: `submission-${nextSequence++}` });
+    const sequence = Number(record.id.slice("submission-".length));
+    const delivery = input.delivery ? makeOutboxEvent({
+      id: `outbox-${sequence}`,
+      submissionId: record.id,
+      ownerAgent: record.ownerAgent,
+      createdAt: record.receivedAt,
+      idempotencyKey: `agent-input:${record.id}:profile-${input.delivery.profile.profileVersion}:form-${input.delivery.mapping.formVersion}`,
+      ...input.delivery,
+    }) : null;
     records.push(record);
+    if (delivery) deliveries.push(delivery);
     return clone(record);
   }
 
@@ -50,8 +62,39 @@ export function createInMemorySubmissionRepository(seed = []) {
       const found = records.find((record) => record.id === id);
       return found ? clone(found) : null;
     },
+    listDeliveries(query = {}) {
+      return deliveries.filter((item) => {
+        if (query.status && item.status !== query.status) return false;
+        if (query.statuses && !query.statuses.includes(item.status)) return false;
+        if (query.submissionId && item.submissionId !== query.submissionId) return false;
+        return true;
+      }).slice(0, query.limit || deliveries.length).map(clone);
+    },
+    getDeliveryForSubmission(submissionId) {
+      const found = deliveries.find((item) => item.submissionId === submissionId);
+      return found ? clone(found) : null;
+    },
+    claimDelivery(id, at) {
+      const found = deliveries.find((item) => item.id === id);
+      if (!found || !["pending", "failed", "delivering"].includes(found.status)) return null;
+      found.status = "delivering";
+      found.attempts += 1;
+      found.updatedAt = at;
+      found.lastError = null;
+      return clone(found);
+    },
+    finishDelivery(id, { status, at, receipt = null, error = null }) {
+      const found = deliveries.find((item) => item.id === id);
+      if (!found || !["delivered", "failed"].includes(status)) return null;
+      found.status = status;
+      found.updatedAt = at;
+      found.receipt = clone(receipt);
+      found.lastError = error == null ? null : String(error);
+      return clone(found);
+    },
     reset() {
       records = clone(seed);
+      deliveries = [];
       nextSequence = records.reduce((max, item) => Math.max(max, Number(item.id?.split("-")[1]) || 0), 0) + 1;
       legacyKeys.clear();
       return this.list();

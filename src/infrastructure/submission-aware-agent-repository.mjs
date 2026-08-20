@@ -1,5 +1,5 @@
 function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+  return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
 /**
@@ -47,16 +47,24 @@ export function createSubmissionAwareAgentRepository({ agents, submissions, now 
     save(agent) {
       return hydrate(agents.save(stripBag(agent)));
     },
-    appendEnvelope(agentId, envelope, { actor = null, scope = null } = {}) {
+    appendSubmission(agentId, envelope, { actor = null, scope = null, delivery = null } = {}) {
       if (!agents.get(agentId)) return null;
-      submissions.append({
+      const submission = submissions.append({
         ownerAgent: agentId,
         receivedAt: envelope.submittedAt,
         actor,
         scope,
         envelope,
+        delivery,
       });
-      return this.get(agentId);
+      return {
+        agent: this.get(agentId),
+        submission,
+        delivery: submissions.getDeliveryForSubmission?.(submission.id) || null,
+      };
+    },
+    appendEnvelope(agentId, envelope, options = {}) {
+      return this.appendSubmission(agentId, envelope, options)?.agent || null;
     },
     nextBornFormId() {
       return agents.nextBornFormId();
@@ -67,9 +75,29 @@ export function createSubmissionAwareAgentRepository({ agents, submissions, now 
     getSubmission(id) {
       return submissions.get(id);
     },
+    listDeliveries(query = {}) {
+      return submissions.listDeliveries?.(query) || [];
+    },
+    getDeliveryForSubmission(id) {
+      return submissions.getDeliveryForSubmission?.(id) || null;
+    },
+    claimDelivery(id, at) {
+      return submissions.claimDelivery?.(id, at) || null;
+    },
+    finishDelivery(id, result) {
+      return submissions.finishDelivery?.(id, result) || null;
+    },
     reset() {
+      const localConfig = new Map(agents.list().map((agent) => [agent.id, {
+        access: clone(agent.access),
+        agentInput: clone(agent.agentInput),
+      }]));
       submissions.reset();
       agents.reset();
+      for (const [id, config] of localConfig) {
+        const agent = agents.get(id);
+        if (agent) agents.save({ ...agent, ...config });
+      }
       migrateAll();
       return this.list();
     },
