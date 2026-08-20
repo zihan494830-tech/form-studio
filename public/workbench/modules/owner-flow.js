@@ -42,9 +42,9 @@ export function createOwnerFlow({ onCreated }) {
       <div><span class="context-label">候选主人</span><strong>${escapeHtml(identity.name)}</strong></div>
       <span class="identity-state source">${identity.official ? "Official · 只读来源" : "Poffices · 只读来源"}</span>
       <span class="identity-state eligible">可创建隔离的本地页面</span>
-      <dl><div><dt>ownerAgent:</dt><dd>${escapeHtml(identity.ownerAgent)}</dd></div>
+      <dl><div><dt>Poffices agent ID:</dt><dd>${escapeHtml(identity.ownerAgent)}</dd></div>
       <div><dt>来源:</dt><dd>Poffices · 只读</dd></div></dl>
-      <p><strong>不会改动 Poffices。</strong>Form Studio 只引用这个 ownerAgent，在自己的数据域内管理页面、版本和提交。</p>
+      <p><strong>不会改动 Poffices。</strong>Form Studio 只引用这个 agent ID，在自己的数据域内管理页面、版本和提交。</p>
     </div>`;
     localCopyStep.hidden = false;
     createRetrofit.disabled = false;

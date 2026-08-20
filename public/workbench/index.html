@@ -26,7 +26,7 @@
       </div>
       <button id="new-workspace-btn" class="primary wide" type="button">+  新建</button>
       <label class="sr-only" for="agent-search">搜索用户页面</label>
-      <input id="agent-search" class="search-input" type="search" placeholder="搜索名称或 ownerAgent" autocomplete="off" />
+      <input id="agent-search" class="search-input" type="search" placeholder="搜索名称或页面 ID" autocomplete="off" />
       <div class="list-filters" role="group" aria-label="筛选用户页面">
         <button class="list-filter active" type="button" data-list-filter="all" aria-pressed="true">全部</button>
         <button class="list-filter" type="button" data-list-filter="published" aria-pressed="false">已发布</button>
@@ -40,27 +40,27 @@
         <div id="path-choice" class="path-choice">
           <p class="eyebrow">开始设计</p>
           <h1 id="onboarding-title">你准备为谁设计用户页面？</h1>
-          <p class="onboarding-lead">先选定主人，再设计栏位。表不会无主出生。</p>
+          <p class="onboarding-lead">先选择是给已有 Poffices agent 做页面，还是创建一个由 Form Studio 管理的新页面身份。</p>
           <div class="path-cards">
             <button id="retrofit-start" class="path-card" type="button" aria-controls="retrofit-flow" aria-expanded="false">
               <span class="path-icon" aria-hidden="true">↗</span>
-              <strong>改已有 agent 的页面</strong>
-              <span>先只读确认 Poffices 中的主人，再在 Form Studio 本地设计。</span>
-              <em>改装</em>
+              <strong>给已有 Poffices agent 做页面</strong>
+              <span>只读确认 agent 身份，然后在 Form Studio 本地设计；不会改动 Poffices。</span>
+              <em>改装 · 已有 agent</em>
             </button>
             <button id="born-start" class="path-card" type="button" aria-controls="born-flow" aria-expanded="false">
               <span class="path-icon" aria-hidden="true">+</span>
-              <strong>新建 agent form</strong>
-              <span>agent 和 form 一起出生，创建后立即进入本地设计。</span>
-              <em>新生</em>
+              <strong>创建新的 agent form</strong>
+              <span>创建一个由 Form Studio 管理的新页面身份，可以独立设计、发布和接收提交。</span>
+              <em>新生 · 本地创建</em>
             </button>
           </div>
         </div>
 
         <section id="retrofit-flow" class="owner-flow" aria-labelledby="retrofit-title" hidden>
           <button class="back-btn" data-back-to-paths type="button">← 返回选择</button>
-          <p class="eyebrow">改装</p>
-          <h1 id="retrofit-title">选择页面的主人</h1>
+          <p class="eyebrow">改装 · 已有 agent</p>
+          <h1 id="retrofit-title">选择已有 Poffices agent</h1>
           <p class="flow-lead">当前接口只支持用数字 ID 精确查找。这一步读取名称和身份状态，用来确认页面主人；不读取 agent 内部栏位，也不修改 Poffices。</p>
           <label class="field-label" for="identity-id">Poffices agent ID</label>
           <div class="identity-row">
@@ -76,10 +76,14 @@
 
         <section id="born-flow" class="owner-flow" aria-labelledby="born-title" hidden>
           <button class="back-btn" data-back-to-paths type="button">← 返回选择</button>
-          <p class="eyebrow">新生</p>
-          <h1 id="born-title">新建 agent form</h1>
-          <p class="flow-lead">名称用来识别这个 agent。创建时会同时分配稳定的 `ownerAgent`。</p>
-          <label class="field-label" for="new-name">agent form 名称</label>
+          <p class="eyebrow">新生 · Form Studio 本地创建</p>
+          <h1 id="born-title">创建新的 agent form</h1>
+          <p class="flow-lead">它可以独立设计、发布和持续接收提交。目前不会创建、连接或修改 Poffices agent。</p>
+          <div class="flow-facts" aria-label="新建说明">
+            <p><strong>创建后：</strong>系统会保存一个本地页面身份，重命名和重启都不会改变页面归属。</p>
+            <p><strong>不会发生：</strong>它不能改绑成已有 agent；需要复用时应复制字段设计，不移动原页面和提交记录。</p>
+          </div>
+          <label class="field-label" for="new-name">页面名称</label>
           <input id="new-name" class="flow-input" type="text" placeholder="例如：市场调研输入表" autocomplete="off" />
           <button id="create-btn" class="primary" type="button">创建并开始设计</button>
           <div id="born-status" role="status"></div>

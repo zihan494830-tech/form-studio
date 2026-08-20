@@ -220,6 +220,9 @@ aside {
 .back-btn { margin-bottom: 30px; padding: 7px 10px; color: var(--muted); }
 .field-label { display: block; margin-bottom: 7px; color: var(--ink); font-weight: 650; }
 .flow-input { display: block; margin-bottom: 14px; padding: 11px 12px; }
+.flow-facts { display: grid; gap: 8px; margin: -12px 0 20px; padding: 14px; color: var(--muted); background: #f4f8f7; border: 1px solid var(--line); border-radius: 10px; }
+.flow-facts p { margin: 0; line-height: 1.55; }
+.flow-facts strong { color: var(--ink); }
 .identity-card { margin-top: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #f9fbfa; }
 .identity-card > div:first-child { display: grid; gap: 2px; }
 .identity-card strong { font-size: 17px; }
@@ -254,6 +257,10 @@ aside {
 .owner-context { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .owner-context span { display: inline-flex; gap: 5px; align-items: center; padding: 4px 7px; color: var(--muted); background: #f1f5f4; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; }
 .owner-context code { color: var(--accent); font-family: ui-monospace, Consolas, monospace; }
+.owner-context .owner-details { position: relative; }
+.owner-context .owner-details > summary { padding: 4px 7px; color: var(--muted); background: #f1f5f4; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-size: 11px; list-style-position: inside; }
+.owner-context .owner-details[open] > summary { color: var(--accent); border-color: var(--accent); }
+.owner-context .owner-details > span { margin-top: 5px; }
 .save-status { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
 .save-status[data-state="saving"] { color: var(--accent); }
 .save-status[data-state="saved"] { color: var(--ok); }

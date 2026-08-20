@@ -2,25 +2,42 @@ import { expect, test } from "@playwright/test";
 import { agentOf, resetStore } from "../support/project-fixture.mjs";
 
 test.describe("作者后台 UI 管理回归", () => {
+  test("新建流程解释实际作用，技术身份退到详情", async ({ page, request }) => {
+    await resetStore(request);
+    await page.goto("/");
+    await page.getByRole("button", { name: /创建新的 agent form/ }).click();
+    const flow = page.locator("#born-flow");
+    await expect(flow).toContainText("独立设计、发布和持续接收提交");
+    await expect(flow).toContainText("不会创建、连接或修改 Poffices agent");
+    await expect(flow).toContainText("不能改绑成已有 agent");
+    await expect(flow).not.toContainText("ownerAgent");
+    await page.locator("#new-name").fill("课堂练习入口");
+    await page.getByRole("button", { name: "创建并开始设计" }).click();
+    await expect(page.locator("#owner-context")).toContainText("Form Studio 新建");
+    await page.locator("#owner-context summary").click();
+    await expect(page.locator("#owner-context")).toContainText("本地页面 ID:form-1");
+  });
+
   test("2B-A Official 候选可创建隔离本地页面，且边界写清楚", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "你准备为谁设计用户页面？" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /改已有 agent/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /新建 agent form/ })).toBeVisible();
-    await page.getByRole("button", { name: /改已有 agent/ }).click();
+    await expect(page.getByRole("button", { name: /给已有 Poffices agent 做页面/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /创建新的 agent form/ })).toBeVisible();
+    await page.getByRole("button", { name: /给已有 Poffices agent 做页面/ }).click();
     await page.locator("#identity-id").fill("18");
     await page.getByRole("button", { name: "查找 agent" }).click();
     const card = page.locator("#identity-result");
     await expect(card).toContainText("Market Analysis");
-    await expect(card).toContainText("ownerAgent:18");
+    await expect(card).toContainText("Poffices agent ID:18");
     await expect(card).toContainText("Official · 只读来源");
     await expect(card).toContainText("可创建隔离的本地页面");
     await expect(card).toContainText("不会改动 Poffices");
     await expect(page.locator("#local-copy-step")).toBeVisible();
     await page.getByRole("button", { name: "创建本地页面" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Market Analysis" })).toBeVisible();
-    await expect(page.locator("#owner-context")).toContainText("ownerAgent:18");
+    await page.locator("#owner-context summary").click();
+    await expect(page.locator("#owner-context")).toContainText("Poffices agent ID:18");
     await expect(page.locator("#owner-context")).toContainText("Poffices");
     const local = await agentOf(request, "18");
     expect(local).toMatchObject({
@@ -35,13 +52,14 @@ test.describe("作者后台 UI 管理回归", () => {
   test("2B-B/C 只读身份可建本地绑定，已发布版本从旁路入口入袋", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /改已有 agent/ }).click();
+    await page.getByRole("button", { name: /给已有 Poffices agent 做页面/ }).click();
     await page.locator("#identity-id").fill("42");
     await page.getByRole("button", { name: "查找 agent" }).click();
     await expect(page.locator("#identity-result")).toContainText("Research Sandbox");
     await page.getByRole("button", { name: "创建本地页面" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Research Sandbox" })).toBeVisible();
-    await expect(page.locator("#owner-context")).toContainText("ownerAgent:42");
+    await page.locator("#owner-context summary").click();
+    await expect(page.locator("#owner-context")).toContainText("Poffices agent ID:42");
     await expect(page.locator("#owner-context")).toContainText("Poffices");
     await page.getByRole("button", { name: "加栏" }).click();
     await page.getByRole("button", { name: "发布用户页面" }).click();
@@ -73,7 +91,7 @@ test.describe("作者后台 UI 管理回归", () => {
       });
     });
     await page.goto("/");
-    const start = page.getByRole("button", { name: /改已有 agent/ });
+    const start = page.getByRole("button", { name: /给已有 Poffices agent 做页面/ });
     await start.focus();
     await start.press("Enter");
     await page.locator("#identity-id").fill("42");

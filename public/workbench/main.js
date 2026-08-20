@@ -103,8 +103,9 @@ function updateStage() {
   stageTitle.textContent = agent.name;
   const source = agent.sourceSystem === "poffices" ? "Poffices" : agent.origin === "born-form" ? "Form Studio" : "本地示例";
   const entry = agent.binding ? "本地旁路入口" : "仅本地草稿";
-  ownerContextEl.innerHTML = `<span><b>ownerAgent:</b><code>${escapeHtml(agent.id)}</code></span>
-    <span>${escapeHtml(source)}</span><span>${escapeHtml(originLabel(agent))}</span><span>${escapeHtml(entry)}</span>`;
+  const identityLabel = agent.sourceSystem === "poffices" ? "Poffices agent ID" : "本地页面 ID";
+  ownerContextEl.innerHTML = `<span>${escapeHtml(source)}</span><span>${escapeHtml(originLabel(agent))}</span><span>${escapeHtml(entry)}</span>
+    <details class="owner-details"><summary>页面身份</summary><span><b>${escapeHtml(identityLabel)}:</b><code>${escapeHtml(agent.id)}</code></span></details>`;
   publicationBadge.hidden = false;
   publicationBadge.textContent = state.label;
   publicationBadge.className = `status-badge ${state.className}`;
@@ -112,8 +113,8 @@ function updateStage() {
   else if (agent.binding) stageStatus.textContent = "当前版本已发布到 Form Studio 本地入口；不修改 Poffices agent 本体。";
   else if ((agent.fields || []).length) stageStatus.textContent = "草稿已有字段，但用户入口尚未发布。";
   else stageStatus.textContent = agent.origin === "born-form"
-    ? "新生 agent form：先加字段，再发布用户页面。"
-    : "改装路径：先加字段，再发布到 Form Studio 本地旁路入口。";
+    ? "这是 Form Studio 管理的新 agent form。先加字段，再发布用户页面；它不会自动连接 Poffices agent。"
+    : "这是已有 Poffices agent 的本地改装页面。先加字段，再发布到 Form Studio 本地旁路入口。";
 }
 function updateActions() {
   const agent = currentAgent();
@@ -223,7 +224,7 @@ function renderContract() {
     const values = Object.entries(item.values || {}).map(([id, value]) =>
       `<div class="value-row"><code>${escapeHtml(id)}</code> <span>${escapeHtml(String(value))}</span></div>`).join("");
     return `<section class="bag-item"><div class="bag-head"><strong>${escapeHtml(item.submitterId || "未知填写人")}</strong><time datetime="${escapeAttr(item.submittedAt || "")}">${escapeHtml(formatTime(item.submittedAt))}</time></div>
-      <div class="envelope-meta">ownerAgent <code>${escapeHtml(item.ownerAgent || agent.id)}</code> · 表 v${escapeHtml(item.formVersion || "?")}</div>${values}</section>`;
+      <div class="envelope-meta">页面主人 <code>${escapeHtml(item.ownerAgent || agent.id)}</code> · 表 v${escapeHtml(item.formVersion || "?")}</div>${values}</section>`;
   }).join("");
 }
 

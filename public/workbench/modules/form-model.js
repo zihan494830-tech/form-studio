@@ -11,7 +11,7 @@ export function controlLabel(value) {
   return CONTROLS.find((item) => item.value === value)?.label || value;
 }
 export function originLabel(agent) {
-  return agent.origin === "born-form" ? "新生" : "改装";
+  return agent.origin === "born-form" ? "Form Studio 新建" : "已有 agent 改装";
 }
 export function nextFieldId(fields) {
   const used = new Set((fields || []).map((field) => field.id));

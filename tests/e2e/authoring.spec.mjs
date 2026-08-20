@@ -27,7 +27,7 @@ test.describe("第 1b 段作者设计与新生", () => {
   test("新建 agent form 后打开就是刚画的表", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: "新建 agent form" }).click();
+    await page.getByRole("button", { name: /创建新的 agent form/ }).click();
     await page.locator("#new-name").fill("登记表");
     await page.getByRole("button", { name: "创建并开始设计" }).click();
     await page.getByRole("button", { name: "加栏" }).click();
