@@ -15,6 +15,7 @@ export function send(res, status, body, headers = {}) {
 export function sendJson(res, status, data) {
   send(res, status, JSON.stringify(data), { "Content-Type": MIME[".json"] });
 }
+export class InvalidJsonError extends Error {}
 export function readJsonBody(req) {
   return new Promise((resolveBody, reject) => {
     const chunks = [];
@@ -22,7 +23,7 @@ export function readJsonBody(req) {
     req.on("end", () => {
       const raw = Buffer.concat(chunks).toString("utf8");
       if (!raw) return resolveBody({});
-      try { resolveBody(JSON.parse(raw)); } catch (error) { reject(error); }
+      try { resolveBody(JSON.parse(raw)); } catch { reject(new InvalidJsonError("请求 JSON 格式错误")); }
     });
     req.on("error", reject);
   });

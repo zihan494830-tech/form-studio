@@ -1,11 +1,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
+import { normalizeFields } from "../../src/domain/form/field-contract.mjs";
 import { extractFromHtml } from "../../src/domain/ledger/extract-from-html.mjs";
 import { renderFormHtml } from "../../src/presentation/form/render-html.mjs";
 import { expectedLedger, ROOT } from "../support/project-fixture.mjs";
 
 test.describe("form-ledger 合同", () => {
+  test("select 必须显式提供非空 options[]", () => {
+    const result = normalizeFields([
+      { id: "choice", label: "选择", control: "select", required: true, options: [] },
+    ]);
+    expect(result.error).toContain("options[] 不能为空");
+  });
+
   test("金稿可抽出 ownerAgent，字段 id 不是中文标签", () => {
     const html = readFileSync(join(ROOT, "tests", "fixtures", "exercise-1", "form.html"), "utf8");
     expect(extractFromHtml(html)).toEqual(expectedLedger);

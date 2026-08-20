@@ -1,14 +1,11 @@
 import http from "node:http";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createAgentAuthoring } from "../application/author-agent.mjs";
 import { decorateAgent } from "../application/agent-view.mjs";
 import { submitToAgent } from "../application/submit-to-agent.mjs";
-import {
-  bind, copyExample, createAgent, getAgent, listAgents, resetStore, setFields, unbind,
-} from "../infrastructure/in-memory-agent-repository.mjs";
-import { injectGoldFixture } from "../presentation/form/inject-gold-fixture.mjs";
+import { inMemoryAgentRepository } from "../infrastructure/in-memory-agent-repository.mjs";
 import { renderFormHtml } from "../presentation/form/render-html.mjs";
-import { readJsonBody, send, sendJson, serveFile } from "./http-utils.mjs";
+import { InvalidJsonError, readJsonBody, send, sendJson, serveFile } from "./http-utils.mjs";
 
 function agentIdFrom(pathname, suffix) {
   return decodeURIComponent(pathname.slice("/api/agents/".length, pathname.length - suffix.length));
@@ -19,12 +16,19 @@ function serveRendered(res, agent, fields, formVersion, options = {}) {
   });
 }
 
-export function createFormStudioServer({ root, port = 4190 }) {
+export function createFormStudioServer({
+  root,
+  port = 4190,
+  repository = inMemoryAgentRepository,
+  testRouteHandler = null,
+}) {
+  const authoring = createAgentAuthoring(repository);
   return http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://127.0.0.1:${port}`);
     const { pathname } = url;
     const method = req.method || "GET";
     try {
+      if (testRouteHandler && await testRouteHandler({ req, res, pathname, method, repository })) return;
       if (method === "GET" && pathname === "/") {
         return serveFile(res, root, join("public", "workbench", "index.html"));
       }
@@ -40,23 +44,16 @@ export function createFormStudioServer({ root, port = 4190 }) {
         const moduleName = pathname.slice("/workbench/modules/".length);
         return serveFile(res, root, join("public", "workbench", "modules", moduleName));
       }
-      if (method === "GET" && pathname === "/fixture/exercise-1") {
-        const agent = getAgent("exercise-1") || { id: "exercise-1", name: "练习一" };
-        const fixture = readFileSync(join(root, "tests", "fixtures", "exercise-1", "form.html"), "utf8");
-        return send(res, 200, injectGoldFixture(fixture, { agentId: agent.id, agentName: agent.name }), {
-          "Content-Type": "text/html; charset=utf-8",
-        });
-      }
       // 作者面专用草稿预览；/a/:id 仍只读已发布金稿。
       if (method === "GET" && pathname.startsWith("/preview/")) {
         const id = decodeURIComponent(pathname.slice("/preview/".length));
-        const agent = getAgent(id);
+        const agent = authoring.getAgent(id);
         if (!agent) return send(res, 404, "没有这个 agent", { "Content-Type": "text/plain; charset=utf-8" });
         return serveRendered(res, agent, agent.fields || [], agent.formVersion || 1, { preview: true });
       }
       if (method === "GET" && pathname.startsWith("/a/")) {
         const id = decodeURIComponent(pathname.slice(3));
-        const agent = getAgent(id);
+        const agent = authoring.getAgent(id);
         if (!agent) return send(res, 404, "没有这个 agent", { "Content-Type": "text/plain; charset=utf-8" });
         if (!agent.formId || !agent.published?.fields?.length) {
           if (agent.origin === "born-form") {
@@ -68,24 +65,24 @@ export function createFormStudioServer({ root, port = 4190 }) {
       }
       if (method === "POST" && pathname.startsWith("/submit/")) {
         const id = decodeURIComponent(pathname.slice("/submit/".length));
-        const result = submitToAgent(id, await readJsonBody(req));
+        const result = submitToAgent(repository, id, await readJsonBody(req));
         return sendJson(res, result.status, result);
       }
       if (method === "POST" && pathname === "/api/agents") {
-        const agent = createAgent((await readJsonBody(req)).name);
+        const agent = authoring.createAgent((await readJsonBody(req)).name);
         return sendJson(res, 201, decorateAgent(agent));
       }
       if (method === "GET" && pathname === "/api/agents") {
-        return sendJson(res, 200, listAgents().map(decorateAgent));
+        return sendJson(res, 200, authoring.listAgents().map(decorateAgent));
       }
       if (method === "PUT" && pathname.startsWith("/api/agents/") && pathname.endsWith("/fields")) {
-        const result = setFields(agentIdFrom(pathname, "/fields"), (await readJsonBody(req)).fields);
+        const result = authoring.setFields(agentIdFrom(pathname, "/fields"), (await readJsonBody(req)).fields);
         return result.error
           ? sendJson(res, result.status, { error: result.error })
           : sendJson(res, 200, decorateAgent(result.agent));
       }
       if (method === "POST" && pathname.startsWith("/api/agents/") && pathname.endsWith("/copy-example")) {
-        const result = copyExample(agentIdFrom(pathname, "/copy-example"));
+        const result = authoring.copyExample(agentIdFrom(pathname, "/copy-example"));
         return result.error
           ? sendJson(res, result.status, { error: result.error })
           : sendJson(res, 200, decorateAgent(result.agent));
@@ -93,26 +90,26 @@ export function createFormStudioServer({ root, port = 4190 }) {
       if (method === "GET" && pathname.startsWith("/api/agents/")) {
         const rest = pathname.slice("/api/agents/".length);
         if (!rest.includes("/")) {
-          const agent = decorateAgent(getAgent(rest));
+          const agent = decorateAgent(authoring.getAgent(rest));
           return agent ? sendJson(res, 200, agent) : sendJson(res, 404, { error: "没有这个 agent" });
         }
       }
       if (method === "POST" && pathname.endsWith("/unbind")) {
-        const agent = unbind(agentIdFrom(pathname, "/unbind"));
-        return agent ? sendJson(res, 200, decorateAgent(agent)) : sendJson(res, 404, { error: "没有这个 agent" });
-      }
-      if (method === "POST" && pathname.endsWith("/bind")) {
-        const result = bind(agentIdFrom(pathname, "/bind"));
+        const result = authoring.unbind(agentIdFrom(pathname, "/unbind"));
         return result.error
           ? sendJson(res, result.status, { error: result.error })
           : sendJson(res, 200, decorateAgent(result.agent));
       }
-      if (method === "POST" && pathname === "/api/test/reset") {
-        return sendJson(res, 200, resetStore().map(decorateAgent));
+      if (method === "POST" && pathname.endsWith("/bind")) {
+        const result = authoring.bind(agentIdFrom(pathname, "/bind"));
+        return result.error
+          ? sendJson(res, result.status, { error: result.error })
+          : sendJson(res, 200, decorateAgent(result.agent));
       }
       send(res, 404, "not found", { "Content-Type": "text/plain; charset=utf-8" });
     } catch (error) {
-      sendJson(res, 500, { error: String(error?.message || error) });
+      const status = error instanceof InvalidJsonError ? 400 : 500;
+      sendJson(res, status, { error: String(error?.message || error) });
     }
   });
 }

@@ -6,7 +6,7 @@ export default defineConfig({
   workers: 1,
   timeout: 30000,
   webServer: {
-    command: "node server.mjs",
+    command: "node server.mjs --test-mode",
     url: "http://127.0.0.1:4190/fixture/exercise-1",
     reuseExistingServer: false,
     timeout: 30000,
