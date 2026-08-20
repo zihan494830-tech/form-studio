@@ -4,7 +4,16 @@ import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { createFormStudioServer } from "../../src/server/create-server.mjs";
 import { createSqliteAgentRepository } from "../../src/infrastructure/sqlite-agent-repository.mjs";
+import { createSqliteSubmissionRepository } from "../../src/infrastructure/sqlite-submission-repository.mjs";
+import { createSubmissionAwareAgentRepository } from "../../src/infrastructure/submission-aware-agent-repository.mjs";
 import { ROOT } from "../support/project-fixture.mjs";
+
+function persistentRepository(databasePath) {
+  return createSubmissionAwareAgentRepository({
+    agents: createSqliteAgentRepository({ databasePath, seed: [] }),
+    submissions: createSqliteSubmissionRepository({ databasePath }),
+  });
+}
 
 async function listen(repository, port = 0) {
   const server = createFormStudioServer({ root: ROOT, port, repository });
@@ -31,7 +40,7 @@ async function json(base, path, options = {}) {
 test("2C 新生身份、发布版本和提交跨服务重启保持", async () => {
   const directory = mkdtempSync(join(tmpdir(), "form-studio-2c-"));
   const databasePath = join(directory, "studio.sqlite");
-  let repository = createSqliteAgentRepository({ databasePath, seed: [] });
+  let repository = persistentRepository(databasePath);
   let running = await listen(repository);
 
   try {
@@ -66,7 +75,7 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
 
     await close(running.server);
     repository.close();
-    repository = createSqliteAgentRepository({ databasePath, seed: [] });
+    repository = persistentRepository(databasePath);
     running = await listen(repository);
 
     const restored = await json(running.base, "/api/agents/form-1");
@@ -98,7 +107,7 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
     await json(running.base, "/api/agents/form-1/unpublish", { method: "POST" });
     await close(running.server);
     repository.close();
-    repository = createSqliteAgentRepository({ databasePath, seed: [] });
+    repository = persistentRepository(databasePath);
     running = await listen(repository);
 
     expect((await fetch(`${running.base}/a/form-1`)).status).toBe(404);

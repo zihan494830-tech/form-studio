@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "submission-record/v1",
+  "title": "Form Studio submission record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "ownerAgent", "receivedAt", "actor", "scope", "envelope"],
+  "properties": {
+    "version": { "const": "submission-record/v1" },
+    "id": { "type": "string", "pattern": "^submission-[1-9][0-9]*$" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "receivedAt": { "type": "string", "format": "date-time" },
+    "actor": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "role", "verifiedBy"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "role": { "enum": ["student", "teacher", "author"] },
+            "verifiedBy": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "scope": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tenantId", "classId"],
+          "properties": {
+            "tenantId": { "type": "string", "minLength": 1 },
+            "classId": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownerAgent", "formVersion", "submittedAt", "submitterId", "values"],
+      "properties": {
+        "ownerAgent": { "type": "string", "minLength": 1 },
+        "formVersion": { "type": "integer", "minimum": 1 },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "submitterId": { "type": "string", "minLength": 1 },
+        "values": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createFormStudioServer } from "./src/server/create-server.mjs";
 import { inMemoryAgentRepository } from "./src/infrastructure/in-memory-agent-repository.mjs";
+import { createInMemorySubmissionRepository } from "./src/infrastructure/in-memory-submission-repository.mjs";
 import { createPofficesAgentDirectory } from "./src/infrastructure/poffices-agent-directory.mjs";
+import { createSubmissionAwareAgentRepository } from "./src/infrastructure/submission-aware-agent-repository.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.FORM_STUDIO_PORT || 4190);
@@ -15,11 +17,20 @@ const testRouteHandler = testMode
 const identityDirectory = testMode
   ? (await import("./tests/support/test-owner-directory.mjs")).createTestOwnerDirectory()
   : createPofficesAgentDirectory();
-const repository = testMode
+const rawAgentRepository = testMode
   ? inMemoryAgentRepository
   : (await import("./src/infrastructure/sqlite-agent-repository.mjs")).createSqliteAgentRepository({
       databasePath: process.env.FORM_STUDIO_DB_PATH || join(ROOT, "data", "form-studio.sqlite"),
     });
+const submissionRepository = testMode
+  ? createInMemorySubmissionRepository()
+  : (await import("./src/infrastructure/sqlite-submission-repository.mjs")).createSqliteSubmissionRepository({
+      databasePath: process.env.FORM_STUDIO_DB_PATH || join(ROOT, "data", "form-studio.sqlite"),
+    });
+const repository = createSubmissionAwareAgentRepository({
+  agents: rawAgentRepository,
+  submissions: submissionRepository,
+});
 const server = createFormStudioServer({
   root: ROOT,
   port: PORT,
