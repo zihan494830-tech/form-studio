@@ -20,12 +20,12 @@ export function nextFieldId(fields) {
   return `f${n}`;
 }
 export function isDirty(agent) {
-  return Boolean(agent?.formId && agent.published &&
+  return Boolean(agent?.binding && agent.published &&
     JSON.stringify(agent.fields || []) !== JSON.stringify(agent.published.fields || []));
 }
 export function publicationState(agent) {
   if (isDirty(agent)) return { label: "有未发布改动", className: "dirty" };
-  if (agent.formId && agent.published) {
+  if (agent.binding && agent.published) {
     return { label: `已发布 v${agent.published.formVersion}`, className: "published" };
   }
   return { label: `草稿 v${agent.formVersion || 1}`, className: "draft" };

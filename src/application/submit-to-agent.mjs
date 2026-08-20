@@ -3,6 +3,7 @@
  * 无表 409。空必填栏不得入袋。不覆盖快照。按该 agent 已发布字段收值。
  */
 import { makeEnvelope } from "../domain/submission/envelope.mjs";
+import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs";
 
 function readValue(field, values) {
   const raw = values[field.id];
@@ -19,7 +20,7 @@ export function submitToAgent(repository, agentId, payload) {
   if (!agent) {
     return { status: 404, error: "没有这个 agent" };
   }
-  if (!agent.formId || !agent.published?.fields?.length) {
+  if (!activePublishedBinding(agent)) {
     return { status: 409, error: "该 agent 没有首页表" };
   }
 

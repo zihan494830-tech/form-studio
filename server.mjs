@@ -10,7 +10,9 @@ const testMode = process.argv.includes("--test-mode");
 const testRouteHandler = testMode
   ? (await import("./tests/support/test-route-handler.mjs")).createTestRouteHandler(ROOT)
   : null;
-const identityDirectory = createPofficesAgentDirectory();
+const identityDirectory = testMode
+  ? (await import("./tests/support/test-owner-directory.mjs")).createTestOwnerDirectory()
+  : createPofficesAgentDirectory();
 const server = createFormStudioServer({ root: ROOT, port: PORT, identityDirectory, testRouteHandler });
 
 server.listen(PORT, "127.0.0.1", () => {

@@ -42,12 +42,12 @@ test.describe("改装 agent 的独占用户入口", () => {
     await face.locator("#a1").fill("留下");
     await face.getByRole("button", { name: "提交" }).click();
     await expect(page.locator(".bag-item")).toContainText("留下");
-    await page.getByRole("button", { name: "解绑首页" }).click();
-    await page.getByRole("button", { name: "确认解绑" }).click();
+    await page.getByRole("button", { name: "解除本地绑定" }).click();
+    await page.getByRole("button", { name: "确认解除本地绑定" }).click();
     await expect(face.getByText("作者草稿预览")).toBeVisible();
     expect(await (await request.get("/a/exercise-1")).text()).toContain("empty-note");
     const agent = await agentOf(request);
-    expect(agent.formId).toBeNull();
+    expect(agent.binding).toBeNull();
     expect(agent.inputBag).toHaveLength(1);
   });
 
@@ -61,9 +61,9 @@ test.describe("改装 agent 的独占用户入口", () => {
     await face.locator("#a1").fill("第一次");
     await face.getByRole("button", { name: "提交" }).click();
     await expect(page.locator(".bag-item")).toContainText("第一次");
-    await page.getByRole("button", { name: "解绑首页" }).click();
-    await page.getByRole("button", { name: "确认解绑" }).click();
-    await page.getByRole("button", { name: "发布为用户页面" }).click();
+    await page.getByRole("button", { name: "解除本地绑定" }).click();
+    await page.getByRole("button", { name: "确认解除本地绑定" }).click();
+    await page.getByRole("button", { name: "发布本地金稿" }).click();
     await expect(face.getByText("请填完后提交")).toBeVisible();
     await face.locator("#q1").fill("第一题");
     await face.locator("#n1").fill("91");

@@ -7,7 +7,7 @@ test.describe("第 1b 段作者设计与新生", () => {
     await page.goto("/");
     await page.getByRole("button", { name: /练习二/ }).click();
     await page.getByRole("button", { name: "加栏" }).click();
-    await page.getByRole("button", { name: "发布为用户页面" }).click();
+    await page.getByRole("button", { name: "发布本地金稿" }).click();
     const face = page.frameLocator('iframe[name="face"]');
     await expect(face.getByText("请填完后提交")).toBeVisible();
     await face.locator("#f1").fill("hello");
@@ -18,13 +18,14 @@ test.describe("第 1b 段作者设计与新生", () => {
   test("新建 agent form 后打开就是刚画的表", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.locator("#new-name").fill("登记表");
     await page.getByRole("button", { name: "新建 agent form" }).click();
+    await page.locator("#new-name").fill("登记表");
+    await page.getByRole("button", { name: "创建并开始设计" }).click();
     await page.getByRole("button", { name: "加栏" }).click();
-    await page.getByRole("button", { name: "发布为用户页面" }).click();
+    await page.getByRole("button", { name: "发布本地金稿" }).click();
     const list = await (await request.get("/api/agents")).json();
     const born = list.find((item) => item.origin === "born-form");
-    expect(born).toMatchObject({ name: "登记表", formId: born.id });
+    expect(born).toMatchObject({ name: "登记表", binding: { ownerAgent: born.id, formId: born.id } });
     await page.goto(`/a/${born.id}`);
     await expect(page.locator("#f1")).toBeVisible();
   });
@@ -36,7 +37,7 @@ test.describe("第 1b 段作者设计与新生", () => {
     expect((await draft.json()).ledger.status).toBe("draft");
     await page.goto("/a/exercise-1");
     await expect(page.locator("#draft1")).toHaveCount(0);
-    const published = await request.post("/api/agents/exercise-1/bind");
+    const published = await request.post("/api/agents/exercise-1/publish");
     expect((await published.json()).ledger.status).toBe("published");
     await page.reload();
     await expect(page.locator("#draft1")).toBeVisible();
@@ -49,11 +50,11 @@ test.describe("第 1b 段作者设计与新生", () => {
     await request.put(`/api/agents/${created.id}/fields`, {
       data: { fields: [{ id: "f1", label: "内容", control: "text", required: true }] },
     });
-    await request.post(`/api/agents/${created.id}/bind`);
+    await request.post(`/api/agents/${created.id}/publish`);
     await request.post(`/submit/${created.id}`, {
       data: { values: { f1: "留下" }, submitterId: "student-mock-1" },
     });
-    await request.post(`/api/agents/${created.id}/unbind`);
+    await request.post(`/api/agents/${created.id}/unpublish`);
     expect((await request.get(`/a/${created.id}`)).status()).toBe(404);
     expect((await agentOf(request, created.id)).inputBag[0].values).toEqual({ f1: "留下" });
   });

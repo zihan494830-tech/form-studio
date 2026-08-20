@@ -61,7 +61,7 @@ test.describe("提交信封与封闭控件词表", () => {
       { id: "agree1", label: "同意", control: "checkbox", required: true },
     ];
     expect((await request.put("/api/agents/exercise-2/fields", { data: { fields } })).ok()).toBeTruthy();
-    expect((await request.post("/api/agents/exercise-2/bind")).ok()).toBeTruthy();
+    expect((await request.post("/api/agents/exercise-2/publish")).ok()).toBeTruthy();
     await page.goto("/a/exercise-2");
     await page.locator("#text1").fill("文字");
     await page.locator("#memo1").fill("长答案");

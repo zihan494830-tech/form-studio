@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "owner-agent-binding/v1",
+  "title": "Form Studio local owner agent binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "ownerAgent",
+    "sourceSystem",
+    "formId",
+    "publishedFormVersion",
+    "entryMode",
+    "status",
+    "authorization"
+  ],
+  "properties": {
+    "version": { "const": "owner-agent-binding/v1" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "sourceSystem": { "type": "string", "minLength": 1 },
+    "formId": { "type": "string", "minLength": 1 },
+    "publishedFormVersion": { "type": "integer", "minimum": 1 },
+    "entryMode": { "const": "form-studio-sidecar" },
+    "status": { "const": "published" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis", "confirmedAt"],
+      "properties": {
+        "basis": { "type": "string", "minLength": 1 },
+        "confirmedAt": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

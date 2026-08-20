@@ -1,19 +1,48 @@
 import { normalizeFields } from "../form/field-contract.mjs";
+import { createOwnerAgentBinding } from "./owner-agent-binding.mjs";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function newBornFormAgent({ id, name }) {
+export function newBornFormAgent({ id, name, createdAt = null }) {
   return {
     id,
     name: String(name || "").trim() || "未命名表",
     origin: "born-form",
-    formId: null,
+    sourceSystem: "form-studio",
+    ownerIdentity: null,
+    authorization: { basis: "born-form", confirmedAt: createdAt },
     formVersion: 1,
     fields: [],
     published: null,
+    binding: null,
     inputBag: [],
+  };
+}
+
+export function newRetrofitFormAgent({ identity, authorizationConfirmed, confirmedAt = null }) {
+  if (!identity?.ownerAgent || identity.sourceSystem !== "poffices" || identity.readOnly !== true) {
+    return { error: "真实身份合同无效", status: 400 };
+  }
+  if (identity.official) return { error: "Official agent 不允许本地改装", status: 403 };
+  if (authorizationConfirmed !== true) {
+    return { error: "请先确认拥有或获授权管理该 agent", status: 403 };
+  }
+  return {
+    agent: {
+      id: String(identity.ownerAgent),
+      name: String(identity.name),
+      origin: "retrofit",
+      sourceSystem: "poffices",
+      ownerIdentity: clone(identity),
+      authorization: { basis: "author-confirmed", confirmedAt },
+      formVersion: 1,
+      fields: [],
+      published: null,
+      binding: null,
+      inputBag: [],
+    },
   };
 }
 
@@ -33,21 +62,24 @@ export function changeFields(agent, fields) {
 
 export function publishForm(agent) {
   if (!agent) return { error: "没有这个 agent", status: 404 };
-  if (!agent.fields?.length) return { error: "至少一栏才能设为首页", status: 400 };
+  if (!agent.fields?.length) return { error: "至少一栏才能发布本地金稿", status: 400 };
+  const published = {
+    formVersion: agent.formVersion || 1,
+    fields: clone(agent.fields),
+    submit: { label: "提交", to: "agent-input" },
+  };
+  const bindingResult = createOwnerAgentBinding(agent, published);
+  if (bindingResult.error) return bindingResult;
   return {
     agent: {
       ...clone(agent),
-      formId: agent.id,
-      published: {
-        formVersion: agent.formVersion || 1,
-        fields: clone(agent.fields),
-        submit: { label: "提交", to: "agent-input" },
-      },
+      published,
+      binding: bindingResult.binding,
     },
   };
 }
 
 export function unpublishForm(agent) {
   if (!agent) return { error: "没有这个 agent", status: 404 };
-  return { agent: { ...clone(agent), formId: null, published: null } };
+  return { agent: { ...clone(agent), published: null, binding: null } };
 }

@@ -7,6 +7,7 @@ import {
   originLabel,
   publicationState,
 } from "/workbench/modules/form-model.js";
+import { createOwnerFlow } from "/workbench/modules/owner-flow.js";
 
 const $ = (id) => document.getElementById(id);
 const listEl = $("agent-list"), hintEl = $("face-hint"), frameEl = $("face");
@@ -14,14 +15,13 @@ const ledgerEl = $("ledger"), bagEl = $("bag"), bindBtn = $("bind-btn"), unbindB
 const stageTitle = $("stage-title"), stageStatus = $("stage-status"), saveStatusEl = $("save-status");
 const publicationBadge = $("publication-badge"), designerEl = $("designer"), fieldListEl = $("field-list");
 const addControlEl = $("add-control"), addFieldBtn = $("add-field"), copyExampleBtn = $("copy-example");
-const createBtn = $("create-btn"), newNameEl = $("new-name"), agentSearchEl = $("agent-search");
+const agentSearchEl = $("agent-search"), newWorkspaceBtn = $("new-workspace-btn");
 const actionErrorEl = $("action-error"), recordsEl = $("records"), recordsBtn = $("records-btn");
 const recordsCloseBtn = $("records-close"), recordsScrim = $("records-scrim"), recordsSearchEl = $("records-search");
 const recordCountEl = $("record-count"), refreshBtn = $("refresh-btn"), userPageLink = $("user-page-link");
 const faceModeEl = $("face-mode"), splitterEl = $("splitter"), confirmDialog = $("confirm-dialog");
 const confirmTitle = $("confirm-title"), confirmBody = $("confirm-body"), confirmAccept = $("confirm-accept");
-const identityIdEl = $("identity-id"), identityCheckBtn = $("identity-check-btn");
-const identityResultEl = $("identity-result");
+const onboardingEl = $("onboarding"), workspaceEl = $("workspace"), ownerContextEl = $("owner-context");
 
 let agents = [], selectedId = null, currentFacePath = null;
 let saveTail = Promise.resolve(), pendingSaves = 0;
@@ -46,31 +46,6 @@ function replaceAgent(next) {
   if (index >= 0) agents[index] = next; else agents.push(next);
 }
 
-function renderIdentity(identity) {
-  identityResultEl.dataset.state = "verified";
-  identityResultEl.innerHTML = `<strong>${escapeHtml(identity.name)}</strong>
-    <span class="identity-owner">ownerAgent <code>${escapeHtml(identity.ownerAgent)}</code></span>
-    <span>${identity.official ? "官方" : "非官方"} · ${escapeHtml(identity.agentType || "类型未知")} · 只读</span>`;
-}
-
-async function checkIdentity() {
-  const id = identityIdEl.value.trim();
-  identityCheckBtn.disabled = true;
-  identityResultEl.dataset.state = "loading";
-  identityResultEl.textContent = "正在只读核对…";
-  try {
-    const res = await fetch(`/api/owner-identities/poffices/${encodeURIComponent(id)}`);
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message || "真实身份核对失败");
-    renderIdentity(result.identity);
-  } catch (error) {
-    identityResultEl.dataset.state = "error";
-    identityResultEl.textContent = error.message || "真实身份核对失败";
-  } finally {
-    identityCheckBtn.disabled = false;
-  }
-}
-
 function renderList() {
   const query = agentSearchEl.value.trim().toLocaleLowerCase("zh-CN");
   listEl.innerHTML = "";
@@ -91,7 +66,7 @@ function renderList() {
 }
 
 function facePathFor(agent) {
-  const draftPreview = !agent.formId || isDirty(agent);
+  const draftPreview = !agent.binding || isDirty(agent);
   return { path: `${draftPreview ? "/preview/" : "/a/"}${encodeURIComponent(agent.id)}`, draftPreview };
 }
 function loadFace(agent, force = true) {
@@ -111,7 +86,7 @@ function loadFace(agent, force = true) {
   faceModeEl.textContent = draftPreview ? "草稿预览 · 不可提交" : "已发布用户页面 · 可提交";
   faceModeEl.className = `face-mode ${draftPreview ? "draft" : "published"}`;
   userPageLink.href = `/a/${encodeURIComponent(agent.id)}`;
-  const unavailable = agent.origin === "born-form" && !agent.formId;
+  const unavailable = agent.origin === "born-form" && !agent.binding;
   userPageLink.setAttribute("aria-disabled", String(unavailable));
   userPageLink.tabIndex = unavailable ? -1 : 0;
   refreshBtn.disabled = false;
@@ -119,6 +94,7 @@ function loadFace(agent, force = true) {
 function select(id, { reloadFace = true } = {}) {
   selectedId = id;
   const agent = currentAgent();
+  onboardingEl.hidden = true; workspaceEl.hidden = false;
   renderList(); showError(""); renderDesigner(); renderContract(); updateStage(); updateActions();
   if (agent) loadFace(agent, reloadFace);
   if (!splitterEl.hidden) resizeDesigner(designerEl.getBoundingClientRect().height);
@@ -134,29 +110,33 @@ function updateStage() {
   }
   const state = publicationState(agent);
   stageTitle.textContent = agent.name;
+  const source = agent.sourceSystem === "poffices" ? "Poffices" : agent.origin === "born-form" ? "Form Studio" : "本地示例";
+  const entry = agent.binding ? "本地旁路入口" : "仅本地草稿";
+  ownerContextEl.innerHTML = `<span><b>ownerAgent:</b><code>${escapeHtml(agent.id)}</code></span>
+    <span>${escapeHtml(source)}</span><span>${escapeHtml(originLabel(agent))}</span><span>${escapeHtml(entry)}</span>`;
   publicationBadge.hidden = false;
   publicationBadge.textContent = state.label;
   publicationBadge.className = `status-badge ${state.className}`;
   if (isDirty(agent)) stageStatus.textContent = "草稿已保存；用户入口仍只显示上一版金稿。发布后才切换。";
-  else if (agent.formId) stageStatus.textContent = "这张表独占该 agent 的用户入口。";
+  else if (agent.binding) stageStatus.textContent = "金稿已发布到 Form Studio 本地旁路入口；不修改 Poffices agent 本体。";
   else if ((agent.fields || []).length) stageStatus.textContent = "草稿已有字段，但用户入口尚未发布。";
   else stageStatus.textContent = agent.origin === "born-form"
-    ? "新生 agent form：先加字段，再发布为用户页面。"
-    : "改装路径：先加字段，再发布为这个 agent 的用户页面。";
+    ? "新生 agent form：先加字段，再发布本地金稿。"
+    : "改装路径：先加字段，再发布到 Form Studio 本地旁路入口。";
 }
 function updateActions() {
   const agent = currentAgent();
   if (!agent) {
-    bindBtn.disabled = true; unbindBtn.disabled = true; bindBtn.textContent = "发布为用户页面";
+    bindBtn.disabled = true; unbindBtn.disabled = true; bindBtn.textContent = "发布本地金稿";
     return;
   }
   const dirty = isDirty(agent), hasFields = (agent.fields || []).length > 0;
-  bindBtn.disabled = !(hasFields && (!agent.formId || dirty));
-  bindBtn.textContent = agent.formId
+  bindBtn.disabled = !(hasFields && (!agent.binding || dirty));
+  bindBtn.textContent = agent.binding
     ? dirty ? `发布新版本 v${agent.formVersion}` : `已发布 v${agent.published?.formVersion || agent.formVersion}`
-    : "发布为用户页面";
-  unbindBtn.disabled = !agent.formId;
-  unbindBtn.textContent = agent.origin === "born-form" ? "下架" : "解绑首页";
+    : "发布本地金稿";
+  unbindBtn.disabled = !agent.binding;
+  unbindBtn.textContent = agent.origin === "born-form" ? "下架本地页面" : "解除本地绑定";
 }
 
 function renderDesigner() {
@@ -265,7 +245,7 @@ function confirmAction({ title, body, confirmLabel = "确认" }) {
 bindBtn.addEventListener("click", async () => {
   if (!selectedId) return;
   await saveTail;
-  const id = selectedId, res = await fetch(`/api/agents/${encodeURIComponent(id)}/bind`, { method: "POST" });
+  const id = selectedId, res = await fetch(`/api/agents/${encodeURIComponent(id)}/publish`, { method: "POST" });
   const data = await res.json();
   if (!res.ok) return showError(data.error || "无法发布");
   replaceAgent(data); select(id, { reloadFace: true }); setSaveStatus("已发布", "saved");
@@ -274,12 +254,12 @@ unbindBtn.addEventListener("click", async () => {
   const agent = currentAgent(); if (!agent) return;
   const isBorn = agent.origin === "born-form";
   const ok = await confirmAction({
-    title: isBorn ? "下架这个 agent form？" : "解绑这个 agent 的首页表？",
-    body: `${isBorn ? "下架后用户将无法打开它" : "解绑后用户入口将恢复无表状态"}；已有提交信封仍保留在 inputBag。`,
-    confirmLabel: isBorn ? "确认下架" : "确认解绑",
+    title: isBorn ? "下架这个 agent form 的本地页面？" : "解除本地绑定？",
+    body: `${isBorn ? "下架后 Form Studio 入口将无法打开它" : "解除后 Form Studio 入口将回到无表状态"}；已有提交信封仍保留在 inputBag。不会调用 Poffices 写接口。`,
+    confirmLabel: isBorn ? "确认下架" : "确认解除本地绑定",
   });
   if (!ok) return;
-  const res = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/unbind`, { method: "POST" });
+  const res = await fetch(`/api/agents/${encodeURIComponent(agent.id)}/unpublish`, { method: "POST" });
   const data = await res.json();
   if (!res.ok) return showError(data.error || "操作失败");
   replaceAgent(data); select(agent.id, { reloadFace: true });
@@ -303,16 +283,13 @@ copyExampleBtn.addEventListener("click", async () => {
   if (!res.ok) return showError(data.error || "复制失败");
   replaceAgent(data); select(agent.id, { reloadFace: true });
 });
-createBtn.addEventListener("click", async () => {
-  const res = await fetch("/api/agents", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: newNameEl.value }) });
-  const agent = await res.json();
-  if (!res.ok) return showError(agent.error || "无法新建");
-  newNameEl.value = ""; replaceAgent(agent); select(agent.id, { reloadFace: true });
+const ownerFlow = createOwnerFlow({
+  onCreated(agent) {
+    replaceAgent(agent); select(agent.id, { reloadFace: true });
+  },
 });
-identityCheckBtn.addEventListener("click", checkIdentity);
-identityIdEl.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") checkIdentity();
+newWorkspaceBtn.addEventListener("click", () => {
+  selectedId = null; renderList(); workspaceEl.hidden = true; onboardingEl.hidden = false; ownerFlow.showChoice();
 });
 
 fieldListEl.addEventListener("change", async (event) => {

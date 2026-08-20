@@ -14,50 +14,89 @@
         <strong>Form Studio</strong>
         <span class="brand-sub">作者后台</span>
       </div>
-      <p class="phase" title="给某一个 agent 设计打开时看到的表。">
-        设计打开时的表
-      </p>
-      <p class="header-note">中间上面改栏，下面是打开时看到的页面。</p>
+      <p class="phase" title="一个 agent 只对应一张用户表。">agent 用户页面</p>
+      <p class="header-note">在本地设计、预览和发布；不修改 Poffices agent 本体。</p>
       <button id="records-btn" type="button" aria-controls="records" aria-expanded="false">填写记录</button>
     </header>
 
-    <aside>
-      <section class="identity-check" aria-labelledby="identity-title">
-        <div id="identity-title" class="list-label">真实身份核对 · 2A</div>
-        <p class="aside-hint">只读确认候选主人，不会绑定、发布或修改 Poffices。</p>
-        <label class="search-label" for="identity-id">Poffices agent ID</label>
-        <div class="identity-row">
-          <input id="identity-id" inputmode="numeric" value="18" autocomplete="off" />
-          <button id="identity-check-btn" type="button">核对</button>
-        </div>
-        <div id="identity-result" class="identity-result" aria-live="polite"></div>
-      </section>
-      <div class="list-label">本地设计对象</div>
-      <p class="aside-hint">改已有的 mock 页面，或新建一张表（同时得到一个新 agent）。</p>
-      <div class="create-row">
-        <label class="sr-only" for="new-name">表的名称</label>
-        <input id="new-name" type="text" placeholder="表的名称，例如课堂练习" autocomplete="off" />
-        <button id="create-btn" type="button">新建 agent form</button>
-      </div>
+    <aside aria-label="我的用户页面">
+      <div class="list-label">我的用户页面</div>
+      <p class="aside-hint">一个条目就是一个 agent 的用户 UI。</p>
+      <button id="new-workspace-btn" class="primary wide" type="button">+  创建用户页面</button>
       <label class="search-label" for="agent-search">搜索 agent</label>
       <input id="agent-search" class="search-input" type="search" placeholder="名称或 ID" autocomplete="off" />
       <div id="agent-list"></div>
     </aside>
 
     <main id="main-stage" class="stage" tabindex="-1">
+      <section id="onboarding" class="onboarding" aria-labelledby="onboarding-title">
+        <div id="path-choice" class="path-choice">
+          <p class="eyebrow">开始设计</p>
+          <h1 id="onboarding-title">你准备为谁设计用户页面？</h1>
+          <p class="onboarding-lead">先选定主人，再设计栏位。表不会无主出生。</p>
+          <div class="path-cards">
+            <button id="retrofit-start" class="path-card" type="button" aria-controls="retrofit-flow" aria-expanded="false">
+              <span class="path-icon" aria-hidden="true">↗</span>
+              <strong>改已有 agent 的页面</strong>
+              <span>先只读确认 Poffices 中的主人，再在 Form Studio 本地设计。</span>
+              <em>改装</em>
+            </button>
+            <button id="born-start" class="path-card" type="button" aria-controls="born-flow" aria-expanded="false">
+              <span class="path-icon" aria-hidden="true">+</span>
+              <strong>新建 agent form</strong>
+              <span>agent 和 form 一起出生，创建后立即进入本地设计。</span>
+              <em>新生</em>
+            </button>
+          </div>
+        </div>
+
+        <section id="retrofit-flow" class="owner-flow" aria-labelledby="retrofit-title" hidden>
+          <button class="back-btn" data-back-to-paths type="button">← 返回选择</button>
+          <p class="eyebrow">改装</p>
+          <h1 id="retrofit-title">选择页面的主人</h1>
+          <p class="flow-lead">当前只支持精确数字 ID。这一步只读核对身份，不读取 agent 内部栏位，也不修改 Poffices。</p>
+          <label class="field-label" for="identity-id">Poffices agent ID</label>
+          <div class="identity-row">
+            <input id="identity-id" inputmode="numeric" autocomplete="off" placeholder="例如 42" />
+            <button id="identity-check-btn" type="button">查找 agent</button>
+          </div>
+          <div id="identity-result" class="identity-result" role="status"></div>
+          <div id="authorization-step" class="authorization-step" hidden>
+            <label>
+              <input id="authorization-confirm" type="checkbox" />
+              <span>我确认自己拥有或获授权管理该 agent。当前只创建本地绑定和旁路入口。</span>
+            </label>
+            <button id="create-retrofit-btn" class="primary" type="button" disabled>在本地开始设计</button>
+          </div>
+        </section>
+
+        <section id="born-flow" class="owner-flow" aria-labelledby="born-title" hidden>
+          <button class="back-btn" data-back-to-paths type="button">← 返回选择</button>
+          <p class="eyebrow">新生</p>
+          <h1 id="born-title">新建 agent form</h1>
+          <p class="flow-lead">名称用来识别这个 agent。创建时会同时分配稳定的 `ownerAgent`。</p>
+          <label class="field-label" for="new-name">agent form 名称</label>
+          <input id="new-name" class="flow-input" type="text" placeholder="例如：市场调研输入表" autocomplete="off" />
+          <button id="create-btn" class="primary" type="button">创建并开始设计</button>
+          <div id="born-status" role="status"></div>
+        </section>
+      </section>
+
+      <section id="workspace" class="workspace" aria-label="用户页面工作区" hidden>
       <div class="stage-bar">
         <div>
-          <div class="list-label">要填写的栏</div>
+          <div class="list-label">当前用户页面</div>
           <div class="title-line">
-            <h1 id="stage-title">先从左侧选一个，或新建一张表</h1>
+            <h1 id="stage-title"></h1>
             <span id="publication-badge" class="status-badge" hidden></span>
           </div>
-          <p id="stage-status" class="stage-status">加好栏之后，点「设为首页」，下面才会变成要填的表。</p>
+          <div id="owner-context" class="owner-context"></div>
+          <p id="stage-status" class="stage-status"></p>
           <p id="save-status" class="save-status" aria-live="polite">尚未选择</p>
         </div>
         <div class="stage-actions">
-          <button id="bind-btn" type="button" disabled>发布为用户页面</button>
-          <button id="unbind-btn" class="danger" type="button" disabled>解绑首页</button>
+          <button id="bind-btn" type="button" disabled>发布本地金稿</button>
+          <button id="unbind-btn" class="danger" type="button" disabled>解除本地绑定</button>
         </div>
       </div>
       <p id="action-error" class="action-error" hidden></p>
@@ -66,7 +105,7 @@
           <div class="designer-head">
             <div>
               <div class="list-label">要填写的栏</div>
-              <p class="pane-hint">先写给别人看的名称，再选栏的类型。加完后点「设为首页」。</p>
+              <p class="pane-hint">先写给填写人看的名称，再选栏的类型。发布前只影响本地草稿。</p>
             </div>
             <label class="show-ids" title="编号给机器对栏用，填写的人看不见。改名称不会改编号。">
               <input id="show-ids" type="checkbox" /> 显示编号
@@ -90,7 +129,7 @@
         <div class="face-panel">
           <div class="face-bar">
             <div>
-              <div class="list-label">打开时看到的页面</div>
+              <div class="list-label">本地旁路入口</div>
               <span id="face-mode" class="face-mode"></span>
             </div>
             <div class="face-actions">
@@ -100,13 +139,13 @@
           </div>
           <div class="face-wrap">
             <div id="face-hint" class="hint">
-              <p>从左边选一个 agent，或新建一张表。</p>
-              <p>课堂练习那三栏只是例子，不是所有表都要长那样。</p>
+              <p>选中一个本地工作区后，这里显示草稿预览或已发布金稿。</p>
             </div>
             <iframe id="face" name="face" title="打开时看到的页面" hidden></iframe>
           </div>
         </div>
       </div>
+      </section>
     </main>
 
     <button id="records-scrim" class="records-scrim" type="button" aria-label="关闭填写记录" hidden></button>
@@ -119,7 +158,7 @@
         <button id="records-close" type="button" aria-label="关闭填写记录">关闭</button>
       </div>
       <div class="pane-label">当前账本</div>
-      <p class="pane-hint">名称给填写的人看。未设为首页时，打开 agent 还看不到。</p>
+      <p class="pane-hint">名称给填写的人看。未发布金稿时，本地旁路入口还看不到。</p>
       <div id="ledger" class="fields"><span class="muted">还没选</span></div>
       <div class="records-section-head">
         <div class="pane-label">收到的填写</div>

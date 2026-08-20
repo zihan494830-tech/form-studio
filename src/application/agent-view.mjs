@@ -17,7 +17,7 @@ export function ledgerFromFields(agent, fields, status) {
 export function decorateAgent(agent) {
   if (!agent) return null;
   const fields = agent.fields || [];
-  const publishedMatchesDraft = Boolean(agent.formId && agent.published &&
+  const publishedMatchesDraft = Boolean(agent.binding && agent.published &&
     JSON.stringify(fields) === JSON.stringify(agent.published.fields || []));
   const ledger = fields.length
     ? ledgerFromFields(agent, fields, publishedMatchesDraft ? "published" : "draft")

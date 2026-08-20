@@ -6,7 +6,7 @@
 
 读取的唯一产品意义是「选择主人时做外键校验」：确认作者点名的 agent 真实存在、展示它是谁，并为后续判断是否允许本地绑定提供上下文。它不参与决定表上有哪些栏，也不从 Variables / Block Diagram / prompts 自动制表。
 
-没有这一步，作者仍能制作本地 form，但只能手写一个未经验证的 `ownerAgent`；系统无法区分不存在、选错、Official 或权限未知的对象。当前 2A 只证明存在与最小身份，**尚未证明允许绑定**。
+没有这一步，作者只能手写一个未经验证的 `ownerAgent`；系统无法区分不存在、选错、Official 或权限未知的对象。2A 的“存在”不等于 2B 的“允许绑定”。
 
 | 信息 | 当前用途 | 不代表 |
 |---|---|---|
@@ -46,7 +46,7 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 把 Store detail 返回的 `id` 字符串化作为 `ownerAgent` 是本项目拍板项：它是当前可实时复核的真实 id，也与 Creator Studio URL 的 `agent=18` 对上。`marketanalyzer` 只作为本次人工交叉核对的 Creator Key，不写进适配结果、不冒充公开端点已经证明的字段。若 2B 的真实用户入口合同证明必须以 Key 路由，应在绑定前显式升级映射并迁移测试数据，不能静默改主键。
 
-适配器返回的是“候选主人”，不是可编辑 agent：没有 `fields`、`published`、`inputBag` 或绑定方法。这个隔离采用防腐层思路，让 Poffices 字段名变化不进入 `form-ledger/v1` 或提交信封；参考 [Microsoft Anti-Corruption Layer](https://learn.microsoft.com/azure/architecture/patterns/anti-corruption-layer)。当前作者面真实身份卡片只是 2A 证据，下一整理项是把它移入改装选择流程，避免与正在编辑的 mock 产生假绑定。
+适配器返回的是“候选主人”，不是可编辑 agent：没有 `fields`、`published`、`inputBag` 或绑定方法。这个隔离采用防腐层思路，让 Poffices 字段名变化不进入 `form-ledger/v1` 或提交信封；参考 [Microsoft Anti-Corruption Layer](https://learn.microsoft.com/azure/architecture/patterns/anti-corruption-layer)。身份卡片已移入改装选择流程，Official 候选只显示不可绑定，不进入工作区。
 
 ## 失败合同
 
@@ -66,26 +66,30 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 ## 2B 本地优先绑定
 
-2B 首先建立 Form Studio 自己的本地关系，不把 Poffices 当可写仓储。拟新增的 `owner-agent-binding/v1` 是当前拍板项，实施前要以可机读 schema 和合同测试冻结：
+2B 已建立 Form Studio 自己的本地关系，不把 Poffices 当可写仓储。`contracts/owner-agent-binding.v1.schema.json` 和合同测试冻结了以下形状：
 
 ```json
 {
   "version": "owner-agent-binding/v1",
   "ownerAgent": "42",
   "sourceSystem": "poffices",
-  "formId": "form-market-input",
+  "formId": "42",
   "publishedFormVersion": 1,
   "entryMode": "form-studio-sidecar",
-  "status": "published"
+  "status": "published",
+  "authorization": {
+    "basis": "author-confirmed",
+    "confirmedAt": "2026-08-20T09:00:00.000Z"
+  }
 }
 ```
 
 边界：
 
-1. 作者必须先明确选择一个自己拥有或获授权的 sandbox agent；Official 或权限未知对象 fail closed，不建立绑定。
+1. 作者必须先明确选择一个自己拥有或获授权的 sandbox agent；Official fail closed。当前公开详情不提供所有权字段，所以非官方对象还需作者显式确认权限，记为 `author-confirmed`。这是本地单用户阶段的权宜拍板，平台日后提供可验证权限后必须替换。
 2. 选择通过后，Form Studio 本地创建设计工作区；字段、草稿、金稿、`formVersion`、提交信封和 `inputBag` 全由本仓管理。
 3. 本地旁路入口只渲染 `published`，没有输入框逃生门；解绑只修改本地映射并保留历史袋子。
-4. 2A 的“存在”不等于 2B 的“允许绑定”。在没有权限证据前，界面只能显示候选身份，不能出现会产生绑定的主操作。
+4. 使用面和提交端点都会复核 `ownerAgent`、`formId` 与 `publishedFormVersion`；任一不一致即拒绝打开或入袋。授权规则采用默认拒绝，参考 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)。
 
 ## 条件式平台入口
 

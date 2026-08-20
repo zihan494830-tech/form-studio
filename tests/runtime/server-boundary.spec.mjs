@@ -10,7 +10,8 @@ function seed() {
     id: "exercise-1",
     name: "练习一",
     origin: "retrofit",
-    formId: "exercise-1",
+    sourceSystem: "local-fixture",
+    authorization: { basis: "local-fixture", confirmedAt: null },
     formVersion: 1,
     fields: [{ id: "q1", label: "题目", control: "text", required: true }],
     published: {
@@ -18,10 +19,16 @@ function seed() {
       fields: [{ id: "q1", label: "题目", control: "text", required: true }],
       submit: { label: "提交", to: "agent-input" },
     },
+    binding: {
+      version: "owner-agent-binding/v1", ownerAgent: "exercise-1", sourceSystem: "local-fixture",
+      formId: "exercise-1", publishedFormVersion: 1, entryMode: "form-studio-sidecar",
+      status: "published", authorization: { basis: "local-fixture", confirmedAt: null },
+    },
     inputBag: [],
   }, {
-    id: "exercise-2", name: "练习二", origin: "retrofit", formId: null,
-    formVersion: 1, fields: [], published: null, inputBag: [],
+    id: "exercise-2", name: "练习二", origin: "retrofit", sourceSystem: "local-fixture",
+    authorization: { basis: "local-fixture", confirmedAt: null }, formVersion: 1,
+    fields: [], published: null, binding: null, inputBag: [],
   }];
 }
 

@@ -4,6 +4,7 @@ import { createAgentAuthoring } from "../application/author-agent.mjs";
 import { decorateAgent } from "../application/agent-view.mjs";
 import { readOwnerIdentity } from "../application/read-owner-identity.mjs";
 import { submitToAgent } from "../application/submit-to-agent.mjs";
+import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs";
 import { inMemoryAgentRepository } from "../infrastructure/in-memory-agent-repository.mjs";
 import { renderFormHtml } from "../presentation/form/render-html.mjs";
 import { InvalidJsonError, readJsonBody, send, sendJson, serveFile } from "./http-utils.mjs";
@@ -23,8 +24,9 @@ export function createFormStudioServer({
   repository = inMemoryAgentRepository,
   identityDirectory = null,
   testRouteHandler = null,
+  now = () => new Date().toISOString(),
 }) {
-  const authoring = createAgentAuthoring(repository);
+  const authoring = createAgentAuthoring(repository, { now });
   return http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://127.0.0.1:${port}`);
     const { pathname } = url;
@@ -57,7 +59,7 @@ export function createFormStudioServer({
         const id = decodeURIComponent(pathname.slice(3));
         const agent = authoring.getAgent(id);
         if (!agent) return send(res, 404, "没有这个 agent", { "Content-Type": "text/plain; charset=utf-8" });
-        if (!agent.formId || !agent.published?.fields?.length) {
+        if (!activePublishedBinding(agent)) {
           if (agent.origin === "born-form") {
             return send(res, 404, "该 agent form 尚未发布或已下架", { "Content-Type": "text/plain; charset=utf-8" });
           }
@@ -73,6 +75,15 @@ export function createFormStudioServer({
       if (method === "POST" && pathname === "/api/agents") {
         const agent = authoring.createAgent((await readJsonBody(req)).name);
         return sendJson(res, 201, decorateAgent(agent));
+      }
+      if (method === "POST" && pathname === "/api/retrofits") {
+        const payload = await readJsonBody(req);
+        const identityResult = await readOwnerIdentity(identityDirectory, payload.ownerAgent);
+        if (identityResult.status !== 200) return sendJson(res, identityResult.status, identityResult);
+        const result = authoring.createRetrofit(identityResult.identity, payload.authorizationConfirmed);
+        return result.error
+          ? sendJson(res, result.status, { error: result.error })
+          : sendJson(res, 201, decorateAgent(result.agent));
       }
       if (method === "GET" && pathname === "/api/agents") {
         return sendJson(res, 200, authoring.listAgents().map(decorateAgent));
@@ -101,14 +112,14 @@ export function createFormStudioServer({
           return agent ? sendJson(res, 200, agent) : sendJson(res, 404, { error: "没有这个 agent" });
         }
       }
-      if (method === "POST" && pathname.endsWith("/unbind")) {
-        const result = authoring.unbind(agentIdFrom(pathname, "/unbind"));
+      if (method === "POST" && pathname.endsWith("/unpublish")) {
+        const result = authoring.unpublish(agentIdFrom(pathname, "/unpublish"));
         return result.error
           ? sendJson(res, result.status, { error: result.error })
           : sendJson(res, 200, decorateAgent(result.agent));
       }
-      if (method === "POST" && pathname.endsWith("/bind")) {
-        const result = authoring.bind(agentIdFrom(pathname, "/bind"));
+      if (method === "POST" && pathname.endsWith("/publish")) {
+        const result = authoring.publish(agentIdFrom(pathname, "/publish"));
         return result.error
           ? sendJson(res, result.status, { error: result.error })
           : sendJson(res, 200, decorateAgent(result.agent));
