@@ -5,6 +5,7 @@
 import { makeEnvelope } from "../domain/submission/envelope.mjs";
 import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs";
 import { authorizeAgentAction } from "../domain/access/agent-access.mjs";
+import { deliveryForEnvelope } from "../domain/agent/agent-input-config.mjs";
 
 function readValue(field, values) {
   const raw = values[field.id];
@@ -32,6 +33,7 @@ export function submitToAgent(repository, agentId, payload, { actor = null } = {
   const fields = agent.published.fields;
   const values = {};
   const missing = [];
+  const invalid = [];
 
   for (const field of fields) {
     const value = readValue(field, incoming);
@@ -40,11 +42,16 @@ export function submitToAgent(repository, agentId, payload, { actor = null } = {
         field.control === "checkbox" ? value !== "true" : value.trim() === "";
       if (empty) missing.push(field.id);
     }
+    if (value !== "" && field.control === "number" && !Number.isInteger(Number(value))) invalid.push(field.id);
+    if (value !== "" && field.control === "select" && !field.options.includes(value)) invalid.push(field.id);
     values[field.id] = value;
   }
 
   if (missing.length) {
     return { status: 400, error: "缺必填栏不得入袋", missing };
+  }
+  if (invalid.length) {
+    return { status: 400, error: "栏位格式不正确", invalid };
   }
 
   const envelope = makeEnvelope({
@@ -54,9 +61,27 @@ export function submitToAgent(repository, agentId, payload, { actor = null } = {
     values,
   });
 
-  const updated = repository.appendEnvelope(agentId, envelope, {
-    actor: { id: actor.id, role: actor.role, verifiedBy: actor.verifiedBy },
+  let delivery = null;
+  try {
+    delivery = deliveryForEnvelope(agent, envelope);
+  } catch (error) {
+    return { status: 409, error: `agent 输入映射不可用：${error.message}` };
+  }
+  const options = {
+    actor: { id: actor.id, displayName: actor.name || actor.id, role: actor.role, verifiedBy: actor.verifiedBy },
     scope: { tenantId: actor.scope.tenantId, classId: actor.scope.classId },
-  });
-  return { status: 200, agent: updated, envelope };
+    delivery,
+  };
+  if (repository.appendSubmission) {
+    const appended = repository.appendSubmission(agentId, envelope, options);
+    return {
+      status: 200,
+      agent: appended.agent,
+      envelope,
+      submissionId: appended.submission.id,
+      delivery: appended.delivery ? { status: appended.delivery.status, eventId: appended.delivery.id } : { status: "not_configured" },
+    };
+  }
+  const updated = repository.appendEnvelope(agentId, envelope, options);
+  return { status: 200, agent: updated, envelope, delivery: { status: "not_configured" } };
 }

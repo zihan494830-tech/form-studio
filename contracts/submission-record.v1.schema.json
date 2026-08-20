@@ -19,6 +19,7 @@
           "required": ["id", "role", "verifiedBy"],
           "properties": {
             "id": { "type": "string", "minLength": 1 },
+            "displayName": { "type": "string", "minLength": 1 },
             "role": { "enum": ["student", "teacher", "author"] },
             "verifiedBy": { "type": "string", "minLength": 1 }
           }

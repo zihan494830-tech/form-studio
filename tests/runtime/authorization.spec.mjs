@@ -35,4 +35,14 @@ test.describe("3A-B 服务端身份与范围", () => {
     expect((await crossClass.json()).error).toContain("其他班级或租户");
     expect((await agentOf(request)).inputBag).toHaveLength(0);
   });
+
+  test("绕过浏览器也不能提交非法数字或未声明的 select 选项", async ({ request }) => {
+    await resetStore(request);
+    const response = await request.post("/submit/exercise-1", {
+      data: { values: { ...validValues, budget_wan: "1.5", target_market: "月球" } },
+    });
+    expect(response.status()).toBe(400);
+    expect(await response.json()).toMatchObject({ invalid: ["target_market", "budget_wan"] });
+    expect((await agentOf(request)).inputBag).toHaveLength(0);
+  });
 });

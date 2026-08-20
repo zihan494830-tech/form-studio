@@ -26,6 +26,7 @@ export function createFormStudioServer({
   repository = inMemoryAgentRepository,
   identityDirectory = null,
   actorResolver = null,
+  deliveryRelay = null,
   testRouteHandler = null,
   now = () => new Date().toISOString(),
 }) {
@@ -132,6 +133,9 @@ export function createFormStudioServer({
         const actor = requireRole(req, res, "student");
         if (!actor) return;
         const result = submitToAgent(repository, id, await readJsonBody(req), { actor });
+        if (result.status === 200 && deliveryRelay) {
+          queueMicrotask(() => deliveryRelay.runOnce().catch(() => {}));
+        }
         return sendJson(res, result.status, result);
       }
       if (method === "GET" && pathname === "/api/teacher/agents") {
