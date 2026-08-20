@@ -2,9 +2,11 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createFormStudioServer } from "./src/server/create-server.mjs";
+import { migrateAgentAccess } from "./src/application/migrate-agent-access.mjs";
 import { inMemoryAgentRepository } from "./src/infrastructure/in-memory-agent-repository.mjs";
 import { createInMemorySubmissionRepository } from "./src/infrastructure/in-memory-submission-repository.mjs";
 import { createPofficesAgentDirectory } from "./src/infrastructure/poffices-agent-directory.mjs";
+import { createLocalSessionActorResolver } from "./src/infrastructure/local-session-actor-resolver.mjs";
 import { createSubmissionAwareAgentRepository } from "./src/infrastructure/submission-aware-agent-repository.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -17,6 +19,9 @@ const testRouteHandler = testMode
 const identityDirectory = testMode
   ? (await import("./tests/support/test-owner-directory.mjs")).createTestOwnerDirectory()
   : createPofficesAgentDirectory();
+const actorResolver = testMode
+  ? (await import("./tests/support/test-actor-resolver.mjs")).createTestActorResolver()
+  : createLocalSessionActorResolver({ configPath: join(ROOT, "data", "local-classroom.json") });
 const rawAgentRepository = testMode
   ? inMemoryAgentRepository
   : (await import("./src/infrastructure/sqlite-agent-repository.mjs")).createSqliteAgentRepository({
@@ -31,11 +36,13 @@ const repository = createSubmissionAwareAgentRepository({
   agents: rawAgentRepository,
   submissions: submissionRepository,
 });
+migrateAgentAccess(repository, actorResolver.defaultAgentAccess());
 const server = createFormStudioServer({
   root: ROOT,
   port: PORT,
   repository,
   identityDirectory,
+  actorResolver,
   testRouteHandler,
 });
 server.on("close", () => repository.close?.());

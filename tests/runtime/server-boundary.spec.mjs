@@ -5,6 +5,14 @@ import { submitToAgent } from "../../src/application/submit-to-agent.mjs";
 import { createFormStudioServer } from "../../src/server/create-server.mjs";
 import { ROOT } from "../support/project-fixture.mjs";
 
+const studentActor = {
+  id: "student-mock-1",
+  name: "测试学生",
+  role: "student",
+  verifiedBy: "server-boundary-test",
+  scope: { tenantId: "test-tenant", classId: "class-1" },
+};
+
 function seed() {
   return [{
     id: "exercise-1",
@@ -12,6 +20,7 @@ function seed() {
     origin: "retrofit",
     sourceSystem: "local-fixture",
     authorization: { basis: "local-fixture", confirmedAt: null },
+    access: { version: "agent-access/v1", tenantId: "test-tenant", classId: "class-1", authorIds: ["author-1"], teacherIds: ["teacher-1"] },
     formVersion: 1,
     fields: [{ id: "q1", label: "题目", control: "text", required: true }],
     published: {
@@ -28,6 +37,7 @@ function seed() {
   }, {
     id: "exercise-2", name: "客户回访记录", origin: "retrofit", sourceSystem: "local-fixture",
     authorization: { basis: "local-fixture", confirmedAt: null }, formVersion: 1,
+    access: { version: "agent-access/v1", tenantId: "test-tenant", classId: "class-1", authorIds: ["author-1"], teacherIds: ["teacher-1"] },
     fields: [], published: null, binding: null, inputBag: [],
   }];
 }
@@ -49,7 +59,7 @@ test("绕过浏览器时，404/409/缺必填 400 仍由服务端守住", () => {
   const repository = createInMemoryAgentRepository(seed());
   expect(submitToAgent(repository, "missing", { values: {} }).status).toBe(404);
   expect(submitToAgent(repository, "exercise-2", { values: {} }).status).toBe(409);
-  const missing = submitToAgent(repository, "exercise-1", { values: {} });
+  const missing = submitToAgent(repository, "exercise-1", { values: {} }, { actor: studentActor });
   expect(missing).toMatchObject({ status: 400, missing: ["q1"] });
   expect(repository.get("exercise-1").inputBag).toHaveLength(0);
 });

@@ -47,13 +47,13 @@ export function createSubmissionAwareAgentRepository({ agents, submissions, now 
     save(agent) {
       return hydrate(agents.save(stripBag(agent)));
     },
-    appendEnvelope(agentId, envelope) {
+    appendEnvelope(agentId, envelope, { actor = null, scope = null } = {}) {
       if (!agents.get(agentId)) return null;
       submissions.append({
         ownerAgent: agentId,
         receivedAt: envelope.submittedAt,
-        actor: null,
-        scope: null,
+        actor,
+        scope,
         envelope,
       });
       return this.get(agentId);

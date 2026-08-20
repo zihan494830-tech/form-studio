@@ -19,15 +19,15 @@ export function createAgentAuthoring(repository, { now = () => new Date().toISOS
   return {
     listAgents: () => repository.list(),
     getAgent: (id) => repository.get(id),
-    createAgent(name) {
-      const agent = newBornFormAgent({ id: repository.nextBornFormId(), name, createdAt: now() });
+    createAgent(name, { access = null } = {}) {
+      const agent = newBornFormAgent({ id: repository.nextBornFormId(), name, createdAt: now(), access });
       return repository.save(agent);
     },
-    createRetrofit(identity) {
+    createRetrofit(identity, { access = null } = {}) {
       if (repository.get(String(identity?.ownerAgent || ""))) {
         return { error: "该 ownerAgent 已有本地设计工作区", status: 409 };
       }
-      const result = newRetrofitFormAgent({ identity, linkedAt: now() });
+      const result = newRetrofitFormAgent({ identity, linkedAt: now(), access });
       return result.error ? result : { agent: repository.save(result.agent) };
     },
     setFields(id, fields) {

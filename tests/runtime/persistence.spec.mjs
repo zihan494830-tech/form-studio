@@ -3,10 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { createFormStudioServer } from "../../src/server/create-server.mjs";
+import { migrateAgentAccess } from "../../src/application/migrate-agent-access.mjs";
 import { createSqliteAgentRepository } from "../../src/infrastructure/sqlite-agent-repository.mjs";
 import { createSqliteSubmissionRepository } from "../../src/infrastructure/sqlite-submission-repository.mjs";
 import { createSubmissionAwareAgentRepository } from "../../src/infrastructure/submission-aware-agent-repository.mjs";
 import { ROOT } from "../support/project-fixture.mjs";
+import { createTestActorResolver } from "../support/test-actor-resolver.mjs";
 
 function persistentRepository(databasePath) {
   return createSubmissionAwareAgentRepository({
@@ -16,7 +18,9 @@ function persistentRepository(databasePath) {
 }
 
 async function listen(repository, port = 0) {
-  const server = createFormStudioServer({ root: ROOT, port, repository });
+  const actorResolver = createTestActorResolver();
+  migrateAgentAccess(repository, actorResolver.defaultAgentAccess());
+  const server = createFormStudioServer({ root: ROOT, port, repository, actorResolver });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, "127.0.0.1", resolve);

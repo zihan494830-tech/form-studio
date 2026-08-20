@@ -1,0 +1,11 @@
+{
+  "tenantId": "form-studio-demo",
+  "classId": "market-101",
+  "className": "市场分析课堂",
+  "profiles": [
+    { "id": "author-1", "name": "课程作者", "role": "author" },
+    { "id": "teacher-1", "name": "授课老师", "role": "teacher" },
+    { "id": "student-1", "name": "学生一", "role": "student" },
+    { "id": "student-2", "name": "学生二", "role": "student" }
+  ]
+}

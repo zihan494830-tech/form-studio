@@ -5,7 +5,7 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function newBornFormAgent({ id, name, createdAt = null }) {
+export function newBornFormAgent({ id, name, createdAt = null, access = null }) {
   return {
     id,
     name: String(name || "").trim() || "未命名表",
@@ -13,6 +13,7 @@ export function newBornFormAgent({ id, name, createdAt = null }) {
     sourceSystem: "form-studio",
     ownerIdentity: null,
     authorization: { basis: "born-form", confirmedAt: createdAt },
+    access: clone(access),
     formVersion: 1,
     fields: [],
     published: null,
@@ -21,7 +22,7 @@ export function newBornFormAgent({ id, name, createdAt = null }) {
   };
 }
 
-export function newRetrofitFormAgent({ identity, linkedAt = null }) {
+export function newRetrofitFormAgent({ identity, linkedAt = null, access = null }) {
   if (!identity?.ownerAgent || identity.sourceSystem !== "poffices" || identity.readOnly !== true) {
     return { error: "真实身份合同无效", status: 400 };
   }
@@ -33,6 +34,7 @@ export function newRetrofitFormAgent({ identity, linkedAt = null }) {
       sourceSystem: "poffices",
       ownerIdentity: clone(identity),
       authorization: { basis: "local-shadow-only", confirmedAt: linkedAt },
+      access: clone(access),
       formVersion: 1,
       fields: [],
       published: null,

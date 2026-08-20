@@ -6,6 +6,7 @@
     "sourceSystem": "local-fixture",
     "ownerIdentity": null,
     "authorization": { "basis": "local-fixture", "confirmedAt": null },
+    "access": { "version": "agent-access/v1", "tenantId": "test-tenant", "classId": "class-1", "authorIds": ["author-1"], "teacherIds": ["teacher-1"] },
     "formVersion": 1,
     "fields": [
       { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
@@ -44,6 +45,7 @@
     "sourceSystem": "local-fixture",
     "ownerIdentity": null,
     "authorization": { "basis": "local-fixture", "confirmedAt": null },
+    "access": { "version": "agent-access/v1", "tenantId": "test-tenant", "classId": "class-1", "authorIds": ["author-1"], "teacherIds": ["teacher-1"] },
     "formVersion": 1,
     "fields": [
       { "id": "customer_name", "label": "客户名称", "control": "text", "required": true },

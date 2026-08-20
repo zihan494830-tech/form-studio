@@ -4,6 +4,7 @@
  */
 import { makeEnvelope } from "../domain/submission/envelope.mjs";
 import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs";
+import { authorizeAgentAction } from "../domain/access/agent-access.mjs";
 
 function readValue(field, values) {
   const raw = values[field.id];
@@ -15,7 +16,7 @@ function readValue(field, values) {
   return String(raw);
 }
 
-export function submitToAgent(repository, agentId, payload) {
+export function submitToAgent(repository, agentId, payload, { actor = null } = {}) {
   const agent = repository.get(agentId);
   if (!agent) {
     return { status: 404, error: "没有这个 agent" };
@@ -23,6 +24,8 @@ export function submitToAgent(repository, agentId, payload) {
   if (!activePublishedBinding(agent)) {
     return { status: 409, error: "该 agent 没有首页表" };
   }
+  const access = authorizeAgentAction(agent, actor, "submit");
+  if (!access.allowed) return access;
 
   const incoming =
     payload?.values && typeof payload.values === "object" ? payload.values : {};
@@ -47,10 +50,13 @@ export function submitToAgent(repository, agentId, payload) {
   const envelope = makeEnvelope({
     ownerAgent: agentId,
     formVersion: agent.published.formVersion || payload.formVersion || 1,
-    submitterId: payload.submitterId,
+    submitterId: actor.id,
     values,
   });
 
-  const updated = repository.appendEnvelope(agentId, envelope);
+  const updated = repository.appendEnvelope(agentId, envelope, {
+    actor: { id: actor.id, role: actor.role, verifiedBy: actor.verifiedBy },
+    scope: { tenantId: actor.scope.tenantId, classId: actor.scope.classId },
+  });
   return { status: 200, agent: updated, envelope };
 }
