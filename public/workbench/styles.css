@@ -79,6 +79,7 @@ header {
   letter-spacing: 0.04em;
 }
 .header-note { margin: 0 0 0 auto; color: var(--muted); font-size: 12px; }
+.actor-switch { flex-shrink: 0; color: var(--accent); font-size: 12px; text-decoration: none; }
 #records-btn, #records-close, .face-bar button, .stage-actions button, .add-row button, .dialog-actions button,
 .primary, .back-btn, .identity-row button {
   border: 1px solid var(--line-strong);

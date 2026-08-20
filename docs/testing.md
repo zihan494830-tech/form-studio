@@ -61,12 +61,21 @@ npm run check
 
 临时数据库在测试结束后删除；生产 `data/form-studio.sqlite` 不参与 reset，也不是测试夹具。该测试证明单机跨重启持久性，不证明多实例并发、用户鉴权、老师权限或 Poffices agent 已收到输入。
 
-## 3A 待建立证据
+## 3A 已建立证据
 
-3A 不以“老师页面能打开”作为单独完成证据，必须按三刀建立最低层测试：
+3A 不以“老师页面能打开”作为单独完成证据，现已按三刀建立最低层测试：
 
 1. **3A-A：** 同一提交只形成一条 submission record；原信封不变；既有 `inputBag` 迁移可重试且不丢、不重复；能按 `ownerAgent`、actor、scope 和时间查询。
 2. **3A-B：** body 中伪造 `submitterId`、角色或租户不能改变服务端 actor context；未登录、跨班级、跨租户和无老师权限默认拒绝；每个读写请求都检查具体资源归属。
 3. **3A-C：** 获授权老师能看列表和单条 `values[id]`，学生或其他老师不能越权；空态、错误态和窄屏仍可理解。
 
-自动测试之后还需要一条明确标注为试用证据的故事：一个学生身份提交，一名获授权老师看到同一条记录。没有真实身份来源时只能报告“3A 机制就绪”，不能报告“学生 / 老师 MVP 已完成”。权限测试方向参考 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 和 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。
+2026-08-20 完整 `npm run check` 为 61/61。另以普通生产本地会话完成合成浏览器故事：选择“学生一”打开 `/a/exercise-1`，提交“星海科技”；再选择“授课老师”进入 `/classroom`，看到同一 `submission-1`、student-1 和五个 `values[id]`。桌面三栏与 390×844 窄屏重排均人工检查。该证据只允许报告“3A 本地机制就绪”，不能报告“学生 / 老师联网 MVP”或“真实 agent 已收到输入”。权限测试方向参考 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 和 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。
+
+## 3B 待建立证据
+
+3B 必须按 `3B-A → 3B-B → 3B-C → 3B-P（条件项）` 建证：
+
+1. 输入 profile 与 mapping 都有版本，且只接受已声明的稳定字段 ID；缺字段、未知字段、formVersion 或 profileVersion 漂移 fail closed。
+2. submission record 与 outbox event 同事务写入；进程在任一边界中断后可恢复，重复 relay 不造成目标重复消费。
+3. 本地 `AgentInputPort` 收到的载荷能追溯到同一 submission id、原提交信封和 mapping version；机制证据不得标成 Poffices 证据。
+4. 只有 Poffices 正式 endpoint、认证、请求 / 返回 schema 与获授权 sandbox 成功 trace 齐全，才增加并通过 3B-P 外部适配测试。

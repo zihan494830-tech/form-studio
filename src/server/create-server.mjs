@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createAgentAuthoring } from "../application/author-agent.mjs";
 import { decorateAgent } from "../application/agent-view.mjs";
 import { readOwnerIdentity } from "../application/read-owner-identity.mjs";
+import { createTeacherSubmissionReader } from "../application/read-teacher-submissions.mjs";
 import { submitToAgent } from "../application/submit-to-agent.mjs";
 import { authorizeAgentAction, createAgentAccess, verifiedActor } from "../domain/access/agent-access.mjs";
 import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs";
@@ -29,6 +30,7 @@ export function createFormStudioServer({
   now = () => new Date().toISOString(),
 }) {
   const authoring = createAgentAuthoring(repository, { now });
+  const teacherSubmissions = createTeacherSubmissionReader(repository);
   function requireRole(req, res, expectedRole) {
     const actor = actorResolver?.resolve(req, { expectedRole }) || null;
     if (!verifiedActor(actor)) {
@@ -82,10 +84,20 @@ export function createFormStudioServer({
       if (method === "GET" && pathname === "/") {
         return serveFile(res, root, join("public", "workbench", "index.html"));
       }
+      if (method === "GET" && pathname === "/session") {
+        return serveFile(res, root, join("public", "session", "index.html"));
+      }
+      if (method === "GET" && pathname === "/classroom") {
+        return serveFile(res, root, join("public", "classroom", "index.html"));
+      }
       const publicRoutes = new Map([
         ["/workbench/main.js", join("public", "workbench", "main.js")],
         ["/workbench/styles.css", join("public", "workbench", "styles.css")],
         ["/runtime/face-submit.js", join("public", "runtime", "face-submit.js")],
+        ["/session/main.js", join("public", "session", "main.js")],
+        ["/session/styles.css", join("public", "session", "styles.css")],
+        ["/classroom/main.js", join("public", "classroom", "main.js")],
+        ["/classroom/styles.css", join("public", "classroom", "styles.css")],
       ]);
       if (method === "GET" && publicRoutes.has(pathname)) {
         return serveFile(res, root, publicRoutes.get(pathname));
@@ -120,6 +132,25 @@ export function createFormStudioServer({
         const actor = requireRole(req, res, "student");
         if (!actor) return;
         const result = submitToAgent(repository, id, await readJsonBody(req), { actor });
+        return sendJson(res, result.status, result);
+      }
+      if (method === "GET" && pathname === "/api/teacher/agents") {
+        const actor = requireRole(req, res, "teacher");
+        if (!actor) return;
+        return sendJson(res, 200, { agents: teacherSubmissions.listAgents(actor) });
+      }
+      if (method === "GET" && pathname.startsWith("/api/teacher/agents/") && pathname.endsWith("/submissions")) {
+        const actor = requireRole(req, res, "teacher");
+        if (!actor) return;
+        const id = decodeURIComponent(pathname.slice("/api/teacher/agents/".length, -"/submissions".length));
+        const result = teacherSubmissions.list(id, actor, { actorId: url.searchParams.get("actorId") || "" });
+        return sendJson(res, result.status, result);
+      }
+      if (method === "GET" && pathname.startsWith("/api/teacher/submissions/")) {
+        const actor = requireRole(req, res, "teacher");
+        if (!actor) return;
+        const id = decodeURIComponent(pathname.slice("/api/teacher/submissions/".length));
+        const result = teacherSubmissions.get(id, actor);
         return sendJson(res, result.status, result);
       }
       if (method === "POST" && pathname === "/api/agents") {

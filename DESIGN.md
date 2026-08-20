@@ -1,10 +1,10 @@
 # Form Studio 项目设计
 
-> **版本：** v0.14 · 2026-08-20
+> **版本：** v0.15 · 2026-08-20
 > **性质：** 产品方向真相源。仓内不再保留内容重复副本。  
 > **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、只读 Poffices Creator Studio（v1.26.1）。
 > **不是：** Poffices 生产改动说明或外部写权授权令。
-> **相对 v0.13：** 明确当前只是“本地可演示 Alpha”，不是实际应用 MVP；3A 拆成提交记录、身份与权限、老师最小视图三刀。新增当前问题账本：新生 / `ownerAgent` 文案难懂、`submitterId` 仍可由客户端伪造、没有老师查询边界、没有真实 agent 输入合同、单机数据与异机备份尚未达到试点要求。
+> **相对 v0.14：** 3A-A / B / C 已落地为独立提交记录、服务端 actor / scope 和老师最小视图；新生文案问题已修复。当前下一件前移到 3B 的输入合同、映射、outbox 与 `AgentInputPort`，并新增“本地演示身份不是真实登录、历史字段展示投影、真实 agent 输入证据仍缺失”等问题。
 
 ---
 
@@ -37,7 +37,7 @@ form-studio/
   scripts/                  ← 结构门禁
 ```
 
-第 0–1b 和第 2 段的当前本地旁路范围已落地：作者能按改装 / 新生进入设计，只读核对真实主人，为真实身份建立隔离本地页面；身份、草稿、已发布版本、绑定和 `inputBag` 均可跨服务重启恢复。**当前下一切片是 3A-A「提交记录」**，再依次进入身份权限和老师最小视图。手写基准示例留在 `tests/fixtures/` 做回归，不当万用模板。
+第 0–1b、第 2 段本地旁路和第 3 段的 3A 已落地：作者能按改装 / 新生设计页面；学生提交成为独立记录；本地演示 actor / scope 默认拒绝越权；获授权老师能查看本班提交。**当前下一切片是 3B-A「agent 输入合同与映射」**，随后完成可靠投递和课堂端到端故事。手写基准示例留在 `tests/fixtures/` 做回归，不当万用模板。
 
 ---
 
@@ -394,7 +394,7 @@ flowchart LR
 
 ### 9.1 阶段方案（当前第 3 段）
 
-顺序固定：`1b → 2 → 3`。第 1b 和第 2 段当前本地旁路范围已经完成，**现在执行第 3 段的 3A**；不跳过提交记录与权限边界直接投递真实 agent，也不先做完整 Frankie 课堂 UI。后续若再把 1b、2A、2B 或 2C 写成下一件，视为版本漂移。
+顺序固定：`1b → 2 → 3`。第 1b、第 2 段当前本地旁路和 3A 已经完成，**现在执行第 3 段的 3B**；先冻结输入合同与映射，再做可靠投递，不先扩成完整 Frankie 课堂 UI。后续若再把 1b、2A、2B、2C 或 3A 写成下一件，视为版本漂移。
 
 #### 第 1b 段：设计面 + 新生（已完成，保留验收基线）
 
@@ -457,33 +457,43 @@ flowchart LR
 
 **2C 落地证据（2026-08-20）：** 生产服务器通过 `src/infrastructure/sqlite-agent-repository.mjs` 使用本地 SQLite；`persistence.spec.mjs` 证明新生后编辑、发布、再改草稿、提交、关闭并重启服务，仍恢复同一 `ownerAgent`、连续新生 id、草稿 / 已发布版本隔离、旁路 URL、绑定和历史 `inputBag`；下架后再次重启仍不可打开且信封不丢。测试模式继续用内存仓储，reset 不进入生产路由。
 
-**当前下一件：** 3A-A 提交记录。不是先做登录 UI、Poffices 写回、真实 agent 投递或完整 Frankie 课堂 UI。
+**3A 落地证据（2026-08-20）：** `submission-record/v1` 与独立 submission repository 已冻结，历史 `inputBag` 可幂等迁移；请求体伪造 `submitterId` 不再生效，提交只采用服务端 actor context。`agent-access/v1` 以 tenant / class / author / teacher 明确范围并默认拒绝。生产本地演示会话使用 HttpOnly、SameSite=Strict cookie；老师端只列获授权的已发布页面，并按 `ownerAgent`、actor、scope、`values[id]` 查看列表和详情。自动检查 61/61 通过；另用正常本地会话完成一条合成故事：学生一提交“星海科技”，授课老师在同班视图看到同一记录。它证明 3A 本地机制，不证明 Poffices 登录、网络试点或真实 agent 消费。
 
-**当前阶段判定：** 作者设计、发布、入口校验、提交信封和跨重启恢复已经成立，属于本地可演示 Alpha；真实填写人、班级 / 租户、老师权限和 agent 消费均未成立，因此不得称为可供学生 / 老师使用的 MVP。自动测试证明机制，不替代真实使用证据。
+**当前下一件：** 3B-A agent 输入合同与映射。不是直接猜 Poffices endpoint、复用浏览器 cookie、把 Block Diagram 当输入 schema，或先做完整 Frankie 统计 UI。
+
+**当前阶段判定：** 作者设计、发布、入口校验、独立提交记录、本地 actor / scope 和老师最小消费界面已经成立，仍属于本地可演示 Alpha。真实身份提供方、跨机器运维和 agent 输入投递尚未成立，因此不得称为学生 / 老师可用的联网 MVP，也不得说“真实 agent 已交互”。
 
 **当前问题账本（按阻断顺序）：**
 
-| 优先级 | 问题 | 影响 | 归属 / 退出条件 |
-|---|---|---|---|
-| P1 | “新生”“稳定 `ownerAgent`”把内部合同当作者卖点 | 作者不清楚创建的是本地 agent form，误以为会连接或生成 Poffices agent | 作者体验：主文案改成实际动作；本地 ID 退到详情；明确新生不可换主人，只可显式复制设计 |
-| P1 | 提交仍嵌在 agent JSON 的 `inputBag` | 只能按整包读取，无法可靠按学生、班级、时间和字段查询 | 3A-A：独立 submission record / repository；保留原提交信封，不丢、不重复迁移历史记录 |
-| P1 | `submitterId` 来自请求或回退为 mock | 不能证明“谁交的”，客户端可冒充别人 | 3A-B：提交用例只接受服务端验证的 actor context；身份来源未定前只做明确测试适配器，不冒充真实登录 |
-| P1 | 没有班级 / 租户和老师授权 | 一旦联网，知道 id 就可能跨范围读取或修改 | 3A-B：默认拒绝，每次请求校验资源归属；老师只能查询获授权范围 |
-| P1 | 没有老师查询端口和最小视图 | 数据虽落盘，仍没有应用消费者 | 3A-C：老师按 `ownerAgent`、actor / scope 和 `values[id]` 查看提交；至少一条真实试用故事通过 |
-| P1 | 没有 `agent-input-profile` / mapping / transport | 表单提交没有进入真实 agent | 3B：得到正式输入合同与 sandbox 成功 trace 后才接 `AgentInputPort` |
-| P2 | `node:sqlite` 当前运行时仍提示实验性、无备份 / 恢复演练、无多实例方案 | 本地 Alpha 可用，网络试点运维风险未收口 | 试点前完成备份恢复演练与异机 Git 远端；实测需要多实例时再换成熟驱动或外部数据库 |
+| 状态 | 优先级 | 问题 | 影响 | 归属 / 退出条件 |
+|---|---|---|---|---|
+| 已解决 | P1 | “新生”“稳定 `ownerAgent`”把内部合同当作者卖点 | 作者误以为会连接或生成 Poffices agent | 主文案已改成实际动作；本地 ID 退到详情；新生不可换主人，只可复制字段设计 |
+| 已解决 | P1 | 提交嵌在 agent JSON 的 `inputBag` | 无法可靠按学生、班级、时间查询 | 3A-A 已以独立 submission record / repository 接管；逻辑 `inputBag` 仅作兼容投影 |
+| 已解决 | P1 | 客户端可伪造 `submitterId` | 不能证明谁提交 | 3A-B 已改为服务端验证 actor；body 身份被忽略 |
+| 已解决 | P1 | 没有班级 / 租户和老师授权 | 可能跨范围读写 | 3A-B 已默认拒绝并逐资源复核 actor / scope |
+| 已解决 | P1 | 没有老师查询端口和最小视图 | 数据落盘但没有应用消费者 | 3A-C 已完成获授权列表、单条详情、学生筛选、空态与窄屏 |
+| 待解决 | P1 | 本地演示身份是内存会话，不是真实平台登录 | 服务重启会话失效；不能用于联网学生 / 老师试点 | 3C-P / 试点前：Alan / Poffices 决定可信身份与班级来源；会话绑定正式认证，仍默认拒绝 |
+| 待解决 | P1 | 没有 `agent-input-profile`、mapping、outbox 和 transport | 表单提交尚未进入任何可证明的 agent 输入端口 | 3B-A / B / C：冻结合同、同事务 outbox、幂等 relay；正式 Poffices adapter 另需 sandbox trace |
+| 待解决 | P1 | Poffices 真实输入 endpoint、认证、schema 和成功样例缺失 | 无法证明真实 agent 交互，不能安全猜接口 | 3B-P 条件项：平台或 Alan 提供机器合同 / 作者声明，并在获授权 sandbox 验证 |
+| 待解决 | P2 | 历史记录只保存稳定字段 ID，详情暂以当前已发布 label 投影 | label 改名后，旧记录展示名可能不是提交当时文案 | 3B 前评估是否保存发布版本字段快照；机器查询仍以 `values[id]` 为准 |
+| 待解决 | P2 | 老师视图当前以 actor ID 显示学生 | 本地机制可判人，但真实课堂可读性不足 | 接入正式身份目录后显示姓名 + 稳定 ID；姓名不得成为主键 |
+| 待解决 | P2 | `node:sqlite` 有实验性警告、无备份恢复演练、无多实例方案 | 本地 Alpha 可用，网络试点运维风险未收口 | 试点前完成备份恢复演练与异机 Git 远端；实测需要多实例时再升级存储 |
 
-#### 第 3 段：应用（当前执行 3A）
+#### 第 3 段：应用（3A 已完成，当前执行 3B）
 
 Frankie 课堂故事：学生打开练习 agent 填表；老师侧按 `submitterId` 和 `values[id]` 看提交与统计；需要 agent 处理时，再由明确的 `AgentInputPort` 把同一提交信封投递给对应 agent。
 
 第 3 段内部按数据风险拆三刀，不改变顶层 `1b → 2 → 3` 顺序：
 
-1. **3A 提交记录与老师视图：** 从当前随 agent JSON 持久保存的 `inputBag` 中拆出可查询的 submission repository；学生身份、班级 / 租户边界和老师查询权限可验证。当前 `inputBag` 已能跨重启恢复，但仍只是单机演示记录，不是多用户生产存储。内部顺序固定为：
-   - **3A-A 提交记录：** 定义独立记录与 repository，原提交信封原样内嵌；迁移既有 `inputBag` 时不丢、不重复。
-   - **3A-B 身份与权限：** application 接受服务端验证的 actor / scope，不信任 body 中的用户、角色或租户；未命中规则默认拒绝。
-   - **3A-C 老师最小视图：** 只做获授权提交列表、单条详情和必要字段筛选；不先做完整课堂统计大屏。
-2. **3B agent 输入投递：** 定义 `AgentInputPort`；同一事务保存提交信封与待投递事件，再以幂等 relay 交给获官方支持的 Poffices adapter。信封形状不变；没有正式输入合同前只完成本地 port，不伪造真实交互。
+1. **3A 提交记录与老师视图（已完成）：** 独立 submission repository 保存原提交信封；服务端 actor / scope、逐资源权限和老师最小视图可验证。当前仍是单机本地演示，不是多用户生产存储。内部顺序为：
+   - **3A-A 提交记录（已完成）：** 定义独立记录与 repository，原提交信封原样内嵌；迁移既有 `inputBag` 时不丢、不重复。
+   - **3A-B 身份与权限（已完成）：** application 接受服务端验证的 actor / scope，不信任 body 中的用户、角色或租户；未命中规则默认拒绝。
+   - **3A-C 老师最小视图（已完成）：** 获授权提交列表、单条详情和学生 ID 筛选；没有扩成课堂统计大屏。
+2. **3B agent 输入投递（当前执行）：** 定义 `AgentInputPort`；同一事务保存提交信封与待投递事件，再以幂等 relay 交给受支持 adapter。信封形状不变。内部顺序固定为：
+   - **3B-A 输入合同与映射：** `agent-input-profile/v1` 明确目标 skill、输入模式和 transport；`agent-input-mapping/v1` 显式把某一 `formVersion` 的 `values[id]` 映射为请求。没有合同就失败，不按名称或 Block Diagram 猜。
+   - **3B-B 可靠投递：** submission record 与 outbox event 同事务落盘；relay 以稳定幂等键投递，记录 pending / delivered / failed 和尝试次数，不覆盖提交。
+   - **3B-C 本地受支持端口：** 用可审计的本地 `AgentInputPort` 跑通同一信封的映射与消费，证明机制；它不是 Poffices 真交互。
+   - **3B-P Poffices adapter（条件项）：** 只有正式 endpoint、认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才接入并宣布真实 agent 收到输入。
 3. **3C 课堂故事：** 学生用户页面提交，老师视图看见对应记录，目标 agent 从受支持端口收到同一份输入，一条教学故事端到端走通。
 
 真实 agent 交互必须再分开四个对象：`owner-agent-identity/v1` 回答它是谁；`form-ledger/v1` 回答用户交哪些格子；待设计的 `agent-input-profile/v1` 回答 agent 接受文本还是结构化数据、支持什么 skill 和 transport；待设计的 `agent-input-mapping/v1` 显式把 `values[id]` 映射为运行时请求。后两份合同不得塞进身份合同，也不得靠名字或 Variables 猜出来。

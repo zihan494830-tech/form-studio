@@ -101,7 +101,7 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 ## 真正调用 agent 仍缺的外部合同
 
-当前公开资料和只读身份接口只能确认 agent 存在，不能给出 Form Studio 可依赖的程序化输入 schema。进入 3B 前，需要 Alan / Poffices 针对一个获授权 sandbox 明确：
+当前公开资料和只读身份接口只能确认 agent 存在，不能给出 Form Studio 可依赖的程序化输入 schema。3B-A / B / C 可先完成本地合同、outbox 与本地端口；实施 3B-P Poffices adapter 前，需要 Alan / Poffices 针对一个获授权 sandbox 明确：
 
 1. 可调用的 agent id / Key 与环境；
 2. 接受 `text/plain`、结构化 JSON 还是其他模式；

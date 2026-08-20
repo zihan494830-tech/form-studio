@@ -25,4 +25,4 @@ npm run test:e2e
 
 ## 当前阶段
 
-第 0 / 1 / 1b 和第 2 段的当前本地旁路范围已落地。生产模式使用本地 SQLite，身份、草稿、已发布版本、绑定和 `inputBag` 可跨重启恢复；Poffices 身份仍只读。当前是**本地可演示 Alpha**，不是学生 / 老师可用的 MVP。下一件是 3A-A 提交记录，随后按 3A-B 身份与权限 → 3A-C 老师最小视图 → 3B agent 输入投递 → 3C Alan 课堂故事推进。不得先做 AI 制表、直接修改 Poffices 官方 agent，或把本地持久 `inputBag` 冒充多用户提交系统或真实 agent 交互。
+第 0 / 1 / 1b、第 2 段本地旁路和 3A 已落地。生产模式使用本地 SQLite；提交已成为带服务端 actor / scope 的独立记录；本地演示身份可完成学生提交与获授权老师查看。Poffices 身份仍只读，真实 agent 尚未收到输入，因此当前仍是**本地可演示 Alpha**，不是联网学生 / 老师 MVP。下一件是 3B-A 输入合同与映射，随后按可靠 outbox → 本地 `AgentInputPort` → 3C Alan 课堂故事推进；Poffices adapter 只有在正式输入合同和获授权 sandbox trace 齐全后才实施。AI 制表继续延期。

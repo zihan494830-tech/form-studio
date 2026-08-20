@@ -175,7 +175,6 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false } =
       data-agent-name="${escapeHtml(agent.name || agent.id)}"
       data-form-version="${escapeHtml(String(version))}"
     >
-      <input type="hidden" name="submitterId" value="student-mock-1" />
       ${rows}
       ${preview ? `<button type="button" disabled>发布后可提交</button>` : `<button type="submit">提交</button>`}
     </form>

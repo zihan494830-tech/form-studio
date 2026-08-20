@@ -9,6 +9,7 @@ import {
 } from "/workbench/modules/form-model.js";
 import { createOwnerFlow } from "/workbench/modules/owner-flow.js";
 import { renderWorkspaceList } from "/workbench/modules/workspace-list.js";
+import { requireAuthorSession } from "/workbench/modules/session-gate.js";
 
 const $ = (id) => document.getElementById(id);
 const listEl = $("agent-list"), hintEl = $("face-hint"), frameEl = $("face");
@@ -395,4 +396,8 @@ window.addEventListener("message", async (event) => {
   if (selectedId === id) renderContract();
 });
 function escapeAttr(value) { return escapeHtml(value); }
-loadAgents().catch((error) => showError(error.message));
+requireAuthorSession().then((session) => {
+  if (!session) return;
+  $("actor-name").textContent = session.actor.name || session.actor.id;
+  loadAgents().catch((error) => showError(error.message));
+}).catch((error) => showError(error.message));

@@ -28,13 +28,8 @@
     }
 
     const values = {};
-    let submitterId = "student-mock-1";
     for (const el of form.elements) {
       if (!el.name || el.type === "submit") continue;
-      if (el.name === "submitterId") {
-        submitterId = String(el.value);
-        continue;
-      }
       if (el.type === "checkbox") {
         values[el.name] = el.checked ? "true" : "false";
         continue;
@@ -48,7 +43,6 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           values,
-          submitterId,
           formVersion: Number(form.getAttribute("data-form-version") || "1"),
         }),
       });
@@ -62,6 +56,13 @@
         }
         if (receipt) {
           receipt.textContent = message;
+          if (res.status === 401 || res.status === 403) {
+            const link = document.createElement("a");
+            link.href = `/session?next=${encodeURIComponent(`/a/${agentId}`)}`;
+            link.textContent = "选择学生身份";
+            link.style.marginLeft = "0.6em";
+            receipt.append(link);
+          }
           receipt.classList.add("show", "error");
         }
         return;

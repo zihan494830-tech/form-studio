@@ -20,7 +20,7 @@ presentation ──────────────────────�
 | `src/server` | HTTP 路由、JSON/文件传输 | 产品规则和字段发明 |
 | `public` | 浏览器资产；前端纯规则放 `modules` | Node 仓储实现、测试夹具 |
 | `contracts` | 可机读、带版本的外部合同 | 实现代码 |
-| `data` | mock 种子和被 Git 忽略的本地 SQLite 数据 | 产品规格文档、密钥 |
+| `data` | 本地课堂配置和被 Git 忽略的 SQLite 产品数据 | 产品规格文档、密钥 |
 | `tests` | 按证据层分类的回归与夹具 | 生产模块 |
 
 Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
@@ -51,7 +51,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - 文档检查守的是“产品真相源唯一、文档有归属”，不是一律禁止 `docs/` 下增加专题文档。
 - 行数阈值只作职责过载信号；改阈值时同步改脚本和本页即可。
 
-字段规范化、发布与 `formVersion` 规则位于 domain/application；内存与 SQLite 仓储实现同一组 `list/get/save/appendEnvelope/nextBornFormId/reset` repository port。生产组合根默认打开 `data/form-studio.sqlite`，测试模式仍显式注入内存仓储。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射，没有复制发布、账本或提交规则。`/fixture/exercise-1` 与 `/api/test/reset` 已移入 `tests/support`，只有显式 `--test-mode` 才动态注册。
+字段规范化、发布与 `formVersion` 规则位于 domain/application；agent repository 管设计对象，submission repository 独立管理提交记录，`submission-aware-agent-repository` 只把记录投影成兼容的逻辑 `inputBag`。生产组合根默认打开 `data/form-studio.sqlite`，测试模式显式注入内存仓储和测试 actor resolver。2A 的真实身份读取器由服务器组合注入，Poffices adapter 只做 IO 与外部字段映射。`/fixture/exercise-1` 与 `/api/test/reset` 只有显式 `--test-mode` 才动态注册。
 
 ## 依据和暂不上项
 
@@ -64,9 +64,9 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 ## 从本地演示到真实使用的数据链路
 
-当前 `inputBag` 已随 agent 记录持久写入本地 SQLite，能证明“校验后追加提交信封”和跨服务重启恢复；它仍不能证明学生 / 班级归属、老师查询权限、多实例共享或真实 agent 消费。第 3 段按以下端口推进：
+3A 已把提交从 agent JSON 拆到独立 submission 表；原信封、服务端 actor context、tenant / class scope 和接收时间一起保存。逻辑 `inputBag` 仍可读，但不再是物理真相源。老师查询投影只读取获授权范围；这仍不能证明真实登录、多实例共享或 agent 消费。第 3 段剩余链路如下：
 
-2C 使用 Node 内置 `node:sqlite` 和单文件 SQLite：一次 `save` 是单条原子 upsert，`appendEnvelope` 在 `BEGIN IMMEDIATE` 事务中读改写；WAL、`synchronous=FULL` 和 schema version 明确落在适配器。依据 [Node.js SQLite](https://nodejs.org/api/sqlite.html) 与 [SQLite Atomic Commit](https://www.sqlite.org/atomiccommit.html)。这是当前单机规模的低档位选择；`node:sqlite` 在当前 Node 24 仍会给出实验性警告，若运行时兼容性成为部署阻碍，再评估成熟驱动或外部数据库，不因此提前引入服务。
+当前使用 Node 内置 `node:sqlite` 和单文件 SQLite；agent 与 submission 共用数据库文件，WAL、`synchronous=FULL` 和严格表结构明确落在适配器。依据 [Node.js SQLite](https://nodejs.org/api/sqlite.html) 与 [SQLite Atomic Commit](https://www.sqlite.org/atomiccommit.html)。这是当前单机规模的低档位选择；`node:sqlite` 仍会给出实验性警告，若运行时兼容性成为部署阻碍，再评估成熟驱动或外部数据库。
 
 ```text
 学生用户页面
@@ -83,21 +83,23 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 - `AgentInputPort` 只接受既有提交信封；它不理解 Variables / Block Diagram，也不改 `values[id]`。当并发量、独立消费者或跨服务隔离成为实测瓶颈，再升级为发布 / 订阅中间件；参考 [Azure Publisher-Subscriber pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/publisher-subscriber)。
 - Poffices 目前公开材料证明 Creator Studio 可创建、配置、测试和发布 agent，但没有给出本项目可依赖的公开输入 API；参考 [Poffices Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。因此 adapter 是明确升级点，不是假装已完成的接口。
 
-3A 的下一低档位是“同一 SQLite 中独立 submission 表 + 老师查询投影”；3B 再增加 outbox 表和单 relay。升级触发条件是正式 Poffices 输入合同、跨进程投递需求或实测吞吐 / 重试压力。这样先打通 Alan 所说的学生提交、老师可见，再把同一信封投递给真实 agent，不为尚未出现的规模提前堆消息系统。
+3A 的“独立 submission 表 + 老师查询投影”已经完成；3B 下一低档位是在同一 SQLite 增加 outbox 表和单 relay，并先用可审计的本地 `AgentInputPort` 验证机制。升级为 Poffices adapter 的触发条件是正式输入合同和获授权 sandbox trace；升级消息系统的触发条件则是实测跨进程吞吐或隔离压力。
 
 ### 3A 数据与权限边界
 
-当前 `makeEnvelope()` 接受请求中的 `submitterId`，缺失时回退到 `student-mock-1`；这是第 0–2 段测试身份，不是登录或授权证据。3A 不直接把更多用户字段塞进既有提交信封，而是在外层增加待冻结的 `submission-record/v1`：它保存独立记录 id、原信封、服务端确认的 actor context、班级 / 租户 scope 和接收时间。原信封形状保持不变，3B 仍消费同一信封。
+`makeEnvelope()` 不再接受客户端身份回退；`submitToAgent` 只采用 actor resolver 给出的已验证 actor，并把其 id 写入既有 `submitterId`。外层 `submission-record/v1` 保存独立记录 id、原信封、服务端确认的 actor context、班级 / 租户 scope 和接收时间；3B 仍消费原信封，不向信封塞角色和租户字段。
 
-3A 的身份提供方目前是外部事实空白：需要 Alan / Poffices 明确学生、老师、班级和租户上下文从登录会话、平台 token 还是受控名单产生。在此之前允许测试适配器，不允许把 body、query 或自定义 header 中的 `userId` / `tenantId` 当成已验证身份。
+当前生产模式使用 `data/local-classroom.json` 的本地演示名单和内存 session cookie；测试模式使用显式测试 resolver。它们验证授权机制，不是 Poffices 登录。联网试点前仍需 Alan / Poffices 明确学生、老师、班级和租户来自登录会话、平台 token 还是受控名单；body、query 或普通自定义 header 永远不能成为生产身份来源。
 
-权限规则采用“默认拒绝、每次请求按具体资源复核”；老师查询必须同时带已验证 actor 和 scope，并在 repository 查询中包含范围条件。该方向依据 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)；多租户上下文不得直接信任客户端，应绑定到已认证会话，依据 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。具体认证供应商仍是外部拍板项，不在 3A-A 中提前绑定。
+权限规则已采用“默认拒绝、每次请求按具体资源复核”；老师列表、详情和 student 提交都同时校验 actor、role、ownerAgent、tenant 和 class，并在 repository 查询中带范围条件。该方向依据 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 与 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。具体认证供应商仍是外部拍板项。
 
-历史迁移必须显式处理 2C 的嵌入式 `inputBag`：同一信封只生成一条 submission record，成功写入后才标记迁移版本；失败可重试且不得清空原袋。当前实际运行实例尚无真实提交，因此这首先是兼容性保护，不冒充已完成的数据迁移。
+浏览器面分三条明确入口：`/` 是作者后台，`/a/:ownerAgent` 是已发布用户页面，`/classroom` 是老师最小视图；`/session` 只为本地课堂演示选择 actor。老师 HTTP API 只提供获授权页面列表、提交列表和单条详情，不把 agent repository 或全库 submission 暴露给前端。页面包含加载、空、错误与窄屏状态，但不承担真实认证或完整统计职责。
+
+历史迁移已显式处理 2C 的嵌入式 `inputBag`：以 legacy key 保证同一信封只生成一条 submission record，成功导入后才清空物理旧袋并标记迁移版本。合同测试证明可重试、不丢、不重复；它不替代真实备份与恢复演练。
 
 ### 输入能力与字段映射
 
-Form Studio 不能从 agent 名字或内部变量猜运行时请求。第 3 段新增的合同边界如下；当前均为待实现设计，不冒充现有能力：
+Form Studio 不能从 agent 名字或内部变量猜运行时请求。下面前两份合同已存在，后两份是 3B-A 当前待实现边界：
 
 | 合同 | 回答什么 | 不负责 |
 |---|---|---|
