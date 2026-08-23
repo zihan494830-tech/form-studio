@@ -2,6 +2,8 @@
  * 使用面提交：浏览器 checkValidity 拦空/非法；通过才 POST。
  * 禁止 alert / confirm。成功后轻回执，并通知工作台刷新袋子。
  */
+import { t } from "/presentation/messages/zh-HK.mjs";
+
 (() => {
   const form = document.getElementById("agent-form");
   if (!form) return;
@@ -20,7 +22,7 @@
 
     if (button) {
       button.disabled = true;
-      button.textContent = "提交中…";
+      button.textContent = t("ui.face.submitting");
     }
     if (receipt) {
       receipt.classList.remove("show", "error");
@@ -32,6 +34,10 @@
       if (!el.name || el.type === "submit") continue;
       if (el.type === "checkbox") {
         values[el.name] = el.checked ? "true" : "false";
+        continue;
+      }
+      if (el.type === "radio") {
+        if (el.checked) values[el.name] = String(el.value ?? "");
         continue;
       }
       values[el.name] = String(el.value ?? "");
@@ -47,7 +53,7 @@
         }),
       });
       if (!res.ok) {
-        let message = "提交失败，请检查后重试。";
+        let message = t("ui.face.submit_failed");
         try {
           const data = await res.json();
           if (data.error) message = data.error;
@@ -56,13 +62,6 @@
         }
         if (receipt) {
           receipt.textContent = message;
-          if (res.status === 401 || res.status === 403) {
-            const link = document.createElement("a");
-            link.href = `/session?next=${encodeURIComponent(`/a/${agentId}`)}`;
-            link.textContent = "选择学生身份";
-            link.style.marginLeft = "0.6em";
-            receipt.append(link);
-          }
           receipt.classList.add("show", "error");
         }
         return;
@@ -70,8 +69,8 @@
       const result = await res.json();
       if (receipt) {
         receipt.textContent = result.delivery?.status === "pending"
-          ? `提交已保存，正在交给 ${agentName}`
-          : `提交已保存到 ${agentName}`;
+          ? t("ui.face.saved_pending", { agent: agentName })
+          : t("ui.face.saved", { agent: agentName });
         receipt.classList.remove("error");
         receipt.classList.add("show");
       }
@@ -83,13 +82,13 @@
       }
     } catch {
       if (receipt) {
-        receipt.textContent = "网络异常，提交信封没有入袋。请重试。";
+        receipt.textContent = t("ui.face.network_error");
         receipt.classList.add("show", "error");
       }
     } finally {
       if (button) {
         button.disabled = false;
-        button.textContent = "提交";
+        button.textContent = t("ui.face.submit");
       }
     }
   });

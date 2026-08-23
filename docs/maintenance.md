@@ -23,10 +23,20 @@
 | `docs/maintenance.md` | Git、文档生命周期、清理和规则变更方法 |
 | `docs/poffices-integration.md` | Poffices 适配事实、身份映射、失败合同与升级条件 |
 | `docs/authoring-experience.md` | 作者面信息架构、已证实可用性问题和渐进演进路线 |
+| `docs/plans/README.md` | 现役实施计划索引、状态和清理规则；不复制项目状态 |
+| `docs/plans/*.md` | 已获准但尚未完成的短期实施方案；不是永久真相源 |
 
 新增文档前先查现有文档能否容纳。不得复制整段产品定义；需要背景时链接到 `DESIGN.md` 的对应小节。临时分析默认不进入仓库；若结论会影响后续决策，把结论并入有负责人的现役文档，不长期保留多份会议稿、审计稿和“最终版 2”。
 
 外部资料真正影响设计或代码时，在相关文档或代码注释中留下链接，并区分“有依据”与“本项目拍板”。没有被采用的搜索结果不堆进仓库。
+
+### 实施计划的生命周期
+
+`README.md` 当前阶段只保留已经成立的状态、下一行动和现役计划链接；具体步骤进入 `docs/plans/`。计划不得反过来覆盖 `DESIGN.md`、架构或测试真相源。
+
+计划只在 `proposed`、`active` 或有明确恢复条件的 `blocked` 状态下留在目录。完成或失效时，先把永久结论回写承担唯一责任的文档，再从索引移除并删除计划文件。一般历史由 Git 保存，不建立长期 `archive/`、`done/`、`old/` 目录；只有审计、数据迁移或难回滚决策存在明确保留义务时，才另写长期决策/证据记录。
+
+每份计划必须写复审截止和失效条件。修改 `README.md` 当前阶段、开始相关主题分支或交付一个计划切片时，都要检查 `docs/plans/README.md`；超过复审截止的计划不得继续作为实施授权，必须先核对当前代码和产品决定后续期、改写或删除。具体字段和操作清单以 [`docs/plans/README.md`](./plans/README.md) 为准。
 
 ## 3. Git 与工作分支
 
@@ -40,6 +50,19 @@
 后续默认：`main` 保持可运行；一项产品切片或一类根因使用一个短期主题分支。Codex 创建的分支用 `codex/<topic>`；人工分支可以使用团队约定，不强制套用复杂 Git Flow。提交按可解释、可检查、可回滚的责任边界组织；不要把无关格式化、架构迁移和产品行为混在一个提交里。
 
 进入学生 / 老师网络试点前，必须把当前分支推到受控远端，并对 `data/form-studio.sqlite` 做一次停服备份与恢复演练。Git 远端只备份源码，不备份被忽略的 SQLite；两项缺一不可。远端位置、保留周期和数据责任人目前都是待拍板项。
+
+### 桌面启动与更新
+
+桌面 `Form Studio.lnk` 只指向仓库根目录 `start-form-studio.bat`，不固定某个 commit。启动脚本对现役源码生成 `runtimeRevision`，通过 `/api/health` 判断 4190 中已加载的进程是否仍是当前版本；只有健康响应与 `node server.mjs` 进程身份同时成立时才自动替换旧实例。这个机制解决“磁盘已更新、内存仍跑旧代码”，不替代源码分发。
+
+开发期 mock 的唯一内容源是 `data/mock-agents.json`，其 `datasetRevision` 与内容 checksum 独立于 SQLite schema version。启动器把 catalog 纳入运行指纹；demo 初始化只在 revision 升级时整体替换旧 mock，revision 相同但 checksum 改变会拒绝启动，要求先递增 revision。`npm run demo:reset` 可显式丢弃本轮交互并恢复 catalog；它只接受已带 dataset metadata 的受管数据库，未受管数据会 fail closed。当前破坏性同步的授权只来自“现有数据全是 mock”的明确判断；出现真实数据、product 模式或需保留草稿后，应撤销该策略并改为显式迁移/备份。该做法参考 [Flyway schema history](https://documentation.red-gate.com/flyway/flyway-concepts/migrations/flyway-schema-history-table) 和 [Django fixtures](https://docs.djangoproject.com/en/5.2/howto/initial-data/)，但当前不引入外部迁移框架。
+
+建议维护顺序：
+
+1. 为当前仓库配置一个受控远端并确定唯一默认分支；在此之前，启动器显示“未配置 git 远端”是事实，不应消音。
+2. 更新窗口先运行 `start-form-studio.bat -UpdateOnly -Check`；检查通过后再正常双击。工作树有未提交改动时，先审阅 diff，不用自动 merge / reset 掩盖冲突。
+3. 每次可回滚发布使用一个可识别 commit/tag；运行指纹定位“加载了哪份文件”，commit/tag 才回答“这份版本如何恢复”。
+4. SQLite 按停服备份 / 恢复演练单独管理；Git、桌面快捷方式和源码指纹都不是数据备份。
 
 Git 官方将 commit 作为可重建的项目快照，也把短期 topic branch 作为隔离相关工作的常见方式：
 

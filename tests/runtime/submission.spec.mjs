@@ -1,12 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { agentOf, resetStore } from "../support/project-fixture.mjs";
+import { submitFace } from "../support/ui-actions.mjs";
 
 test.describe("提交信封与封闭控件词表", () => {
   test("空提交停在表上，inputBag 保持为空", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/fixture/exercise-1");
     expect(await page.locator("#agent-form").evaluate((form) => form.checkValidity())).toBe(false);
-    await page.getByRole("button", { name: "提交" }).click();
+    await submitFace(page);
     expect((await agentOf(request)).inputBag).toHaveLength(0);
   });
 
@@ -18,7 +19,7 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#target_market").selectOption("香港");
     await page.locator("#budget_wan").fill("1.5");
     expect(await page.locator("#agent-form").evaluate((form) => form.checkValidity())).toBe(false);
-    await page.getByRole("button", { name: "提交" }).click();
+    await submitFace(page);
     expect((await agentOf(request)).inputBag).toHaveLength(0);
   });
 
@@ -30,8 +31,8 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#target_market").selectOption("香港");
     await page.locator("#budget_wan").fill("20");
     await page.locator("#include_competitors").check();
-    await page.getByRole("button", { name: "提交" }).click();
-    await expect(page.locator("#receipt")).toContainText("提交已保存");
+    await submitFace(page);
+    await expect(page.locator("#receipt")).toHaveClass(/show/);
     const envelope = (await agentOf(request)).inputBag[0];
     expect(envelope).toMatchObject({
       ownerAgent: "exercise-1", formVersion: 1, submitterId: "student-mock-1",
@@ -49,10 +50,10 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#company_name").fill("星海科技");
     await page.locator("#analysis_goal").fill("第一次");
     await page.locator("#target_market").selectOption("香港");
-    await page.getByRole("button", { name: "提交" }).click();
-    await expect(page.locator("#receipt")).toContainText("提交已保存");
+    await submitFace(page);
+    await expect(page.locator("#receipt")).toHaveClass(/show/);
     await page.locator("#analysis_goal").fill("第二次");
-    await page.getByRole("button", { name: "提交" }).click();
+    await submitFace(page);
     const bag = (await agentOf(request)).inputBag;
     expect(bag).toHaveLength(2);
     expect(bag.map((item) => item.values.analysis_goal)).toEqual(["第一次", "第二次"]);
@@ -75,8 +76,8 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#num1").fill("7");
     await page.locator("#choice1").selectOption("甲");
     await page.locator("#agree1").check();
-    await page.getByRole("button", { name: "提交" }).click();
-    await expect(page.locator("#receipt")).toContainText("提交已保存");
+    await submitFace(page);
+    await expect(page.locator("#receipt")).toHaveClass(/show/);
     expect((await agentOf(request, "exercise-2")).inputBag[0].values).toEqual({
       text1: "文字", memo1: "长答案", num1: "7", choice1: "甲", agree1: "true",
     });
@@ -84,6 +85,9 @@ test.describe("提交信封与封闭控件词表", () => {
       data: { fields: [{ id: "upload1", label: "上传", control: "file", required: true }] },
     });
     expect(rejected.status()).toBe(400);
-    expect((await rejected.json()).error).toContain("非法控件：file");
+    expect(await rejected.json()).toMatchObject({
+      errorCode: "field_control_invalid",
+      parameters: { control: "file" },
+    });
   });
 });

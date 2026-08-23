@@ -1,3 +1,5 @@
+import { locale, t } from "/presentation/messages/zh-HK.mjs";
+
 const pageList = document.getElementById("page-list");
 const submissionList = document.getElementById("submission-list");
 const detailEl = document.getElementById("submission-detail");
@@ -16,17 +18,22 @@ function escapeHtml(value) {
 function timeText(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value || "")
-    : date.toLocaleString("zh-CN", { hour12: false });
+    : date.toLocaleString(locale, { hour12: false });
+}
+
+function fieldValueText(field) {
+  if (field.control === "checkbox") return t(field.value === "true" ? "ui.common.yes" : "ui.common.no");
+  return field.value;
 }
 
 async function json(url) {
   const response = await fetch(url);
   const body = await response.json().catch(() => ({}));
   if (response.status === 401 || response.status === 403) {
-    location.assign(`/session?next=${encodeURIComponent("/classroom")}`);
-    throw new Error("需要老师身份");
+    location.assign("/");
+    throw new Error(t("ui.classroom.teacher_required"));
   }
-  if (!response.ok) throw new Error(body.error || "读取失败，请重试。");
+  if (!response.ok) throw new Error(body.error || t("ui.common.read_failed"));
   return body;
 }
 
@@ -41,20 +48,23 @@ function setActive(selector, id) {
 async function loadDetail(id) {
   selectedRecord = id;
   setActive(".submission-button", id);
-  detailEl.innerHTML = `<p class="state">正在读取提交详情…</p>`;
+  detailEl.innerHTML = `<p class="state">${t("ui.classroom.loading_detail")}</p>`;
   try {
     const { record } = await json(`/api/teacher/submissions/${encodeURIComponent(id)}`);
     if (selectedRecord !== id) return;
     const deliveryLabels = {
-      pending: "等待投递", delivering: "正在投递", delivered: "已送达本地 AgentInputPort",
-      failed: "投递失败，将重试", not_configured: "未配置 agent 输入端口",
+      pending: t("ui.classroom.delivery_pending"),
+      delivering: t("ui.classroom.delivery_delivering"),
+      delivered: t("ui.classroom.delivery_delivered"),
+      failed: t("ui.classroom.delivery_failed"),
+      not_configured: t("ui.classroom.delivery_none"),
     };
     detailEl.innerHTML = `<div class="detail-meta">
       <strong>${escapeHtml(record.actorName)}${record.actorName === record.actorId ? "" : ` <code>${escapeHtml(record.actorId)}</code>`}</strong>
       <time datetime="${escapeHtml(record.receivedAt)}">${escapeHtml(timeText(record.receivedAt))}</time>
-      <span>${escapeHtml(record.pageName)} · 表 v${escapeHtml(record.formVersion)}</span>
+      <span>${escapeHtml(record.pageName)} · 表單版本 ${escapeHtml(record.formVersion)}</span>
       <span class="delivery-status ${escapeHtml(record.delivery.status)}">${escapeHtml(deliveryLabels[record.delivery.status] || record.delivery.status)}${record.delivery.target ? ` · ${escapeHtml(record.delivery.target)}` : ""}</span>
-    </div><dl>${record.fields.map((field) => `<div><dt>${escapeHtml(field.label)}<code>${escapeHtml(field.id)}</code></dt><dd>${escapeHtml(field.displayValue) || "（空）"}</dd></div>`).join("")}</dl>`;
+    </div><dl>${record.fields.map((field) => `<div><dt>${escapeHtml(field.label)}<code>${escapeHtml(field.id)}</code></dt><dd>${escapeHtml(fieldValueText(field)) || t("ui.classroom.empty_value")}</dd></div>`).join("")}</dl>`;
   } catch (error) {
     detailEl.innerHTML = `<p class="state error">${escapeHtml(error.message)}</p>`;
   }
@@ -66,19 +76,23 @@ async function loadSubmissions(agentId) {
   selectedRecord = "";
   setActive(".page-button", agentId);
   actorFilter.disabled = false;
-  submissionList.innerHTML = `<p class="state">正在读取提交…</p>`;
-  detailEl.innerHTML = `<p class="state">选择一条提交查看按字段 ID 对齐的内容。</p>`;
+  submissionList.innerHTML = `<p class="state">${t("ui.classroom.loading_records")}</p>`;
+  detailEl.innerHTML = `<p class="state">${t("ui.classroom.choose_record")}</p>`;
   const query = actorFilter.value.trim();
   try {
     const result = await json(`/api/teacher/agents/${encodeURIComponent(agentId)}/submissions${query ? `?actorId=${encodeURIComponent(query)}` : ""}`);
     if (sequence !== loadSequence) return;
     recordsTitle.textContent = result.page.name;
-    document.getElementById("records-context").textContent = `${result.records.length} 条提交 · ownerAgent ${result.page.ownerAgent} · 已发布 v${result.page.formVersion}`;
+    document.getElementById("records-context").textContent = t("ui.classroom.record_context", {
+      count: result.records.length,
+      ownerAgent: result.page.ownerAgent,
+      version: result.page.formVersion,
+    });
     submissionList.innerHTML = result.records.length ? result.records.map((record) => `
       <button class="submission-button" type="button" data-id="${escapeHtml(record.id)}" aria-pressed="false">
-        <span><strong>${escapeHtml(record.actorName)}</strong><small>${record.actorName === record.actorId ? "" : `${escapeHtml(record.actorId)} · `}${escapeHtml(record.id)} · ${escapeHtml(record.fieldCount)} 个字段</small></span>
+        <span><strong>${escapeHtml(record.actorName)}</strong><small>${record.actorName === record.actorId ? "" : `${escapeHtml(record.actorId)} · `}${escapeHtml(record.id)} · ${t("ui.classroom.field_count", { count: escapeHtml(record.fieldCount) })}</small></span>
         <time datetime="${escapeHtml(record.receivedAt)}">${escapeHtml(timeText(record.receivedAt))}</time>
-      </button>`).join("") : `<p class="state empty">${query ? "没有这个学生的提交。" : "这个页面还没有学生提交。"}</p>`;
+      </button>`).join("") : `<p class="state empty">${query ? t("ui.classroom.no_actor_submissions") : t("ui.classroom.no_submissions")}</p>`;
   } catch (error) {
     if (sequence === loadSequence) submissionList.innerHTML = `<p class="state error">${escapeHtml(error.message)}</p>`;
   }
@@ -87,17 +101,18 @@ async function loadSubmissions(agentId) {
 async function init() {
   try {
     const session = await json("/api/session");
-    if (session.actor?.role !== "teacher") return location.assign("/session?next=/classroom");
+    if (session.actor?.role !== "teacher") return location.assign("/");
     document.getElementById("actor-name").textContent = session.actor.name || session.actor.id;
     document.getElementById("classroom-name").textContent = session.classroom?.name || session.actor.scope.classId;
     const { agents } = await json("/api/teacher/agents");
-    document.getElementById("page-count").textContent = `${agents.length} 个`;
+    document.getElementById("page-count").textContent = t("ui.classroom.page_count", { count: agents.length });
     pageList.innerHTML = agents.length ? agents.map((agent) => `
       <button class="page-button" type="button" data-id="${escapeHtml(agent.ownerAgent)}" aria-pressed="false">
-        <span><strong>${escapeHtml(agent.name)}</strong><small>ownerAgent ${escapeHtml(agent.ownerAgent)} · v${escapeHtml(agent.formVersion)}</small></span>
+        <span><strong>${escapeHtml(agent.name)}</strong><small>ownerAgent ${escapeHtml(agent.ownerAgent)} · 表單版本 ${escapeHtml(agent.formVersion)}</small></span>
         <b>${escapeHtml(agent.submissionCount)}</b>
-      </button>`).join("") : `<p class="state empty">当前班级还没有已发布且授权给你的用户页面。</p>`;
-    if (agents[0]) loadSubmissions(agents[0].ownerAgent);
+      </button>`).join("") : `<p class="state empty">${t("ui.classroom.no_pages")}</p>`;
+    const initial = agents.find((agent) => agent.submissionCount > 0) || agents[0];
+    if (initial) loadSubmissions(initial.ownerAgent);
   } catch (error) {
     pageList.innerHTML = `<p class="state error">${escapeHtml(error.message)}</p>`;
   }

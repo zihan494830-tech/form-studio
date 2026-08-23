@@ -24,16 +24,17 @@ export function verifiedActor(actor, role = null) {
 }
 
 export function authorizeAgentAction(agent, actor, action) {
-  if (!verifiedActor(actor)) return { allowed: false, status: 401, error: "需要已验证身份" };
+  if (!verifiedActor(actor)) return { allowed: false, ...problem("identity_required", 401) };
   const access = agent?.access;
   if (access?.version !== "agent-access/v1") {
-    return { allowed: false, status: 403, error: "页面尚未配置访问范围" };
+    return { allowed: false, ...problem("access_scope_unconfigured", 403) };
   }
   if (actor.scope.tenantId !== access.tenantId || actor.scope.classId !== access.classId) {
-    return { allowed: false, status: 403, error: "无权访问其他班级或租户的数据" };
+    return { allowed: false, ...problem("cross_scope_forbidden", 403) };
   }
   if (action === "submit" && actor.role === "student") return { allowed: true };
   if (action === "teach" && actor.role === "teacher" && access.teacherIds.includes(actor.id)) return { allowed: true };
   if (action === "author" && actor.role === "author" && access.authorIds.includes(actor.id)) return { allowed: true };
-  return { allowed: false, status: 403, error: "当前身份没有这个操作权限" };
+  return { allowed: false, ...problem("operation_forbidden", 403) };
 }
+import { problem } from "../problem.mjs";

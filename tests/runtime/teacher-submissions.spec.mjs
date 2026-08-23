@@ -20,8 +20,10 @@ test.describe("3A-C 老师查询端口", () => {
     expect(submitted.ok()).toBeTruthy();
 
     const pages = await request.get("/api/teacher/agents", { headers: actor("teacher-1") });
-    expect(await pages.json()).toMatchObject({
-      agents: [{ ownerAgent: "exercise-1", submissionCount: 1 }],
+    const visibleAgents = (await pages.json()).agents;
+    expect(visibleAgents.find((agent) => agent.ownerAgent === "exercise-1")).toMatchObject({
+      ownerAgent: "exercise-1",
+      submissionCount: 1,
     });
 
     const list = await request.get("/api/teacher/agents/exercise-1/submissions?actorId=student-2", {
@@ -39,7 +41,7 @@ test.describe("3A-C 老师查询端口", () => {
         ownerAgent: "exercise-1",
         actorId: "student-2",
         fields: expect.arrayContaining([
-          { id: "company_name", label: "公司或品牌", value: "星海科技", displayValue: "星海科技" },
+          { id: "company_name", label: "公司或品牌", control: "text", value: "星海科技" },
         ]),
       },
     });

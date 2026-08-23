@@ -1,4 +1,6 @@
 import { normalizeFields } from "../form/field-contract.mjs";
+import { appendPublishedDefinition } from "../form/published-definition.mjs";
+import { problem } from "../problem.mjs";
 import { createOwnerAgentBinding } from "./owner-agent-binding.mjs";
 
 function clone(value) {
@@ -17,6 +19,7 @@ export function newBornFormAgent({ id, name, createdAt = null, access = null }) 
     formVersion: 1,
     fields: [],
     published: null,
+    publishedDefinitions: [],
     binding: null,
     inputBag: [],
   };
@@ -24,7 +27,7 @@ export function newBornFormAgent({ id, name, createdAt = null, access = null }) 
 
 export function newRetrofitFormAgent({ identity, linkedAt = null, access = null }) {
   if (!identity?.ownerAgent || identity.sourceSystem !== "poffices" || identity.readOnly !== true) {
-    return { error: "真实身份合同无效", status: 400 };
+    return problem("owner_identity_invalid", 400);
   }
   return {
     agent: {
@@ -38,6 +41,7 @@ export function newRetrofitFormAgent({ identity, linkedAt = null, access = null 
       formVersion: 1,
       fields: [],
       published: null,
+      publishedDefinitions: [],
       binding: null,
       inputBag: [],
     },
@@ -45,9 +49,9 @@ export function newRetrofitFormAgent({ identity, linkedAt = null, access = null 
 }
 
 export function changeFields(agent, fields) {
-  if (!agent) return { error: "没有这个 agent", status: 404 };
+  if (!agent) return problem("agent_not_found", 404);
   const normalized = normalizeFields(fields);
-  if (normalized.error) return { error: normalized.error, status: 400 };
+  if (normalized.errorCode) return normalized;
   const changed = JSON.stringify(agent.fields || []) !== JSON.stringify(normalized.fields);
   return {
     agent: {
@@ -59,25 +63,28 @@ export function changeFields(agent, fields) {
 }
 
 export function publishForm(agent) {
-  if (!agent) return { error: "没有这个 agent", status: 404 };
-  if (!agent.fields?.length) return { error: "至少添加一个字段才能发布用户页面", status: 400 };
+  if (!agent) return problem("agent_not_found", 404);
+  if (!agent.fields?.length) return problem("fields_required_for_publish", 400);
   const published = {
     formVersion: agent.formVersion || 1,
     fields: clone(agent.fields),
     submit: { label: "提交", to: "agent-input" },
   };
+  const recorded = appendPublishedDefinition(agent, published);
+  if (recorded.conflict) return problem("form_version_conflict", 409, { formVersion: published.formVersion });
   const bindingResult = createOwnerAgentBinding(agent, published);
-  if (bindingResult.error) return bindingResult;
+  if (bindingResult.errorCode) return bindingResult;
   return {
     agent: {
       ...clone(agent),
       published,
+      publishedDefinitions: recorded.publishedDefinitions,
       binding: bindingResult.binding,
     },
   };
 }
 
 export function unpublishForm(agent) {
-  if (!agent) return { error: "没有这个 agent", status: 404 };
+  if (!agent) return problem("agent_not_found", 404);
   return { agent: { ...clone(agent), published: null, binding: null } };
 }

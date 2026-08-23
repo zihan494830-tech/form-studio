@@ -6,6 +6,7 @@ import {
   unpublishForm,
 } from "../domain/agent/form-agent.mjs";
 import { EXAMPLE_FIELDS } from "./example-form.mjs";
+import { problem } from "../domain/problem.mjs";
 
 /**
  * repository port: list/get/save/appendEnvelope/nextBornFormId/reset。
@@ -13,7 +14,7 @@ import { EXAMPLE_FIELDS } from "./example-form.mjs";
  */
 export function createAgentAuthoring(repository, { now = () => new Date().toISOString() } = {}) {
   function saveResult(result) {
-    if (result.error) return result;
+    if (result.errorCode) return result;
     return { agent: repository.save(result.agent) };
   }
   return {
@@ -25,10 +26,10 @@ export function createAgentAuthoring(repository, { now = () => new Date().toISOS
     },
     createRetrofit(identity, { access = null } = {}) {
       if (repository.get(String(identity?.ownerAgent || ""))) {
-        return { error: "该 ownerAgent 已有本地设计工作区", status: 409 };
+        return problem("owner_workspace_exists", 409);
       }
       const result = newRetrofitFormAgent({ identity, linkedAt: now(), access });
-      return result.error ? result : { agent: repository.save(result.agent) };
+      return result.errorCode ? result : { agent: repository.save(result.agent) };
     },
     setFields(id, fields) {
       return saveResult(changeFields(repository.get(id), fields));

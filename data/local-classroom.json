@@ -1,11 +1,11 @@
 {
   "tenantId": "form-studio-demo",
   "classId": "market-101",
-  "className": "市场分析课堂",
+  "className": "市場分析課堂",
   "profiles": [
-    { "id": "author-1", "name": "课程作者", "role": "author" },
-    { "id": "teacher-1", "name": "授课老师", "role": "teacher" },
-    { "id": "student-1", "name": "学生一", "role": "student" },
-    { "id": "student-2", "name": "学生二", "role": "student" }
+    { "id": "author-1", "name": "課程作者", "role": "author" },
+    { "id": "teacher-1", "name": "授課老師", "role": "teacher" },
+    { "id": "student-1", "name": "市場研究員林悅", "role": "student" },
+    { "id": "student-2", "name": "市場研究員陳凱", "role": "student" }
   ]
 }

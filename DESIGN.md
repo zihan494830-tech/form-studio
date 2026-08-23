@@ -1,10 +1,10 @@
 # Form Studio 项目设计
 
-> **版本：** v0.17 · 2026-08-20
+> **版本：** v0.27 · 2026-08-22
 > **性质：** 产品方向真相源。仓内不再保留内容重复副本。  
-> **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、只读 Poffices Creator Studio（v1.26.1）。
-> **不是：** Poffices 生产改动说明或外部写权授权令。
-> **相对 v0.16：** 澄清「产品面 vs 应用消费者」边界——产品面只有作者工作台 + 通用表单渲染器两个表面；读提交是外置消费者，提交台账是泛化的读提交能力，课堂只是第一个参考消费者。3C 顺带把课堂词汇从产品面移出；Poffices adapter、正式登录身份与试点运维仍是外部条件项。
+> **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、2026-08-21 产品边界确认、只读 Poffices Creator Studio（v1.26.1）、2026-08-22 Gravity 表单编辑器截图复核（SurveyJS 系参考实现）。
+> **不是：** Poffices agent 配置、发布状态或官方入口的修改工具，也不是外部写权授权令，更不是无主问卷站或任意网站嵌入组件。
+> **相对 v0.26：** 明确「设计表达力属核心能力，封闭词表可扩展」；词表新增 `radio` 与固定行列 `grid`（格子展开为 `gridId_rowId_colId` 扁平字段，信封不变），`number` 增加可选小数位。被排除的只是无主问卷、任意嵌入、匿名续填与主题品牌——它们改变表的归属与独占交付合同，不是设计能力。动态行（Dynamic Panel）、Tags、条件 Logic、匿名续填进入延期清单，各自等待业务触发证据。
 
 ---
 
@@ -19,8 +19,9 @@ form-studio/
   DESIGN.md                 ← 唯一产品方向真相源
   README.md                 ← 进入项目的索引，不复制产品定义
   contracts/                ← 可机读合同
-  data/                     ← 当前阶段 mock 数据
+  data/                     ← 本地 demo 配置、基准种子与被忽略的 SQLite 产品数据
   docs/                     ← 架构、测试与维护指南；不复制产品定义
+    plans/                  ← 现役实施计划；完成后回写职责文档并删除
   public/                   ← 作者面和使用面浏览器资产
   src/
     domain/                 ← ownerAgent / 字段 / 提交信封等纯规则
@@ -37,7 +38,7 @@ form-studio/
   scripts/                  ← 结构门禁
 ```
 
-第 0–1b、第 2 段本地旁路和第 3 段的 3A、3B 已落地：作者能按改装 / 新生设计页面；学生提交成为独立记录；本地演示 actor / scope 默认拒绝越权；获授权老师能查看本班提交；提交与 outbox 事件同事务落盘，经幂等 relay 投进本地 `AgentInputPort`。**当前下一切片是 3C 课堂端到端故事**；3B-P Poffices adapter 只在正式输入合同与获授权 sandbox trace 齐全后才实施。手写基准示例留在 `tests/fixtures/` 做回归，不当万用模板。
+第 0–1b、第 2 段本地旁路、第 3 段的 3A / 3B / 3C 本地切片，以及 v0.27 固定行列设计表达力均已落地。3C 已跑通“学生提交 → 老师查看 → 本地 `AgentInputPort` 收件”，但旧 `agent-access/v1` 和 `submission-record/v1` 仍是课堂合同，由 adapter 兼容，不能据此称为通用消费者产品。**当前不自动建设 AppConnection、第二套业务 UI 或 AI 制表**。下一件先用真实作者任务复核合同一致性、历史版本解释与 fixed grid 的作者安全；消费者 binding / projection 等待第一个真实非课堂消费者证据，Poffices adapter 等待正式输入合同与获授权 sandbox trace。手写基准示例只做回归，不当万用模板。
 
 ---
 
@@ -112,27 +113,33 @@ Form Studio 是和 Creator Studio 同一类的作者后台。作者**设计**一
 - 配了表之后仍保留输入框当另一种入口。双通道等于两份合同。
 - Frankie / 课堂练习本身。那是 Form Studio 做完之后的应用。课堂故事最贴新生路径：老师创建一个练习 agent，做的就是画表。
 
+「不是 Typeform」挡的是**归属与交付合同**，不是**设计表达力**：为某一个 agent 设计更丰富的表单（矩阵、评分等字段语义）是核心能力；被排除的只是无主问卷、任意网站嵌入、匿名续填、主题品牌这些依赖「表没有主人、没有独占交付」的问卷平台语义。参考 SurveyJS 系编辑器时只借字段语义与作者流，不借平台语义。
+
 老师 05:59：*after the form studio is done*，接到 Frankie 的 daily outcome / report summarizer，做成课堂练习（学生在表里答题，老师在自己的 agent 里看统计和标准答案）。应用故事，不是产品身份。
 
 拿到某个 agent 的完整 Block Diagram JSON 后，可以只读分析 block、edge、入口变量、数据流和外部依赖，帮助建立运行时输入映射；它仍不直接决定用户页面栏位。JSON 没有同时给出 block 语义、schema/version、成功输入输出和运行 trace 时，不得声称已完整理解真实运行。
 
-### 3.3 产品面、产物与消费者（应用外置）
+### 3.3 核心能力、用户界面与消费者边界
 
-Form Studio 的产品面只有**两个表面**，其余都是外置的：
+先固定术语，避免用“有几个页面”代替产品边界判断：
 
-| 表面 | 是什么 | 入口 |
+| 术语 | 本文含义 | 当前例子 |
 |---|---|---|
-| 作者工作台 | 产品本体：目录、设计器、预览、发布 | `/` |
-| 通用表单渲染器 | 产品的产物：一个渲染器 × N 个 agent，按账本渲染 | `/a/:ownerAgent` |
+| 核心能力（capability） | Form Studio 必须长期负责的产品语义 | 设计/发布用户 UI、渲染/提交、保存和可靠投递提交 |
+| 用户界面（surface） | 人直接完成任务的可见界面；一个界面可以承载多项能力 | 作者工作台 `/`、已发布用户页面 `/a/:ownerAgent` |
+| 路由（route） | 当前 HTTP 实现入口，不自动等于一个产品或能力 | `/classroom`、`/preview/:ownerAgent` |
+| 消费者应用/适配器 | 通过稳定端口读取提交并完成自己的业务任务 | Frankie 课堂；以后可能有 CRM、分析或批处理 |
 
-「读提交」不是产品面本身，而是**消费者**。一个消费者 = 角色 + 作用域（tenant / class / agent）+ 读同一份提交合同的权限。课堂、CRM、分析台都是消费者，不是新页面：
+产品方向确定的边界：
 
-- 同一份 `submission-record/v1` 是唯一数据合同；
-- 新应用 = 新消费者，读同一合同 + 新作用域，不需要新页面；
-- `/classroom` 是 Frankie 课堂这个**参考消费者**，用来证明合同端到端可用，不是产品面的第三条腿；
-- `/session` 只是本地演示的测试脚手架，正式身份由外部提供，不属于产品。
+- Form Studio 核心负责造表、发布、收表和把同一份提交可靠交给已声明端口。
+- 课堂统计、CRM 工单处理、业务分析等应用专属流程不进入 Form Studio 核心。它们可以有自己的 UI；“应用外置”不是“新应用不准有页面”，而是新应用不应迫使核心新增应用专属角色、scope 字段或页面分支。
+- 作者已经明确需要在同一 agent 下核对字段合同、已发布页面和实际提交，因此工作台提供「提交记录」作为 owner-scoped 诊断视图。它不包含课堂评分、CRM 工单、统计大屏或消费者业务状态机。
+- 正式身份应由外部认证上下文提供。本地 demo 自动进入作者工作区；旧 `/session` 页面撤下，显式测试身份继续由 API/测试 resolver 提供，不成为产品登录或导航。
 
-一句话：Form Studio 造表和收表；谁来看表，那是挂在外面按合同消费的应用。
+当前实现已完成读取端口和组合根两层边界：`agent-access/v1`、`submission-record/v1` 仍保留 `teacher/student/classId/teach` 的课堂含义，但读取 application 已不再解释这些词，由课堂 adapter 映射；`/classroom` 继续调用兼容课堂 API，但只在 demo/test 组合注册。课堂现在是**已从 product 组合隔离的本地参考应用**，仍不能描述成已经验证的多应用消费者产品。
+
+现役形态是一条稳定的读提交能力边界，由外部身份/应用适配为 `principal + capability + resource scope`；版本化合同不得原地改义。课堂和测试 CRM adapter 已分别验证同一端口，但测试探针不是第二个真实应用，也不证明需要连接注册表。
 
 ---
 
@@ -257,7 +264,7 @@ flowchart TD
 
 ### 7.1 字段账本 `form-ledger/v1`
 
-机器从**已设计并发布**的页面抽出，模型不先写这份 JSON。作者面编辑的是字段列表（再渲染成表）；抽出的账本必须与页面一致。没有 `ownerAgent` 的账本非法。第 0 段基准示例也必须带假 id（例如 `exercise-1`），抽出的账本从第一天合法。新生的 agent form 在可预览的第一刻就要有 id。
+作者保存的是规范化 composite definition；每次发布把它作为不可变快照绑定到 `formVersion`。使用面 HTML 是发布产物，DOM 抽取器负责独立重建并核对同一份账本，而不是运行时真相源。生产 HTML 不嵌入完整 grid JSON。没有 `ownerAgent` 的账本非法；第 0 段基准示例也必须带假 id（例如 `exercise-1`）。
 
 控件上的 `name` = 字段 `id`。`label` 从对应 `<label>` 来。机器不按可见文案当主键。
 
@@ -278,7 +285,7 @@ flowchart TD
 | 字段 | 规则 |
 |---|---|
 | `ownerAgent` | 必填。mock 或真实 id。改装 = 已有 id；新生 = 创建时分配的 id。 |
-| `formVersion` | 正整数。改字段 id / 增删栏则递增。改 `label` 文案不强制递增。 |
+| `formVersion` | 正整数。任何会改变字段解释的 id、label、控件、必填、选项、小数位或 grid 行列变化都递增；提交永远按信封携带的版本读取不可变发布快照。 |
 | `status` | `draft` \| `published`。第 1 段夹具视为 `published`。使用面只渲染已发布表。 |
 | `fields[].id` | 稳定主键。ASCII / 短 id。控件 `name` 必须等于它。 |
 | `fields[].label` | 给人看。可改、可译。不是主键。 |
@@ -287,21 +294,33 @@ flowchart TD
 
 禁止：用中文标签当 `id`；模型先写账本再「补」表。
 
+`form-ledger/v1` 目前只承诺为 Form Studio **内部 Alpha 合同**：schema 会由真实 Draft 2020-12 validator 执行，但尚无旧外部 consumer 兼容承诺。首次接纳外部 consumer 前必须冻结兼容政策；合同语义改变、既有 consumer 无法无损读取，或信封编码改变，均触发新版本，而不只 Dynamic Panel 才触发。
+
 建议账本或 mock 上另记 `origin`：`retrofit`（改装）\| `born-form`（新生）。用户面不展示；解绑规则靠它。
 
 ### 7.2 封闭控件词表
 
-第 2 段之前只许这些。手写 HTML 是基准夹具；作者设计的表必须能映射到本表，不是自由网页。
+设计表达力属于核心能力，词表可按业务样例扩展；手写 HTML 是基准夹具，作者设计的表必须能映射到本表，不是自由网页。
 
 | `control` | HTML | 说明 |
 |---|---|---|
 | `text` | `<input type="text">` | 单行 |
 | `textarea` | `<textarea>` | 多行 |
-| `number` | `<input type="number">` | 非法类型走浏览器校验 |
+| `number` | `<input type="number">` | 非法类型走浏览器校验；可选 `decimals`（小数位，如 `2`）与 `step`，缺省只收整数 |
 | `select` | `<select>` | `options[]` 必填 |
+| `radio` | `<input type="radio">` | `options[]` 必填；同名字段共享 `name=id` 单选组，信封写入选中项的值字符串；评分是它的一个展示壳 |
 | `checkbox` | `<input type="checkbox">` | 值为约定的 on/off，写入信封时布尔或 `"true"`/`"false"`，夹具里写死一种 |
+| `grid` | `<fieldset>` + 表格 | **固定**行 × 列 × 标量格，见下方规则 |
 
-不做：`file`、richtext、自由 HTML 块、脚本、为好看而加的无字段装饰控件。第一版作者面不必拖拽、不必主题；必须能加栏、改栏、删栏、预览、发布。
+`grid` 规则（本拍板）：
+
+- 数据形状不变：每个格子展开为一个普通字段，id 为 `gridId_rowId_colId`（三段各自匹配字段 id 规则），仍平铺进 `values[id]` 信封；格子 id 不得与任何兄弟字段冲突。
+- 行列**固定**、由作者定义：行有 `id` / `label`，列有 `id` / `label` / `control` / `required` / `options`；列控件只许用本词表其余控件（text / textarea / number / select / radio / checkbox）；填写者不能增删行。
+- 财务矩阵（FY × 指标，列控件为 `number`）与单选矩阵（每行从列选项选一，列控件为 `radio`）是同一 `grid` 的两种列配置。
+- 增删行 / 列、改任何行 / 列 `id` 都递增 `formVersion`（等价于改字段 id / 增删栏）；改标签不强制递增。
+- 账本里 `grid` 是设计面的一份声明；使用面渲染成真表格后，抽取器必须交叉校验每格 `name`、`type`、`required` 与声明一致并重建同一份声明（渲染 / 抽取同构约束不变）。
+
+不做：`file`、richtext、自由 HTML 块、脚本、为好看而加的无字段装饰控件、填写者增删行（动态行，延期项见第 9 段）。第一版作者面不必拖拽、不必主题；必须能加栏、改栏、删栏、预览、发布。
 
 ### 7.3 运行时只做入口
 
@@ -333,6 +352,8 @@ flowchart TD
 | `submitterId` | mock 也要有（可假）。第 3 段「谁交的」靠它。 |
 | `values` | 键是字段 `id`。缺必填栏不得入袋。 |
 
+`grid` 不改变信封形状：每个格子展开为 `gridId_rowId_colId` 普通字段 id，仍平铺进 `values[id]`；agent 输入映射可按格映射，也可以在 mapper 层聚合，信封本身不改。
+
 ### 7.4 mock agent
 
 最少五样：`id`、`name`、`origin`（`retrofit` \| `born-form`）、已绑定的表（或 `null`）、`inputBag`（提交信封列表，追加写）。打开该 id 时：有表则只渲染该表；改装且无表则走「无首页」分支（空白说明，不假装已挂上）；新生且未发布则不可作为使用面打开。
@@ -357,13 +378,15 @@ flowchart TD
 - 改装对象未绑定时可以走空门；新生对象未发布或下架后，使用面不得继续把它作为可打开的 form 返回。
 - 作者正在编辑的字段属于 `draft`；只要尚未重新发布，就不得在账本或使用面上标成 `published`。
 
-### 7.6 提交记录与消费者
+### 7.6 提交记录、读取能力与当前课堂投影
 
-`submission-record/v1` 是提交的物理真相源：独立记录 id、原提交信封、服务端验证的 actor context（含 `displayName`）、tenant / class scope 和接收时间。它按 `ownerAgent`、actor、scope 和时间查询，是消费者读取的唯一数据合同。
+`submission-record/v1` 是当前提交的物理真相源：独立记录 id、原提交信封、服务端验证的 actor context、tenant / class scope 和接收时间。repository 已能按 `ownerAgent`、actor、scope 和时间查询；原提交信封与 agent 输入投递仍以稳定 `values[id]` 为中心。
 
-消费者不修改提交，也不拥有字段定义。产品面内部提供一个**参数化的提交台账**：按 `ownerAgent` + 作用域浏览提交列表、详情和字段 `values[id]`。老师视图只是台账在「课堂作用域」下的一次参数化；课堂词汇不进入台账本体。
+但 `v1` 不是已经验证的跨应用通用消费者合同：它枚举 `student/teacher/author` 并要求 `classId`。现役读取 application 已通过注入授权适配器改为主体、能力和具体资源输入，课堂 adapter 仍负责 teacher/class 解释；已经成立的是“通用读取端口 + 课堂范围内默认拒绝的列表/详情投影”，不是“角色与作用域任意参数化的提交台账”。
 
-新应用接入时不新增产品页面：它声明角色与作用域，读同一份提交合同。等出现第二个真实消费者时，才把「消费者配置」显式建模；过早抽象消费者框架是 YAGNI。
+目标中的通用读取能力必须保持三条边界：消费者不能改写提交或字段定义；核心按主体、能力和具体资源范围授权；课堂 adapter 负责把老师/班级关系映射到该能力。若需要改变 `v1` 含义，必须新增版本或显式兼容转换，不能原地改 schema 后仍称同一合同。
+
+非课堂 CRM 测试探针已验证：新增消费者可以只提供 owner allow-list、`submission:read` 和自己的 account scope 映射，不必修改核心 schema、权限动作、工作台或路由。它只提供结构证据，不是产品 CRM 集成。消费者框架、策略引擎、插件市场和通用提交管理 UI 继续等待真实任务触发。
 
 ---
 
@@ -372,11 +395,12 @@ flowchart TD
 - 字段必须先在表上存在，机器不发明 input。  
 - 校验只认 HTML 属性。  
 - 提交是点名效果，禁止 alert 冒充成功。  
-- 账本从 DOM 抽，不当模型入场券。  
+- 不可变发布 definition 是版本真相源；提交读取不得拿当前草稿或当前发布版解释旧 `formVersion`。
+- DOM 抽取是发布一致性 Oracle，不是生产状态恢复手段，也不当模型入场券。
 - 账本不是设计稿。
 - 手写 HTML 是基准夹具，不是作者范式。作者范式是设计字段，渲染成能被同一套规则抽出的表。
 - 自由 HTML 不当产品表面；控件词表保持封闭。
-- 发布和解除本地绑定都要可回滚；历史 `inputBag` 不随解绑删除。
+- 发布和停用用户页面都要可回滚；合同内部解除绑定时，历史 `inputBag` 不删除。
 
 ---
 
@@ -396,9 +420,9 @@ flowchart LR
 |---|---|---|---|
 | **0 真表** | 手写一张封闭词表内的表。空提交停住。填齐能交。DOM 按 `name=id` 抽字段。夹具账本带假 `ownerAgent`。成功写出提交信封。 | walk 三条绿：空 / 非法类型 / 信封入袋（列表追加） | LLM、工作台、真平台、Frankie、自由 HTML |
 | **1 改装挂上** | 预置有 id 的 mock agent。夹具表是它的首页（独占）。提交信封追加进它的 `inputBag`。workbench：选 agent、预览表、看见袋子、能解绑。 | 人能指着说：打开的是 A，填的是 A 的首页，三栏以 id 出现在 A 的袋子里 | 登 Poffices、改官方 agent、全库出表、设计面、新建 agent form |
-| **1b 设计 + 新生** | 作者在封闭词表内加栏 / 改栏 / 删栏 / 预览 / 发布。两条入口：改已有 mock 的页面；新建一个 agent form（新 id，天生是表）。抽账本与使用面仍走同一套合同。 | 人能不改夹具 HTML、只在工作台画出一张表并打开该 agent 填它；也能新建一个 form agent 打开就填 | 主题市场、自由 HTML、从 CS 框图生成表、真 Poffices 写回 |
-| **2 真身份** | 作者先在 Form Studio 本地为真实 `ownerAgent` 设计、预览和发布；不改 Poffices agent 本体。改装入口可先旁路，平台官方入口只有在存在正式授权接口时才对接。新生 agent form 也可先旁路。提交信封形状不变，使用面只渲染 `published`。 | 指定一个真实存在的 agent，打开 Form Studio 受控用户入口先填表；若声称 Poffices 官方入口已换门，必须有正式平台授权证据 | 直接修改官方 agent、在 CS 发明 form block、Frankie |
-| **3 应用** | 学生 agent 收表；课堂作为**参考消费者**读提交台账做统计 / 标准答案（Frankie 故事）。靠 `submitterId` 和 `values[id]`。 | 一条教学故事能走通，课堂只作外置消费者 | 把课堂练习写成 Form Studio 的定义 |
+| **1b 设计 + 新生** | 作者在封闭词表内加栏 / 改栏 / 删栏 / 预览 / 发布。两条入口：改已有 mock 的页面；新建一个 agent form（新 id，天生是表）。抽账本与使用面仍走同一套合同。 | 人能不改夹具 HTML、只在工作台画出一张表并打开该 agent 填它；也能新建一个 form agent 打开就填 | 主题市场、自由 HTML、从 CS 框图生成表、任何 Poffices 写回 |
+| **2 真身份** | 作者在 Form Studio 自己的数据域为真实 `ownerAgent` 设计、预览和发布；Poffices 仅提供只读身份参照，用户入口由 Form Studio 管理。提交信封形状不变，使用面只渲染 `published`。 | 指定一个真实存在的 agent，打开 Form Studio 受控用户入口先填表，并能证明 Poffices 对象保持不变 | 修改或发布 Poffices agent、改官方入口、在 CS 发明 form block、Frankie |
+| **3 应用** | 学生 agent 收表；Frankie 课堂通过受控读取能力查看提交，并由 `AgentInputPort` 把同一提交交给目标 agent。课堂可以有自己的 UI，但其角色、班级和统计语义不进入 Form Studio 核心。 | 本地故事走通；参考应用只通过稳定端口依赖核心，product/demo 组合可区分 | 把课堂练习或下一应用的角色、scope、页面分支写成 Form Studio 核心定义 |
 
 第 0 段、第 1 段已在本仓落地（分层测试绿）。第 1b 段已落地：每个 agent 自己的字段、工作台加栏、新建 agent form；发布用户页面作为该 agent 的用户 UI。基准夹具只留在 `tests/fixtures/exercise-1` 做第 0 段回归。
 
@@ -411,16 +435,16 @@ flowchart LR
 | 0 | 空提交被拦；填齐有带 `id` 的提交信封；账本有假 `ownerAgent` | 好看但不能交的 HTML；`name` 仍是中文标签；无主 `{ name, value }` |
 | 1 | 表挂在 named agent 上；打开只出表；袋子追加可见；能解绑 | 只有本页回显；agent 只写在注释里；袋子要打开文件才知道；覆盖成单条快照 |
 | 1b | 工作台里加出新栏并出现在使用面；能新建 agent form 并打开；改装对象仍能改页面 | 仍在改夹具 HTML 才出栏；新建的是无主表；从 CS 变量列表「生成」了表 |
-| 2 | 打开一个真实 agent 的 Form Studio 受控使用入口，先是表，没有输入框；官方 Poffices 入口声明另需平台授权证据 | 只在设计预览里假装挂上；表和输入框并存；把本地旁路冒充成 Poffices 官方入口已改变 |
+| 2 | 打开一个真实 agent 的 Form Studio 受控使用入口，先是表，没有输入框；Poffices 对象与官方入口保持不变 | 只在设计预览里假装挂上；表和输入框并存；声称 Form Studio 会修改 Poffices agent 或官方入口 |
 | 3 | 学生提交出现在老师侧，能按人、按字段 id 看 | 课堂 UI 很全但表仍无主人；统计按中文标签聚合 |
 
-刻意留给以后的（现在不要证明）：Typeform 级拖拽与主题、全库自动出表、`file` / richtext、多步表、角色分表、进 Creator Studio Input Layer、Frankie 课堂统计 UI。
+刻意留给以后的（现在不要证明）：Typeform 级拖拽与主题、全库自动出表、`file` / richtext、多步表、角色分表、Frankie 课堂统计 UI；v0.27 起补充：动态行（Dynamic Panel，填写者增删行）、Tags（一个 id 多值，需先拍板编码）、条件 Logic（显隐 / 跳题，改写必填语义）、匿名续填（save & continue）。Dynamic Panel 是明确的 `form-definition/v2` 候选，但不是唯一触发条件；任何无法在现有 composite definition、leaf ledger 与版本兼容政策内无损表达的语义变化同样触发 v2。每一项都要各自的业务证据。无主问卷、任意网站嵌入、Cookie / 品牌化主题，以及修改 Poffices agent / Creator Studio Input Layer，仍是永久非目标。
 
 **不再**把「作者能设计表」和「新建 agent form」留到以后。那是第 1b 段，是原话和复听会议已经要求的。
 
-### 9.1 阶段方案（当前第 3 段）
+### 9.1 阶段方案（第 3 段本地边界已收口）
 
-顺序固定：`1b → 2 → 3`。第 1b、第 2 段当前本地旁路和 3A、3B 已经完成，**现在执行第 3 段的 3C**；先让一条教学故事端到端走通，不先扩成完整 Frankie 课堂统计 UI。后续若再把 1b、2A、2B、2C、3A 或 3B 写成下一件，视为版本漂移。
+顺序固定：`1b → 2 → 3`。第 1b、第 2 段当前本地旁路和 3A、3B、3C 本地切片已经完成；3C 已把文档事实、最小读提交能力、product/demo 组合、本地化与测试责任收口。现阶段不自动增加第 4 段或连接框架；第一个真实非课堂消费者到来时，先用其任务证据复审范围。后续若再把 1b、2A、2B、2C、3A 或 3B 写成下一件，视为版本漂移。
 
 #### 第 1b 段：设计面 + 新生（已完成，保留验收基线）
 
@@ -431,13 +455,15 @@ flowchart LR
 | 区域 | 做什么 |
 |---|---|
 | 左 | 已有 agent + **新建 agent form** |
-| 中 | 预览该 agent 的用户 UI；改装可解绑回空门 |
-| 设计条 | 封闭词表内加栏 / 改 `id`·`label`·控件 / 删栏；预览即时反映 |
-| 右 | 这份表的入口合同 + 这个 agent 的袋子 |
+| 顶部 | 当前 agent、来源摘要、草稿/发布状态、明确的线上/编辑版本和发布动作；左侧目录徽标只表达「已发布 / 未发布 / 待发布」，不显示裸 `vN` |
+| 输入表单 | 封闭词表内加栏 / 改 `label`·控件 / 删栏；宽屏右侧同步显示只读草稿/发布预览；预览支持 60%–140% 缩放，普通滚轮保持滚动。稳定 `id` 集中在「字段接口信息」中默认只读查看/复制，显式修改只进入草稿 |
+| 收到的提交 | 当前 owner 的字段结构和授权提交记录投影；主标识按追加顺序显示「提交 #N」，actor identity 留在授权/审计层；切入时重新读取，外部页面的新提交不会停留在旧快照 |
+
+两层属于同一 `ownerAgent` 工作区，共享草稿、发布版本和提交记录；前端页签不授予新权限。作者预览始终只读，真实提交必须从独立 `/a/:ownerAgent` 页面发生。页签按 [W3C APG Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) 实现；“编辑问题—预览—查看响应”的任务关系也可由 [Google Forms 官方界面说明](https://support.google.com/docs/answer/3527854?hl=en) 交叉验证。
 
 两条入口：
 
-1. **改装：** 选“客户回访记录”这类已有 mock → 修改字段 → 发布用户页面。解除本地绑定后回空门，袋子保留。
+1. **改装：** 选“客户回访记录”这类已有 mock → 修改字段 → 发布用户页面。停用用户页面后入口回空态，历史提交保留。
 2. **新生：** 新建时同时得到新 `id` 和一张空表（或从例子复制后改）。form 就是这个 agent。下架不恢复输入框。
 
 存储：每个 agent 自己的字段列表（再渲染成使用面 HTML）。`engine` 必须能从使用面抽出与设计面一致的账本。禁止再写死 `bind → exercise-1 基准示例`。
@@ -450,19 +476,19 @@ flowchart LR
 - 点新建，得到新 id；打开它就是刚画的表，不是无主问卷。  
 - “市场分析需求”仍能交、能解绑；信封形状仍是 7.3。
 
-不做：拖拽画布、主题、自由 HTML、从 CS 框图生成、真登录写回。
+不做：拖拽画布、主题、自由 HTML、从 CS 框图生成、任何 Poffices 写回；也不把作者预览伪装成学生身份提交。
 
 #### 第 2 段：真身份（当前本地旁路范围已完成）
 
-`owner-agent-identity/v1` 只回答「主人是谁」。作者仍在 Form Studio 本地制作表；Poffices 详情不替作者决定栏位。换主人从 mock id 到真实存在的 agent，提交信封形状不变。身份可读足以创建隔离本地副本；只有写回 Poffices 时才另需平台授权。
+`owner-agent-identity/v1` 只回答「主人是谁」。作者仍在 Form Studio 本地制作表；Poffices 详情不替作者决定栏位。换主人从 mock id 到真实存在的 agent，提交信封形状不变。只读身份足以创建隔离本地副本；Form Studio 不申请也不使用 Poffices 配置写权。
 
 - **改装：** 指定一个真实存在的 Poffices agent id；在 Form Studio 自己的数据域建立一表一主的隔离副本、设计并发布版本。先提供 Form Studio 管理的旁路入口，提交进本地 `inputBag`，`values[id]` 不用改名。不改 Poffices agent 本体、官方入口或 block 图。
 - **新生：** 本工作室创建的 agent form 有可打开的真实身份（也可先旁路）。  
 - 使用面只渲染 `published`。草稿只在作者面。
 
-本地改装机制完成定义：指着一个真实 `ownerAgent` 说，Form Studio 管理的入口只显示它的 `published` 表，信封进它的本地袋子。若最终完成定义要求 Poffices 官方 URL 也直接出表，则必须另有正式入口映射接口与授权证据；旁路不得冒充官方入口已改变。
+本地改装机制完成定义：指着一个真实 `ownerAgent` 说，Form Studio 管理的入口只显示它的 `published` 表，信封进它的本地袋子；Poffices 官方 URL 和 agent 配置不属于该完成定义，也不会被 Form Studio 改变。
 
-不做：在 CS 里发明 form block、给全部官方 agent 换门、Frankie。
+永久不做：在 CS 里发明 form block、修改或发布 Poffices agent、替换 Poffices 官方入口。Frankie 仍属于外部应用。
 
 第 2 段仍是一个产品里程碑，不在 `1b → 2 → 3` 之间另插顶层阶段；实施内部按下面顺序收窄风险：
 
@@ -472,12 +498,11 @@ flowchart LR
 | **2B-A 作者流整理（已完成）** | 把 2A 身份核对从主侧栏移入「改已有 agent」选择流程；起始页只保留改装 / 新生两条入口；工作区显著显示当前 `ownerAgent`、来源和本地状态 | 五秒内能回答正在改谁、改装还是新生、草稿还是已发布版本；Official 候选不再与本地示例假绑定 | 新控件、Poffices 写入、重做完整视觉系统 |
 | **2B-B 本地绑定合同（已完成）** | `owner-agent-binding/v1` 只在本地把一个已核实只读身份与一个 form、一个已发布版本相连；Official 也可建隔离副本 | 无主非法；一表一 agent；绑定、解绑和历史 `inputBag` 可回滚；Poffices 对象零修改 | 用名字当主键、把本地绑定冒充平台授权、认证写回 |
 | **2B-C 本地旁路入口（已完成）** | 为已绑定真实身份提供 Form Studio 管理的用户入口；只渲染 `published`，提交信封追加进对应本地 `inputBag` | 草稿不泄漏、无输入框逃生门、信封 `ownerAgent` 与绑定一致、解绑可退 | 冒充 Poffices 官方 URL 已改变、接真实 Input Layer |
-| **2B-P 平台入口（条件项）** | 只有 Poffices 提供正式、可授权、可回滚的入口映射能力时，才把官方用户入口接到已发布版本；仍不改 agent 内部 | 真实 Poffices 入口先见表且可回滚，有平台证据 | 直接改官方 agent、复用浏览器 cookie、无授权探针 |
 | **2C 持久新生身份（已完成）** | 把第 1b 已有的本地新生 id 和旁路入口从内存演示升级为持久事实 | 创建、发布、提交后重启服务：同一 id 和 URL 仍存在、只见已发布版本、历史 `inputBag` 不丢；下架仍不可打开 | 注册 Poffices agent、改官方对象、完整模型运行能力、Frankie |
 
-2B-A / B / C 证明本地改装机制；若 Poffices 官方入口是最终验收的一部分，2B-P 未通过前不得宣布平台改装完成。第 1b 已经证明新生的临时 id、发布 URL 和下架语义，2C 不得重复这些测试冒充进展，而要补上跨进程持久性。所有切片共用同一份 `ownerAgent`、封闭控件词表、账本和提交信封合同，不各自发明实现。
+2B-A / B / C 证明本地改装机制；Poffices 官方入口不属于 Form Studio 的最终验收，仓内不再保留平台入口实施切片。第 1b 已经证明新生的临时 id、发布 URL 和下架语义，2C 不得重复这些测试冒充进展，而要补上跨进程持久性。所有切片共用同一份 `ownerAgent`、封闭控件词表、账本和提交信封合同，不各自发明实现。
 
-**2A 落地证据（2026-08-20）：** Poffices 公开 Store detail 实时返回 `Market Analysis` 的 `id=18`；infrastructure 将它映射成只读 `owner-agent-identity/v1`，其中 `ownerAgent="18"`。401 / 403 / 404 / 上游异常已冻结失败映射。Creator Studio 页面另显示 Key=`marketanalyzer`，但公开响应不含该字段，所以它只作人工交叉核对，不静默替换 `ownerAgent`。该对象是 Official；这限制平台写回，不阻止 Form Studio 建立隔离本地页面。
+**2A 落地证据（2026-08-20）：** Poffices 公开 Store detail 实时返回 `Market Analysis` 的 `id=18`；infrastructure 将它映射成只读 `owner-agent-identity/v1`，其中 `ownerAgent="18"`。401 / 403 / 404 / 上游异常已冻结失败映射。Creator Studio 页面另显示 Key=`marketanalyzer`，但公开响应不含该字段，所以它只作人工交叉核对，不静默替换 `ownerAgent`。该对象是 Official；Form Studio 始终只引用其身份，在本地建立隔离页面，不写回平台。
 
 **2B-A / B / C 落地证据（2026-08-20）：** 起始页只呈现改装 / 新生；身份核对住在改装流内。发布产生可机读 `owner-agent-binding/v1`；使用面和提交端点都校验绑定的主人、表和已发布版本一致后才开放。E2E 证明 Official `Market Analysis / 18` 可创建 `local-shadow-only` 本地页面，sandbox 信封按 `values[id]` 追加进对应本地 `inputBag`。这只证明本地改装机制，不证明 Poffices 官方入口已改变。
 
@@ -487,7 +512,11 @@ flowchart LR
 
 **3B-A / B / C 落地证据（2026-08-20）：** `agent-input-profile/v1` 与 `agent-input-mapping/v1` 已冻结，显式把某一 `formVersion` 的 `values[id]` 映射为结构化请求；未知字段、版本漂移和错控件类型 fail closed；没有配置时投递状态为 `not_configured`，不猜接口。提交与 outbox event 在同一 SQLite 事务落盘，序列化失败一起回滚；relay 以稳定幂等键投递并记录 pending / delivering / delivered / failed 与尝试次数，回执丢失可重试且目标不重复消费。本地 `AgentInputPort`（内存 + SQLite 双实现）跨重启按幂等键只保留一份输入，回执可追溯到 submission id、原信封与 mapping 版本。自动检查 69/69 通过，另以端到端故事证明学生提交 → 老师查看 → 本地端口收件同链。它证明 3B 本地机制，不证明 Poffices 真实 agent 收到输入。
 
-**当前下一件：** 3C 参考消费者故事：学生用户页面提交，课堂消费者（老师）从提交台账看见同一记录，目标 agent 从受支持端口收到同一份输入；并顺带把课堂词汇从产品面移出。3B-P Poffices adapter 仍是条件项，只有正式 endpoint、认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才实施；不是直接猜 endpoint、复用浏览器 cookie 或把 Block Diagram 当输入 schema。
+**v0.27 落地与质检修复证据（2026-08-23）：** `radio`、固定行列 `grid` 与 `number` 可选小数位已落地；格子 id `gridId_rowId_colId` 继续平铺进 `values[id]`。质检后补齐了按 `formVersion` 保存/读取不可变发布定义、真实 JSON Schema 执行、浏览器与服务端一致的 number step 语义、grid 逐格可访问名称、容器内窄屏滚动、格子 ID 逐个复制，以及删到最后一行/列的可见反馈。DOM 抽取器从语义表头和控件独立重建 grid，不再解析生产渲染器埋入的 JSON 副本；找不到旧版本定义时保留原始 ID 并显式警告，不伪造标签或分组。单画布与右侧上下文属性栏收口后，`npm run check` 最终 structure ok + 115/115；390px 实测滚动只发生在 grid 容器，页面无横向溢出。它不证明既往已丢失的历史定义可被追溯恢复，也不改变 3B-P、真实身份与消费者侧条件。
+
+**开发数据与验收身份（2026-08-23）：** 当前页面和提交均被用户确认为可丢弃 mock。`form-studio-mock-catalog/v1` 因而成为 demo/test 唯一内容源；desktop demo 与自动测试只共享 catalog，不共享可写运行库。`datasetRevision` 变化允许在 demo 初始化阶段整体替换 agents、submissions、outbox 与本地投递，同 revision 的 checksum 漂移则拒绝启动；真实数据、product 模式或需保留草稿出现后必须停止破坏性同步。产品版本、运行源码 revision、SQLite schema 版本、dataset revision 与 `ownerAgent + formVersion` 是五个独立身份，前端与视觉证据不得再只写“v0.27”。依据与升级条件见 [`docs/research/version-data-governance-20260823.md`](./docs/research/version-data-governance-20260823.md)。
+
+**当前下一件：** 先用至少两种真实作者任务验证 fixed grid 与普通字段能否安全完成首稿、修改、发布和历史回看；不要预建 AppConnection，也不要只改一句文档就转正 AI 制表。AI 候选建议只在合同与历史解释稳定后立项，并以首稿时间 / 返工量为效果指标，保持逐项接受、修改、拒绝和完全不用。消费者 binding 等待真实非课堂消费者；3B-P 继续等待正式 endpoint、最小认证、schema 与获授权 sandbox trace。
 
 **当前阶段判定：** 作者设计、发布、入口校验、独立提交记录、本地 actor / scope、老师最小消费界面和本地 agent 输入投递机制（outbox → relay → `AgentInputPort`）已经成立，仍属于本地可演示 Alpha。真实身份提供方、跨机器运维和 Poffices 侧 agent 输入投递尚未成立，因此不得称为学生 / 老师可用的联网 MVP，也不得说“真实 agent 已交互”。
 
@@ -499,40 +528,42 @@ flowchart LR
 | 已解决 | P1 | 提交嵌在 agent JSON 的 `inputBag` | 无法可靠按学生、班级、时间查询 | 3A-A 已以独立 submission record / repository 接管；逻辑 `inputBag` 仅作兼容投影 |
 | 已解决 | P1 | 客户端可伪造 `submitterId` | 不能证明谁提交 | 3A-B 已改为服务端验证 actor；body 身份被忽略 |
 | 已解决 | P1 | 没有班级 / 租户和老师授权 | 可能跨范围读写 | 3A-B 已默认拒绝并逐资源复核 actor / scope |
-| 已解决 | P1 | 没有老师查询端口和最小视图 | 数据落盘但没有应用消费者 | 3A-C 已完成提交台账（获授权列表、单条详情、提交者筛选、空态与窄屏） |
+| 已解决 | P1 | 没有老师查询端口和最小视图 | 数据落盘但课堂故事无法读取 | 3A-C 已完成课堂专用的获授权列表、单条详情、提交者筛选、空态与窄屏；它不是通用消费者端口 |
 | 待解决 | P1 | 本地演示身份是内存会话，不是真实平台登录 | 服务重启会话失效；不能用于联网学生 / 老师试点 | 3C-P / 试点前：Alan / Poffices 决定可信身份与班级来源；会话绑定正式认证，仍默认拒绝 |
-| 已解决 | P1 | 没有 `agent-input-profile`、mapping、outbox 和 transport | 表单提交尚未进入任何可证明的 agent 输入端口 | 3B-A / B / C 已落地：两份输入合同冻结、提交与 outbox 同事务、幂等 relay、本地 `AgentInputPort` 可审计收件；正式 Poffices adapter 另需 sandbox trace |
-| 待解决 | P1 | Poffices 真实输入 endpoint、认证、schema 和成功样例缺失 | 无法证明真实 agent 交互，不能安全猜接口 | 3B-P 条件项：平台或 Alan 提供机器合同 / 作者声明，并在获授权 sandbox 验证 |
-| 待解决 | P2 | 历史记录只保存稳定字段 ID，详情暂以当前已发布 label 投影 | label 改名后，旧记录展示名可能不是提交当时文案 | 3B 前评估是否保存发布版本字段快照；机器查询仍以 `values[id]` 为准 |
-| 待解决 | P2 | 老师视图当前以 actor ID 显示学生 | 本地机制可判人，但真实课堂可读性不足 | 3B 已附带保存并显示本地演示姓名 + 稳定 ID；接入正式身份目录后替换姓名来源；姓名不得成为主键 |
-| 待解决 | P2 | 课堂应用词汇与 `/classroom` 页面混入产品面 | 产品被单一应用（课堂）污染，再来第二个应用就要再造页面 | 3C 收口时：提交台账泛化、消费者外置、措辞去课堂化；产品面保持「工作台 + 渲染器」两表面 |
+| 已解决 | P1 | 没有 `agent-input-profile`、mapping、outbox 和 transport | 表单提交尚未进入任何可证明的 agent 输入端口 | 3B-A / B / C 已落地：两份输入合同冻结、提交与 outbox 同事务、幂等 relay、本地 `AgentInputPort` 可审计收件；Poffices 运行时调用另需 sandbox trace |
+| 待解决 | P1 | Poffices 真实输入 endpoint、认证、schema 和成功样例缺失 | 无法证明真实 agent 交互，不能安全猜接口 | 3B-P 仅解决既有 agent 的运行时调用；平台或 Alan 提供机器合同 / 作者声明，并在获授权 sandbox 验证，不申请配置写权 |
+| 已解决 | P1 | 课堂角色、`classId` 与 `teach` 曾进入核心读取用例 | 第二应用会迫使核心理解课堂语义 | 3C 已抽 `principal + submission:read + resource scope` 端口；课堂关系留在 adapter，旧课堂 `v1` 未原地改义；CRM 测试探针无需修改核心 |
+| 待解决 | P2 | 历史记录只保存稳定字段 ID，详情暂以当前已发布 label 投影 | label 改名后，旧记录展示名可能不是提交当时文案 | 设计通用读取 projection 时决定是否保存发布版本字段快照；机器查询仍以 `values[id]` 为准 |
+| 已解决 | P2 | 老师视图只有稳定 actor ID，缺可读姓名 | 本地机制可判人但难以人工核对 | 3B 已附带保存并显示本地演示姓名 + 稳定 ID；正式身份目录仍是外部来源，姓名不得成为主键 |
+| 已解决 | P2 | demo 身份与 `/classroom` 曾在普通本地组合中无条件注册 | 文档说“非产品”，机器边界却无法证明 | 已显式区分 product/demo/test；product 不注册 demo 页面、profiles 和 teacher API，demo 故事仍可运行 |
 | 待解决 | P2 | `node:sqlite` 有实验性警告、无备份恢复演练、无多实例方案 | 本地 Alpha 可用，网络试点运维风险未收口 | 试点前完成备份恢复演练与异机 Git 远端；实测需要多实例时再升级存储 |
 
-#### 第 3 段：应用（3A / 3B 已完成，当前执行 3C）
+#### 第 3 段：应用（3A / 3B / 3C 本地切片已完成）
 
-Frankie 课堂是第一个**参考消费者**：学生打开练习 agent 填表；老师侧作为「课堂作用域」的消费者，读提交台账按 `submitterId` 和 `values[id]` 看提交与统计；需要 agent 处理时，再由明确的 `AgentInputPort` 把同一提交信封投递给对应 agent。产品面不因此新增课堂专属页面。
+Frankie 课堂是第一个参考应用：学生打开练习 agent 填表；老师侧通过当前课堂专用查询投影按 `submitterId` 和 `values[id]` 查看提交；需要 agent 处理时，再由明确的 `AgentInputPort` 把同一提交信封投递给对应 agent。课堂可以保留自己的业务 UI，但其角色、班级和统计语义不能成为 Form Studio 核心定义。
 
 第 3 段内部按数据风险拆三刀，不改变顶层 `1b → 2 → 3` 顺序：
 
-1. **3A 提交记录与提交台账（已完成）：** 独立 submission repository 保存原提交信封；服务端 actor / scope、逐资源权限和参数化的提交台账（老师视图是其在课堂作用域下的一次实例）可验证。当前仍是单机本地演示，不是多用户生产存储。内部顺序为：
+1. **3A 提交记录与课堂读取投影（已完成）：** 独立 submission repository 保存原提交信封；服务端 actor / scope、逐资源权限和课堂专用列表/详情可验证。当前仍是单机本地演示，不是通用消费者模型或多用户生产存储。内部顺序为：
    - **3A-A 提交记录（已完成）：** 定义独立记录与 repository，原提交信封原样内嵌；迁移既有 `inputBag` 时不丢、不重复。
    - **3A-B 身份与权限（已完成）：** application 接受服务端验证的 actor / scope，不信任 body 中的用户、角色或租户；未命中规则默认拒绝。
-   - **3A-C 提交台账（已完成）：** 参数化地按 `ownerAgent` + 作用域浏览获授权提交列表、单条详情和提交者筛选；老师视图是它在课堂作用域下的一次实例，没有扩成课堂统计大屏。
+   - **3A-C 老师最小视图（已完成）：** 按 `ownerAgent` + 当前 teacher/class scope 浏览获授权提交列表、单条详情和提交者筛选；没有扩成课堂统计大屏，也不冒充通用提交管理能力。
 2. **3B agent 输入投递（已完成）：** 定义 `AgentInputPort`；同一事务保存提交信封与待投递事件，再以幂等 relay 交给受支持 adapter。信封形状不变。内部顺序固定为：
    - **3B-A 输入合同与映射（已完成）：** `agent-input-profile/v1` 明确目标 skill、输入模式和 transport；`agent-input-mapping/v1` 显式把某一 `formVersion` 的 `values[id]` 映射为请求。没有合同就失败，不按名称或 Block Diagram 猜。
    - **3B-B 可靠投递（已完成）：** submission record 与 outbox event 同事务落盘；relay 以稳定幂等键投递，记录 pending / delivered / failed 和尝试次数，不覆盖提交。
    - **3B-C 本地受支持端口（已完成）：** 用可审计的本地 `AgentInputPort` 跑通同一信封的映射与消费，证明机制；它不是 Poffices 真交互。
-   - **3B-P Poffices adapter（条件项）：** 只有正式 endpoint、认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才接入并宣布真实 agent 收到输入。
-3. **3C 参考消费者故事（当前执行）：** 学生用户页面提交，课堂消费者（老师）从提交台账看见对应记录，目标 agent 从受支持端口收到同一份输入；一条教学故事端到端走通，并顺带把课堂词汇从产品面移出（消费者外置 + 台账泛化 + 措辞去课堂化）。
+   - **3B-P Poffices 运行时调用 adapter（条件项）：** 只有正式 endpoint、最小调用认证、请求 / 返回 schema 和获授权 sandbox 成功 trace 齐全才接入并宣布真实 agent 收到输入；它只 invoke / 查询本次 run，不修改 agent 定义、发布状态或官方入口。
+3. **3C 参考应用故事与产品边界（已完成）：** 学生用户页面提交、老师视图看见对应记录、目标 agent 从受支持端口收到同一份输入，已有本地 E2E 证据。读取 application 不解释课堂词汇，product 不暴露 demo 身份和课堂入口，非课堂 CRM 测试 adapter 可在不改核心的情况下按 account scope 读取。旧课堂 `v1` 仍由兼容 adapter 使用；测试探针不等同真实第二应用。
 
-真实 agent 交互必须再分开四个对象：`owner-agent-identity/v1` 回答它是谁；`form-ledger/v1` 回答用户交哪些格子；待设计的 `agent-input-profile/v1` 回答 agent 接受文本还是结构化数据、支持什么 skill 和 transport；待设计的 `agent-input-mapping/v1` 显式把 `values[id]` 映射为运行时请求。后两份合同不得塞进身份合同，也不得靠名字或 Variables 猜出来。
+真实 agent 交互必须继续分开四个对象：`owner-agent-identity/v1` 回答它是谁；`form-ledger/v1` 回答用户交哪些格子；已落地的 `agent-input-profile/v1` 回答 agent 接受文本还是结构化数据、支持什么 skill 和 transport；已落地的 `agent-input-mapping/v1` 显式把 `values[id]` 映射为运行时请求。后两份合同不得塞进身份合同，也不得靠名字或 Variables 猜出来。
 
 输入能力的证据顺序固定：平台提供的机器合同（Agent Card / OpenAPI / JSON Schema）优先；其次是 agent 作者声明的输入说明与成功样例；最后必须在获授权 sandbox 复核。若 agent 只接受自由文本，可由显式、版本化 mapper 把结构化字段组合成文本，但原提交信封不变。没有 endpoint、认证、请求/返回形状和成功样例，不得宣布已接入真实 agent。
 
-**延期增强：人工为主、AI 为辅。** AI 日后只可在独立建议区提出候选 `label`、控件、必填和稳定 `id`，作者逐项接受后才进入 `fields[]`；不得自动读取 Block Diagram 制表、覆盖既有字段或自动发布。该项不改变当前 `3A → 3B → 3C` 顺序。
+**延期增强：人工为主、AI 为辅。** AI 日后只可在独立建议区提出候选 `label`、控件、必填和稳定 `id`，作者逐项接受后才进入 `fields[]`；不得自动读取 Block Diagram 制表、覆盖既有字段或自动发布。该项不抢占当前 3C 边界收口。
 
-完成定义：一条教学故事能走通，且课堂只作为外置的参考消费者挂在产品面之外。  
-不做：把课堂练习写成 Form Studio 的定义；为每个应用开产品页面；也不在第 3 段才回头补设计面。
+完成定义：一条教学故事能走通；核心读取能力不理解课堂角色/班级；课堂只通过稳定端口依赖核心；product 模式不暴露 demo 身份；至少一个非课堂探针证明无需向核心加入应用专属字段或分支。
+
+不做：把课堂练习写成 Form Studio 的定义；禁止外部应用拥有自己的 UI；建设消费者框架、策略引擎或插件市场；也不在第 3 段才回头补设计面。
 
 ---
 
@@ -540,20 +571,20 @@ Frankie 课堂是第一个**参考消费者**：学生打开练习 agent 填表�
 
 1. 新身份、新端口。建议 id=`form-studio`，端口 `4190`。  
 2. 密钥不落盘。只读观察 Poffices 时不改官方 agent、不点保存。
-3. 第 2 段默认仍不依赖 Poffices 登录写回。任何平台入口变更都必须有独立授权、可回滚合同与真实证据；阶段编号本身不授予外部写权限。
+3. Form Studio 不提供 Poffices agent 配置、发布或官方入口写端口；这不是等待权限的延期项，而是产品边界。3B-P 如实施，只能获得调用既有 agent 和读取本次运行所需的最小权限。
 4. 第 0 段成功记录必须是 7.3 的提交信封；禁止再发明一套扁平 `{ name, value }` 再「以后升级」。
 5. 作者面产出必须能被账本抽取器读成合法账本。禁止设计面一套字段、使用面另一套 HTML。
 6. 第 2 段接触真实身份前必须先有可审计、可回滚的 Git 基线；初始化仓库本身不等于已有远端备份。
 7. 测试夹具与 reset 端点不得在真实运行配置中暴露；坏 JSON 应按客户端错误处理，不以 500 冒充服务故障。
 8. `ownerAgent`、封闭控件词表、一表一 agent、发布状态和 `formVersion` 等产品规则属于 domain/application；更换 infrastructure 只换 IO，不换语义。
 9. 结构门禁要校验真实声明的依赖方向；文件名、行数和文档位置规则是当前拍板项，可按 `docs/maintenance.md` 的变更机制调整，不是假装永恒的产品合同。
-10. Poffices 身份读取只服务确认主人和展示上下文；不读取 Variables / Block Diagram 自动制表。有效只读身份（包括 Official）可在 Form Studio 建隔离本地页面；任何 Poffices 写回仍须独立的正式授权合同。
+10. Poffices 身份读取只服务确认主人和展示上下文；不读取 Variables / Block Diagram 自动制表。有效只读身份（包括 Official）可在 Form Studio 建隔离本地页面；任何 Poffices 配置或入口写回都不进入本产品。
 
 ---
 
 ## 11. 已收口
 
-v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问是 v0.2 补收口。第 6 问是 v0.3 补收口。第 7 问是 v0.17 补收口。
+v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问是 v0.2 补收口。第 6 问是 v0.3 补收口。第 7 问在 v0.17 首次提出，由 v0.18 修正绝对化表述，v0.20 确认 owner-scoped 提交诊断进入工作区，v0.21 再收敛为输入表单与收到的提交两层，v0.22 补齐预览缩放和 actor 投影，v0.23 改以 owner 内追加序号作为收件箱主标识，v0.24 把稳定字段 ID 收入不重排主界面的受控接口面板。第 8 问由 v0.26 明确 Poffices 写入不是产品目标。第 9 问由 v0.27 明确设计表达力属核心能力、问卷平台语义不进入产品。
 
 | # | 问题 | 决定 |
 |---|---|---|
@@ -563,7 +594,9 @@ v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问
 | 4 | 第 2 段旁路还是进 Input Layer | **先旁路。** 前提是提交信封稳定，换管道时 `values[id]` 不用改。 |
 | 5 | 作者面是挂夹具，还是设计 | **设计。** 第 0–1 段夹具只证明合同。产品要允许 design a web form。抽账本是运行时，不是作者工作方式。不从 CS 框图 / 变量读取出表。 |
 | 6 | 要不要做全库万用模板 | **不做。** 基准示例只是例子。通用的是控件词表、账本、信封、工作室。每个 agent 自己的用户 UI。允许「从例子复制」当起点，复制后与夹具脱钩。 |
-| 7 | 读提交的界面（老师视图 / 课堂）是不是产品面 | **不是。** 产品面只有作者工作台 + 通用表单渲染器两个表面。读提交是外置消费者，读同一份 `submission-record` 合同 + 作用域；课堂是第一个参考消费者。为第 N 个应用对接时不新增产品页面。 |
+| 7 | 读提交的界面（老师视图 / 课堂）是不是 Form Studio 核心 | **课堂业务界面不是；当前 owner 的提交诊断是作者工作区能力。** 工作区可核对字段账本、原始提交和投递状态，但不承担评分、统计、CRM 工单或跨应用连接管理。外部应用仍有自己的 UI，不能迫使核心新增应用专属角色、scope 或页面分支。 |
+| 8 | Form Studio 是否要修改 Poffices agent 或替换官方入口 | **不需要，也不做。** Poffices 只读身份用于确认 `ownerAgent`；Form Studio 在自己的数据域管理表单、入口和提交。未来若接真实 agent，只调用既有运行时，不获得配置、发布或入口写权。 |
+| 9 | 设计能力与问卷平台边界的区分 | **设计表达力属核心能力。**「不是 Typeform / 不是表单设计器」挡的是归属与交付合同（无主、嵌入、续填、品牌），不挡为某一个 agent 设计更丰富的表单；封闭词表可按业务样例扩展（v0.27 起 `radio`、固定行列 `grid`、`number` 小数位）。参考 SurveyJS 系编辑器只借字段语义与作者流，不借平台语义。 |
 
 若老师日后改第 2 条，只允许改成「解绑才恢复」（改装路径），不允许做成表与输入框同时可交。
 
@@ -579,3 +612,4 @@ v0.1 四问仍有效处保留；第 3 问按 2026-08-20 复听改掉。第 5 问
 - v0.2 改口：作者面是设计；出生路径为改装 + 新生；「只选已有、禁止在 Form Studio 新建」作废；「不是表单设计器」不再当口号（挡的是 Typeform / 从 CS 读表，不是挡设计）。  
 - 页面 = 该 agent 的用户 UI（打开时看见的界面）。不是 Form Studio 工作台，也不是 Block Diagram。第 0–1 段工作台中间栏预览的就是这份用户 UI。  
 - v0.3 收口：手写基准表 = 例子，不是万用模板；下阶段顺序 1b 设计+新生 → 2 真身份 → 3 Frankie 应用。
+- Gravity 表单编辑器截图复核（2026-08-22）：工具箱含 Comment / Rating / File / Dynamic Panel / Multiple-Choice Matrix / Tags，设置含 Cookie name / Width mode / Logo in title。它证明「字段表达力」与「问卷平台语义」可以分层：Rating 与固定行列矩阵是设计表达力，进入封闭词表；Cookie / 嵌入 / 品牌改变表归属与独占交付合同，永久排除。

@@ -4,6 +4,8 @@ playwright-report/
 blob-report/
 playwright/.cache/
 .learnings/
+logs/
 data/*.sqlite
 data/*.sqlite-shm
 data/*.sqlite-wal
+data/*.sqlite*.bak

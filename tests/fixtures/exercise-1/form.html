@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-HK">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>市场分析需求</title>
+  <title>市場分析需求</title>
   <style>
     :root {
       color-scheme: light;
@@ -110,16 +110,16 @@
 </head>
 <body>
   <div class="top">
-    <p class="kicker">打开时看到的页面</p>
-    <h1 id="face-title">市场分析需求</h1>
+    <p class="kicker">打開時看到的頁面</p>
+    <h1 id="face-title">市場分析需求</h1>
   </div>
   <main>
-    <p class="lead">请填完后提交。空着或格式不对，交不出去。</p>
+    <p class="lead">請填完後提交。留空或格式不正確，就交不出去。</p>
     <p id="receipt" class="receipt" role="status"></p>
     <form
       id="agent-form"
       data-owner-agent="exercise-1"
-      data-agent-name="市场分析需求"
+      data-agent-name="市場分析需求"
       data-form-version="1"
     >
       <input type="hidden" name="submitterId" value="student-mock-1" />
@@ -127,25 +127,25 @@
       <label for="company_name">公司或品牌 <span class="req">*</span></label>
       <input id="company_name" name="company_name" type="text" required autocomplete="off" />
 
-      <label for="analysis_goal">分析目标 <span class="req">*</span></label>
+      <label for="analysis_goal">分析目標 <span class="req">*</span></label>
       <textarea id="analysis_goal" name="analysis_goal" required></textarea>
 
-      <label for="target_market">目标市场 <span class="req">*</span></label>
+      <label for="target_market">目標市場 <span class="req">*</span></label>
       <select id="target_market" name="target_market" required>
-        <option value="">请选择</option>
-        <option value="中国内地">中国内地</option>
+        <option value="">請選擇</option>
+        <option value="中國內地">中國內地</option>
         <option value="香港">香港</option>
-        <option value="东南亚">东南亚</option>
+        <option value="東南亞">東南亞</option>
         <option value="北美">北美</option>
-        <option value="欧洲">欧洲</option>
+        <option value="歐洲">歐洲</option>
       </select>
 
-      <label for="budget_wan">预算（万元）</label>
+      <label for="budget_wan">預算（萬元）</label>
       <input id="budget_wan" name="budget_wan" type="number" />
 
       <label class="check-line" for="include_competitors">
         <input id="include_competitors" name="include_competitors" type="checkbox" value="true" />
-        包含竞品对比
+        包含競品對比
       </label>
 
       <button type="submit">提交</button>

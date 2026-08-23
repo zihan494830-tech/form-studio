@@ -67,7 +67,7 @@ test("绕过浏览器时，404/409/缺必填 400 仍由服务端守住", () => {
 test("坏 JSON 返回 400，不冒充服务端 500", async () => {
   const response = await rawPost("/submit/exercise-1", "{bad-json");
   expect(response.status).toBe(400);
-  expect(JSON.parse(response.body).error).toContain("JSON 格式错误");
+  expect(JSON.parse(response.body)).toMatchObject({ errorCode: "invalid_json" });
 });
 
 test("普通服务不注册 fixture 与 reset 测试钩子", async () => {
@@ -78,6 +78,46 @@ test("普通服务不注册 fixture 与 reset 测试钩子", async () => {
   try {
     expect((await fetch(`http://127.0.0.1:${port}/fixture/exercise-1`)).status).toBe(404);
     expect((await fetch(`http://127.0.0.1:${port}/api/test/reset`, { method: "POST" })).status).toBe(404);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("健康端点公开当前运行源码指纹，供启动器拒绝复用旧进程", async () => {
+  const server = createFormStudioServer({ root: ROOT, repository: createInMemoryAgentRepository(seed()), runtimeRevision: "test-revision" });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/health`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      application: "form-studio",
+      mode: "product",
+      productVersion: "0.0.0-development",
+      runtimeRevision: "test-revision",
+      datasetRevision: null,
+      datasetChecksum: null,
+      defaultScenario: null,
+    });
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("product 模式不注册本地身份和课堂参考应用", async () => {
+  const repository = createInMemoryAgentRepository(seed());
+  const server = createFormStudioServer({ root: ROOT, repository, mode: "product" });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    expect((await fetch(`${base}/api/session`)).status).toBe(503);
+    expect((await fetch(`${base}/api/session/profiles`)).status).toBe(404);
+    expect((await fetch(`${base}/session`)).status).toBe(404);
+    expect((await fetch(`${base}/session/main.js`)).status).toBe(404);
+    expect((await fetch(`${base}/classroom`)).status).toBe(404);
+    expect((await fetch(`${base}/classroom/main.js`)).status).toBe(404);
+    expect((await fetch(`${base}/api/teacher/agents`)).status).toBe(404);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

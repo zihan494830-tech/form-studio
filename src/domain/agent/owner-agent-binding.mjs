@@ -2,8 +2,8 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function denied(message) {
-  return { error: message, status: 403 };
+function denied(errorCode) {
+  return problem(errorCode, 403);
 }
 
 /**
@@ -12,15 +12,15 @@ function denied(message) {
  * 依据：https://learn.microsoft.com/azure/architecture/patterns/anti-corruption-layer
  */
 export function bindingEligibility(agent) {
-  if (!agent?.id) return denied("没有这个 agent");
+  if (!agent?.id) return denied("agent_not_found");
   if (agent.origin === "born-form") return { allowed: true };
   if (agent.sourceSystem === "local-fixture") return { allowed: true };
-  if (agent.sourceSystem !== "poffices") return denied("身份来源未授权绑定");
+  if (agent.sourceSystem !== "poffices") return denied("binding_source_forbidden");
   if (!agent.ownerIdentity?.ownerAgent || agent.ownerIdentity.readOnly !== true) {
-    return denied("只读身份快照无效");
+    return denied("binding_identity_invalid");
   }
   if (agent.authorization?.basis !== "local-shadow-only") {
-    return denied("没有 Form Studio 本地绑定范围");
+    return denied("binding_scope_missing");
   }
   return { allowed: true };
 }
@@ -28,9 +28,9 @@ export function bindingEligibility(agent) {
 export function createOwnerAgentBinding(agent, publishedForm) {
   const eligibility = bindingEligibility(agent);
   if (!eligibility.allowed) return eligibility;
-  if (!publishedForm?.fields?.length) return { error: "至少添加一个字段才能发布用户页面", status: 400 };
+  if (!publishedForm?.fields?.length) return problem("fields_required_for_publish", 400);
   const version = Number(publishedForm.formVersion || 0);
-  if (!Number.isInteger(version) || version < 1) return { error: "发布版本非法", status: 400 };
+  if (!Number.isInteger(version) || version < 1) return problem("publish_version_invalid", 400);
   return {
     binding: {
       version: "owner-agent-binding/v1",
@@ -55,3 +55,4 @@ export function activePublishedBinding(agent) {
   if (binding.publishedFormVersion !== published.formVersion) return null;
   return clone(binding);
 }
+import { problem } from "../problem.mjs";

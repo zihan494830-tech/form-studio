@@ -4,7 +4,7 @@ import { resetStore } from "../support/project-fixture.mjs";
 const validValues = {
   company_name: "星海科技",
   analysis_goal: "比较东南亚竞争格局",
-  target_market: "东南亚",
+  target_market: "東南亞",
   budget_wan: "12",
   include_competitors: "true",
 };
@@ -22,7 +22,7 @@ test("老师在获授权视图看到学生提交和字段详情", async ({ brows
   const page = await context.newPage();
   await page.goto("/classroom");
 
-  await expect(page.getByRole("heading", { name: "市场分析需求" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "市場分析需求" })).toBeVisible();
   await expect(page.getByRole("button", { name: /student-2/ })).toBeVisible();
   await page.getByRole("button", { name: /student-2/ }).click();
   await expect(page.locator("#submission-detail")).toContainText("星海科技");
@@ -37,7 +37,7 @@ test("空态和窄屏仍可理解且没有横向溢出", async ({ browser }) => 
   });
   const page = await context.newPage();
   await page.goto("/classroom");
-  await expect(page.getByText("这个页面还没有学生提交。")).toBeVisible();
+  await expect(page.locator("#submission-list .state.empty")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBeTruthy();
   await context.close();
 });

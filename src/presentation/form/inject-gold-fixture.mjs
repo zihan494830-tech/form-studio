@@ -7,7 +7,7 @@ export function injectGoldFixture(html, { agentId, agentName }) {
   out = out.replace(/data-agent-name="[^"]*"/, `data-agent-name="${escapeHtml(agentName)}"`);
   out = out.replace(/(<h1 id="face-title">)[^<]*/, `$1${escapeHtml(agentName)}`);
   if (!out.includes("/runtime/face-submit.js")) {
-    out = out.replace("</body>", `<script src="/runtime/face-submit.js"></script>\n</body>`);
+    out = out.replace("</body>", `<script type="module" src="/runtime/face-submit.js"></script>\n</body>`);
   }
   return out;
 }

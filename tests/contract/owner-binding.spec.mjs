@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newRetrofitFormAgent, publishForm, unpublishForm } from "../../src/domain/agent/form-agent.mjs";
+import { changeFields, newRetrofitFormAgent, publishForm, unpublishForm } from "../../src/domain/agent/form-agent.mjs";
 import { activePublishedBinding, createOwnerAgentBinding } from "../../src/domain/agent/owner-agent-binding.mjs";
 
 function identity(overrides = {}) {
@@ -79,5 +79,20 @@ test.describe("2B owner-agent-binding/v1 合同", () => {
   test("解除绑定保留 inputBag", () => {
     const result = unpublishForm({ id: "42", published: {}, binding: {}, inputBag: [{ values: { q: "keep" } }] });
     expect(result.agent).toMatchObject({ published: null, binding: null, inputBag: [{ values: { q: "keep" } }] });
+  });
+
+  test("每次发布追加不可变版本定义，下架不会删除历史真相", () => {
+    const base = {
+      ...newRetrofitFormAgent({ identity: identity() }).agent,
+      fields: [{ id: "question", label: "问题 v1", control: "text", required: true }],
+    };
+    const first = publishForm(base).agent;
+    const edited = changeFields(first, [{ id: "question", label: "问题 v2", control: "text", required: true }]).agent;
+    const second = publishForm(edited).agent;
+    expect(second.publishedDefinitions).toEqual([
+      { formVersion: 1, fields: base.fields, submit: { label: "提交", to: "agent-input" } },
+      { formVersion: 2, fields: edited.fields, submit: { label: "提交", to: "agent-input" } },
+    ]);
+    expect(unpublishForm(second).agent.publishedDefinitions).toEqual(second.publishedDefinitions);
   });
 });

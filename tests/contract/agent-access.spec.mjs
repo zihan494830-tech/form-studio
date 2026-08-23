@@ -25,7 +25,7 @@ test("agent-access/v1 只允许匹配范围和角色的操作", () => {
 test("跨班级和未验证身份默认拒绝", () => {
   expect(authorizeAgentAction(agent, actor("student-2", "student", "class-2"), "submit")).toMatchObject({
     status: 403,
-    error: "无权访问其他班级或租户的数据",
+    errorCode: "cross_scope_forbidden",
   });
   expect(authorizeAgentAction(agent, null, "submit")).toMatchObject({ status: 401 });
 });

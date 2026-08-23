@@ -6,13 +6,10 @@
  * - Node.js node:sqlite: https://nodejs.org/api/sqlite.html
  * - SQLite atomic commit: https://www.sqlite.org/atomiccommit.html
  */
-import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MOCKS_PATH = join(ROOT, "data", "mock-agents.json");
+import { loadCanonicalMockCatalog } from "./canonical-mock-catalog.mjs";
 const SCHEMA_VERSION = 1;
 
 function clone(value) {
@@ -20,7 +17,7 @@ function clone(value) {
 }
 
 function defaultSeed() {
-  return JSON.parse(readFileSync(MOCKS_PATH, "utf8"));
+  return loadCanonicalMockCatalog().agents;
 }
 
 function assertAgent(agent) {

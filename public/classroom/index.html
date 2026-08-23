@@ -1,37 +1,37 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-HK">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>课堂提交 · Form Studio</title>
+  <title>課堂提交 · Form Studio</title>
   <link rel="stylesheet" href="/classroom/styles.css" />
 </head>
 <body>
   <a class="skip-link" href="#submission-list">跳到提交列表</a>
   <header>
-    <div><strong>Form Studio</strong><span>老师视图</span></div>
-    <p id="classroom-name">正在读取课堂…</p>
-    <div class="actor"><span id="actor-name"></span><a href="/session?next=/classroom">切换身份</a></div>
+    <div><strong>Form Studio</strong><span>老師檢視</span></div>
+    <p id="classroom-name">正在讀取課堂…</p>
+    <div class="actor"><span id="actor-name"></span><a href="/">返回作者工作台</a></div>
   </header>
   <main>
     <aside aria-labelledby="pages-title">
-      <div class="section-title"><div><p>获授权范围</p><h1 id="pages-title">用户页面</h1></div><span id="page-count"></span></div>
-      <p class="hint">这里只显示当前老师在本班级获授权查看的已发布页面。</p>
-      <div id="page-list" class="page-list" aria-live="polite"><p class="state">正在读取页面…</p></div>
+      <div class="section-title"><div><p>獲授權範圍</p><h1 id="pages-title">用戶頁面</h1></div><span id="page-count"></span></div>
+      <p class="hint">這裡只顯示目前老師在本班級獲授權查看的已發布頁面。</p>
+      <div id="page-list" class="page-list" aria-live="polite"><p class="state">正在讀取頁面…</p></div>
     </aside>
     <section class="records" aria-labelledby="records-title">
       <div class="records-head">
-        <div><p>学生提交</p><h2 id="records-title">先选择一个用户页面</h2></div>
-        <label>按学生 ID 筛选<input id="actor-filter" type="search" placeholder="例如 student-1" disabled /></label>
+        <div><p>學生提交</p><h2 id="records-title">先選擇一個用戶頁面</h2></div>
+        <label>按學生 ID 篩選<input id="actor-filter" type="search" placeholder="例如 student-1" disabled /></label>
       </div>
-      <p id="records-context" class="hint">提交按接收时间倒序排列，查询始终受老师和班级范围约束。</p>
+      <p id="records-context" class="hint">提交按接收時間倒序排列，查詢始終受老師和班級範圍約束。</p>
       <div id="submission-list" class="submission-list" tabindex="-1" aria-live="polite">
-        <p class="state">选择左侧页面后查看提交。</p>
+        <p class="state">選擇左側頁面後查看提交。</p>
       </div>
     </section>
     <aside class="detail" aria-labelledby="detail-title">
-      <div class="section-title"><div><p>单条详情</p><h2 id="detail-title">提交内容</h2></div></div>
-      <div id="submission-detail" aria-live="polite"><p class="state">选择一条提交查看按字段 ID 对齐的内容。</p></div>
+      <div class="section-title"><div><p>單筆詳情</p><h2 id="detail-title">提交內容</h2></div></div>
+      <div id="submission-detail" aria-live="polite"><p class="state">選擇一筆提交查看按欄位 ID 對齊的內容。</p></div>
     </aside>
   </main>
   <script type="module" src="/classroom/main.js"></script>

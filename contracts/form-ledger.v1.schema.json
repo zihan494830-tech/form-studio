@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "form-ledger/v1",
   "title": "form-ledger/v1",
+  "$comment": "Internal Alpha contract. Additive evolution is allowed until an external consumer is admitted; semantic or compatibility changes require a new contract version.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "ownerAgent", "formVersion", "status", "fields", "submit"],
@@ -10,25 +11,7 @@
     "ownerAgent": { "type": "string", "minLength": 1 },
     "formVersion": { "type": "integer", "minimum": 1 },
     "status": { "enum": ["draft", "published"] },
-    "fields": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "label", "control", "required"],
-        "properties": {
-          "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
-          "label": { "type": "string", "minLength": 1 },
-          "control": { "enum": ["text", "textarea", "number", "select", "checkbox"] },
-          "required": { "type": "boolean" },
-          "options": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        }
-      }
-    },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
     "submit": {
       "type": "object",
       "additionalProperties": false,
@@ -37,6 +20,123 @@
         "label": { "type": "string", "minLength": 1 },
         "to": { "const": "agent-input" }
       }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+    "label": { "type": "string", "minLength": 1 },
+    "options": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "baseField": {
+      "type": "object",
+      "required": ["id", "label", "control", "required"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/label" },
+        "control": { "type": "string" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "plainField": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseField" },
+        { "properties": { "control": { "enum": ["text", "textarea", "checkbox"] } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "numberField": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseField" },
+        { "properties": { "control": { "const": "number" }, "decimals": { "type": "integer", "minimum": 0, "maximum": 6 } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "choiceField": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseField" },
+        { "required": ["options"], "properties": { "control": { "enum": ["select", "radio"] }, "options": { "$ref": "#/$defs/options" } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "gridRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "label": { "$ref": "#/$defs/label" } }
+    },
+    "baseColumn": {
+      "type": "object",
+      "required": ["id", "label", "control", "required"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/label" },
+        "control": { "type": "string" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "plainColumn": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseColumn" },
+        { "properties": { "control": { "enum": ["text", "textarea", "checkbox"] } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "numberColumn": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseColumn" },
+        { "properties": { "control": { "const": "number" }, "decimals": { "type": "integer", "minimum": 0, "maximum": 6 } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "choiceColumn": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseColumn" },
+        { "required": ["options"], "properties": { "control": { "enum": ["select", "radio"] }, "options": { "$ref": "#/$defs/options" } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "gridColumn": {
+      "oneOf": [
+        { "$ref": "#/$defs/plainColumn" },
+        { "$ref": "#/$defs/numberColumn" },
+        { "$ref": "#/$defs/choiceColumn" }
+      ]
+    },
+    "gridField": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseField" },
+        {
+          "required": ["grid"],
+          "properties": {
+            "control": { "const": "grid" },
+            "required": { "const": false },
+            "grid": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["rows", "columns"],
+              "properties": {
+                "rows": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/gridRow" } },
+                "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/gridColumn" } }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "field": {
+      "oneOf": [
+        { "$ref": "#/$defs/plainField" },
+        { "$ref": "#/$defs/numberField" },
+        { "$ref": "#/$defs/choiceField" },
+        { "$ref": "#/$defs/gridField" }
+      ]
     }
   }
 }

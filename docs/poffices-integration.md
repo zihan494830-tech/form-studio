@@ -1,6 +1,6 @@
 # Poffices 外部边界
 
-本文只维护 Poffices 适配事实、身份映射、失败语义和本地绑定边界。产品边界与分期仍以 `DESIGN.md` 为准；这里不授权修改 Poffices 官方 agent。
+本文只维护 Poffices 适配事实、身份映射、失败语义、本地绑定边界，以及可能的运行时调用前置条件。产品边界与分期仍以 `DESIGN.md` 为准；修改、发布 Poffices agent 或替换官方入口是永久非目标，不是等待授权的延期项。
 
 ## 为什么读取 Poffices
 
@@ -86,30 +86,30 @@ Poffices 官方文章只证明 Creator Studio 用于创建、配置、测试和�
 
 边界：
 
-这里必须区分两种完全不同的权限：创建 Form Studio 本地页面，只需要一个有效只读身份；修改 Poffices agent 或官方入口，才需要平台授权。对 `Market Analysis / id=18`，名称、数字 id、来源和 Official 状态已经足够完成主人核对并创建隔离副本。更多描述、Key 或内部栏位不会自动产生 Poffices 写权。
+Form Studio 创建本地页面只需要一个有效只读身份。修改 Poffices agent 或官方入口虽然在平台层面属于另一类权限，但本产品不申请、保存或使用这类权限。对 `Market Analysis / id=18`，名称、数字 id、来源和 Official 状态已经足够完成主人核对并创建隔离副本；更多描述、Key 或内部栏位不会扩张产品边界。
 
 1. 作者先选择一个真实存在的 Poffices agent；Form Studio 记为 `local-shadow-only`，只授权自己的页面、版本、提交和旁路入口。Official 不再被错误阻断。
 2. 选择通过后，Form Studio 本地创建设计工作区；字段、草稿、已发布版本、`formVersion`、提交信封和 `inputBag` 全由本仓管理。
 3. 本地旁路入口只渲染 `published`，没有输入框逃生门；解绑只修改本地映射并保留历史袋子。
 4. 使用面和提交端点都会复核 `ownerAgent`、`formId` 与 `publishedFormVersion`；任一不一致即拒绝打开或入袋。`local-shadow-only` 不能调用任何 Poffices 写端口；本仓目前也没有这种端口。
 
-## 条件式平台入口
+## 永久非目标：Poffices 配置与官方入口写入
 
-若最终要求 Poffices 官方 URL 直接显示 Form Studio 已发布版本，还需平台另行提供正式、可授权、可回滚的入口映射能力。WordPress 官方说明 cookie 认证依赖登录会话和 `X-WP-Nonce`，只适用于站内登录上下文：[REST API Authentication](https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/)。因此不得复制浏览器 cookie、不得因“进入第 2 段”就自动获得外部写权限。
+Form Studio 不修改 Poffices agent 的 Overview、Variables、Block Diagram、prompts、Documentation、发布状态或官方入口映射。仓内不设计相应写端口，也不以取得这类权限作为任何阶段的完成条件。
 
-只有同时确认稳定路由（数字 id 还是 Key）、最小权限、发布/解绑/回滚合同和真实 sandbox，才允许实施平台入口适配；仍不得修改 agent 的 Overview、Variables、Block Diagram、prompts 或 Documentation。若这些条件未满足，只能报告“本地改装机制完成，平台入口未对接”，不能冒充 Poffices 官方入口已改变。
+若未来另一个 Poffices 平台项目要改变官方入口或 agent 配置，它必须拥有独立的产品目标、变更授权、回滚合同和验收证据，不能借用 Form Studio 的阶段编号或代码路径。Form Studio 始终只报告自己管理的本地页面、版本和提交，不宣称 Poffices 官方入口已经改变。
 
-## 真正调用 agent 仍缺的外部合同
+## 调用既有 agent 仍缺的外部合同
 
-当前公开资料和只读身份接口只能确认 agent 存在，不能给出 Form Studio 可依赖的程序化输入 schema。3B-A / B / C 可先完成本地合同、outbox 与本地端口；实施 3B-P Poffices adapter 前，需要 Alan / Poffices 针对一个获授权 sandbox 明确：
+当前公开资料和只读身份接口只能确认 agent 存在，不能给出 Form Studio 可依赖的程序化输入 schema。3B-A / B / C 可先完成本地合同、outbox 与本地端口；实施 3B-P Poffices 运行时调用 adapter 前，需要 Alan / Poffices 针对一个获授权 sandbox 明确：
 
 1. 可调用的 agent id / Key 与环境；
 2. 接受 `text/plain`、结构化 JSON 还是其他模式；
-3. 正式 endpoint / SDK 与认证范围；
+3. 正式 endpoint / SDK，以及仅覆盖 invoke 和本次 run 查询的最小认证范围；
 4. 请求、响应和错误形状；
 5. 同步、异步、回调和任务状态规则；
 6. 重试、幂等和限流约束；
 7. 一条成功输入、输出和可核对的运行记录；
 8. 老师 agent 通过什么只读工具或查询端口访问学生提交。
 
-这些内容形成独立的 `agent-input-profile/v1`，不扩容 `owner-agent-identity/v1`。若对方只提供完整 Block Diagram JSON，Form Studio 可以审计数据流并提出候选 mapping，但仍需 block 类型说明、schema/version、外部工具合同和 sandbox trace 才能把推断升级为运行事实。任何 JSON 中的 token、cookie、API key 和密码都不得进入仓库。
+这些内容形成独立的 `agent-input-profile/v1`，不扩容 `owner-agent-identity/v1`。运行时凭证不得包含 agent 配置、发布或官方入口写权限。若对方只提供完整 Block Diagram JSON，Form Studio 可以审计数据流并提出候选 mapping，但仍需 block 类型说明、schema/version、外部工具合同和 sandbox trace 才能把推断升级为运行事实。任何 JSON 中的 token、cookie、API key 和密码都不得进入仓库。

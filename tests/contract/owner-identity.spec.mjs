@@ -57,22 +57,22 @@ test.describe("2A 真实身份合同", () => {
   ]) {
     test(`外部 ${upstream} 明确映射为 ${code}`, async () => {
       const directory = createPofficesAgentDirectory({ fetchImpl: async () => response(upstream, {}) });
-      expect(await readOwnerIdentity(directory, "18")).toMatchObject({ status, error: code });
+      expect(await readOwnerIdentity(directory, "18")).toMatchObject({ status, errorCode: code });
     });
   }
 
   test("拒绝非法 id，不向外部发请求", async () => {
     let called = false;
     const directory = createPofficesAgentDirectory({ fetchImpl: async () => { called = true; } });
-    expect(await readOwnerIdentity(directory, "../agents")).toMatchObject({ status: 400, error: "invalid_id" });
+    expect(await readOwnerIdentity(directory, "../agents")).toMatchObject({ status: 400, errorCode: "invalid_id" });
     expect(called).toBe(false);
   });
 
   test("网络失败与坏响应分别 fail closed", async () => {
     const unavailable = createPofficesAgentDirectory({ fetchImpl: async () => { throw new Error("offline"); } });
     const malformed = createPofficesAgentDirectory({ fetchImpl: async () => response(200, { id: 99 }) });
-    expect(await readOwnerIdentity(unavailable, "18")).toMatchObject({ status: 503, error: "unavailable" });
-    expect(await readOwnerIdentity(malformed, "18")).toMatchObject({ status: 502, error: "contract_invalid" });
+    expect(await readOwnerIdentity(unavailable, "18")).toMatchObject({ status: 503, errorCode: "unavailable" });
+    expect(await readOwnerIdentity(malformed, "18")).toMatchObject({ status: 502, errorCode: "contract_invalid" });
   });
 
   test("外部读取超时后明确失败", async () => {
@@ -82,6 +82,6 @@ test.describe("2A 真实身份合同", () => {
         signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
       }),
     });
-    expect(await readOwnerIdentity(directory, "18")).toMatchObject({ status: 503, error: "unavailable" });
+    expect(await readOwnerIdentity(directory, "18")).toMatchObject({ status: 503, errorCode: "unavailable" });
   });
 });

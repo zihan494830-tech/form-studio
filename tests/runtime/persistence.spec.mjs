@@ -95,6 +95,10 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
         formVersion: 2,
         fields: [{ id: "answer", label: "答案", control: "textarea", required: true }],
       },
+      publishedDefinitions: [{
+        formVersion: 2,
+        fields: [{ id: "answer", label: "答案", control: "textarea", required: true }],
+      }],
       binding: { ownerAgent: "form-1", publishedFormVersion: 2 },
       inputBag: [{ ownerAgent: "form-1", formVersion: 2, values: { answer: "保留下来" } }],
     });
@@ -117,7 +121,14 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
     expect((await fetch(`${running.base}/a/form-1`)).status).toBe(404);
     const afterUnpublish = await json(running.base, "/api/agents/form-1");
     expect(afterUnpublish.body.binding).toBeNull();
+    expect(afterUnpublish.body.publishedDefinitions).toHaveLength(1);
     expect(afterUnpublish.body.inputBag[0].values).toEqual({ answer: "保留下来" });
+    const history = await json(running.base, "/api/agents/form-1/submissions");
+    expect(history.body.records[0]).toMatchObject({
+      formVersion: 2,
+      formDefinitionAvailable: true,
+      fields: [{ id: "answer", label: "答案", value: "保留下来" }],
+    });
   } finally {
     if (running.server.listening) await close(running.server);
     repository.close();

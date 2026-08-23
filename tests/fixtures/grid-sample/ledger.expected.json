@@ -1,0 +1,39 @@
+{
+  "version": "form-ledger/v1",
+  "ownerAgent": "grid-sample",
+  "formVersion": 1,
+  "status": "published",
+  "fields": [
+    {
+      "id": "rating",
+      "label": "評分",
+      "control": "radio",
+      "required": true,
+      "options": ["1", "2", "3"]
+    },
+    {
+      "id": "history",
+      "label": "歷史收支",
+      "control": "grid",
+      "required": false,
+      "grid": {
+        "rows": [
+          { "id": "fy2022", "label": "FY2022" },
+          { "id": "fy2023", "label": "FY2023" }
+        ],
+        "columns": [
+          { "id": "revenue", "label": "Total Revenue (HK$)", "control": "number", "required": true, "decimals": 2 },
+          { "id": "market", "label": "Market", "control": "select", "required": false, "options": ["CN", "HK"] },
+          { "id": "ok", "label": "Confirmed", "control": "checkbox", "required": false }
+        ]
+      }
+    },
+    {
+      "id": "remark",
+      "label": "Remarks",
+      "control": "textarea",
+      "required": false
+    }
+  ],
+  "submit": { "label": "提交", "to": "agent-input" }
+}

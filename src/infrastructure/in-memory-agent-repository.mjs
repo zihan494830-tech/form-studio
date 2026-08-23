@@ -1,16 +1,11 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MOCKS_PATH = join(ROOT, "data", "mock-agents.json");
+import { loadCanonicalMockCatalog } from "./canonical-mock-catalog.mjs";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
 function defaultSeed() {
-  return JSON.parse(readFileSync(MOCKS_PATH, "utf8"));
+  return loadCanonicalMockCatalog().agents;
 }
 
 export function createInMemoryAgentRepository(seed = defaultSeed()) {

@@ -1,7 +1,110 @@
-[
+{
+  "schema": "form-studio-mock-catalog/v1",
+  "datasetRevision": "mock-v0.27.1",
+  "defaultScenario": "financial-grid-v027",
+  "agents": [
+  {
+    "id": "financial-grid-v027",
+    "name": "財務矩陣示例",
+    "origin": "retrofit",
+    "sourceSystem": "local-fixture",
+    "ownerIdentity": null,
+    "authorization": { "basis": "local-fixture", "confirmedAt": null },
+    "formVersion": 1,
+    "fields": [
+      { "id": "overall_rating", "label": "整體評分", "control": "radio", "required": true, "options": ["1", "2", "3", "4", "5"] },
+      {
+        "id": "history",
+        "label": "歷史收支",
+        "control": "grid",
+        "required": false,
+        "grid": {
+          "rows": [
+            { "id": "fy2022", "label": "FY2022" },
+            { "id": "fy2023", "label": "FY2023" },
+            { "id": "fy2024", "label": "FY2024" },
+            { "id": "fy2025", "label": "FY2025" }
+          ],
+          "columns": [
+            { "id": "revenue", "label": "Revenue (HK$)", "control": "number", "required": true, "decimals": 2 },
+            { "id": "cost", "label": "Cost (HK$)", "control": "number", "required": true, "decimals": 2 },
+            { "id": "market", "label": "Market", "control": "select", "required": false, "options": ["CN", "HK"] }
+          ]
+        }
+      },
+      { "id": "remarks", "label": "備註", "control": "textarea", "required": false }
+    ],
+    "published": {
+      "formVersion": 1,
+      "fields": [
+        { "id": "overall_rating", "label": "整體評分", "control": "radio", "required": true, "options": ["1", "2", "3", "4", "5"] },
+        {
+          "id": "history",
+          "label": "歷史收支",
+          "control": "grid",
+          "required": false,
+          "grid": {
+            "rows": [
+              { "id": "fy2022", "label": "FY2022" },
+              { "id": "fy2023", "label": "FY2023" },
+              { "id": "fy2024", "label": "FY2024" },
+              { "id": "fy2025", "label": "FY2025" }
+            ],
+            "columns": [
+              { "id": "revenue", "label": "Revenue (HK$)", "control": "number", "required": true, "decimals": 2 },
+              { "id": "cost", "label": "Cost (HK$)", "control": "number", "required": true, "decimals": 2 },
+              { "id": "market", "label": "Market", "control": "select", "required": false, "options": ["CN", "HK"] }
+            ]
+          }
+        },
+        { "id": "remarks", "label": "備註", "control": "textarea", "required": false }
+      ],
+      "submit": { "label": "提交", "to": "agent-input" }
+    },
+    "publishedDefinitions": [
+      {
+        "formVersion": 1,
+        "fields": [
+          { "id": "overall_rating", "label": "整體評分", "control": "radio", "required": true, "options": ["1", "2", "3", "4", "5"] },
+          {
+            "id": "history",
+            "label": "歷史收支",
+            "control": "grid",
+            "required": false,
+            "grid": {
+              "rows": [
+                { "id": "fy2022", "label": "FY2022" },
+                { "id": "fy2023", "label": "FY2023" },
+                { "id": "fy2024", "label": "FY2024" },
+                { "id": "fy2025", "label": "FY2025" }
+              ],
+              "columns": [
+                { "id": "revenue", "label": "Revenue (HK$)", "control": "number", "required": true, "decimals": 2 },
+                { "id": "cost", "label": "Cost (HK$)", "control": "number", "required": true, "decimals": 2 },
+                { "id": "market", "label": "Market", "control": "select", "required": false, "options": ["CN", "HK"] }
+              ]
+            }
+          },
+          { "id": "remarks", "label": "備註", "control": "textarea", "required": false }
+        ],
+        "submit": { "label": "提交", "to": "agent-input" }
+      }
+    ],
+    "binding": {
+      "version": "owner-agent-binding/v1",
+      "ownerAgent": "financial-grid-v027",
+      "sourceSystem": "local-fixture",
+      "formId": "financial-grid-v027",
+      "publishedFormVersion": 1,
+      "entryMode": "form-studio-sidecar",
+      "status": "published",
+      "authorization": { "basis": "local-fixture", "confirmedAt": null }
+    },
+    "inputBag": []
+  },
   {
     "id": "exercise-1",
-    "name": "市场分析需求",
+    "name": "市場分析需求",
     "origin": "retrofit",
     "sourceSystem": "local-fixture",
     "ownerIdentity": null,
@@ -9,19 +112,19 @@
     "formVersion": 1,
     "fields": [
       { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
-      { "id": "analysis_goal", "label": "分析目标", "control": "textarea", "required": true },
-      { "id": "target_market", "label": "目标市场", "control": "select", "required": true, "options": ["中国内地", "香港", "东南亚", "北美", "欧洲"] },
-      { "id": "budget_wan", "label": "预算（万元）", "control": "number", "required": false },
-      { "id": "include_competitors", "label": "包含竞品对比", "control": "checkbox", "required": false }
+      { "id": "analysis_goal", "label": "分析目標", "control": "textarea", "required": true },
+      { "id": "target_market", "label": "目標市場", "control": "select", "required": true, "options": ["中國內地", "香港", "東南亞", "北美", "歐洲"] },
+      { "id": "budget_wan", "label": "預算（萬元）", "control": "number", "required": false },
+      { "id": "include_competitors", "label": "包含競品對比", "control": "checkbox", "required": false }
     ],
     "published": {
       "formVersion": 1,
       "fields": [
         { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
-        { "id": "analysis_goal", "label": "分析目标", "control": "textarea", "required": true },
-        { "id": "target_market", "label": "目标市场", "control": "select", "required": true, "options": ["中国内地", "香港", "东南亚", "北美", "欧洲"] },
-        { "id": "budget_wan", "label": "预算（万元）", "control": "number", "required": false },
-        { "id": "include_competitors", "label": "包含竞品对比", "control": "checkbox", "required": false }
+        { "id": "analysis_goal", "label": "分析目標", "control": "textarea", "required": true },
+        { "id": "target_market", "label": "目標市場", "control": "select", "required": true, "options": ["中國內地", "香港", "東南亞", "北美", "歐洲"] },
+        { "id": "budget_wan", "label": "預算（萬元）", "control": "number", "required": false },
+        { "id": "include_competitors", "label": "包含競品對比", "control": "checkbox", "required": false }
       ],
       "submit": { "label": "提交", "to": "agent-input" }
     },
@@ -39,21 +142,22 @@
   },
   {
     "id": "exercise-2",
-    "name": "客户回访记录",
+    "name": "客戶回訪記錄",
     "origin": "retrofit",
     "sourceSystem": "local-fixture",
     "ownerIdentity": null,
     "authorization": { "basis": "local-fixture", "confirmedAt": null },
     "formVersion": 1,
     "fields": [
-      { "id": "customer_name", "label": "客户名称", "control": "text", "required": true },
-      { "id": "contact_summary", "label": "沟通摘要", "control": "textarea", "required": true },
-      { "id": "satisfaction_score", "label": "满意度（1–10）", "control": "number", "required": true },
-      { "id": "next_action", "label": "下一步行动", "control": "select", "required": true, "options": ["发送资料", "安排会议", "报价跟进", "暂不跟进"] },
-      { "id": "needs_follow_up", "label": "需要再次跟进", "control": "checkbox", "required": false }
+      { "id": "customer_name", "label": "客戶名稱", "control": "text", "required": true },
+      { "id": "contact_summary", "label": "溝通摘要", "control": "textarea", "required": true },
+      { "id": "satisfaction_score", "label": "滿意度（1–10）", "control": "number", "required": true },
+      { "id": "next_action", "label": "下一步行動", "control": "select", "required": true, "options": ["發送資料", "安排會議", "報價跟進", "暫不跟進"] },
+      { "id": "needs_follow_up", "label": "需要再次跟進", "control": "checkbox", "required": false }
     ],
     "published": null,
     "binding": null,
     "inputBag": []
   }
-]
+  ]
+}

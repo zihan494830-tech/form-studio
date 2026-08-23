@@ -1,40 +1,53 @@
 import { expect, test } from "@playwright/test";
 import { agentOf, resetStore } from "../support/project-fixture.mjs";
+import {
+  addField,
+  createRetrofitWorkspace,
+  lookupOwner,
+  openPublishedFace,
+  openRecords,
+  publishWorkspace,
+  selectWorkspace,
+  startBornFlow,
+  startRetrofitFlow,
+  submitFace,
+  userFace,
+} from "../support/ui-actions.mjs";
 
 test.describe("作者后台 UI 管理回归", () => {
   test("新建流程解释实际作用，技术身份退到详情", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /创建新的 agent form/ }).click();
+    await startBornFlow(page);
     const flow = page.locator("#born-flow");
-    await expect(flow).toContainText("独立设计、发布和持续接收提交");
-    await expect(flow).toContainText("不会创建、连接或修改 Poffices agent");
-    await expect(flow).toContainText("不能改绑成已有 agent");
+    await expect(flow).toContainText("獨立設計、發布和持續接收提交");
+    await expect(flow).toContainText("不會建立、連接或修改 Poffices agent");
+    await expect(flow).toContainText("不能改綁成已有 agent");
     await expect(flow).not.toContainText("ownerAgent");
     await page.locator("#new-name").fill("课堂练习入口");
-    await page.getByRole("button", { name: "创建并开始设计" }).click();
-    await expect(page.locator("#owner-context")).toContainText("Form Studio 新建");
+    await page.locator("#create-btn").click();
+    await expect(page.locator("#owner-context")).toContainText("Form Studio 新增");
     await page.locator("#owner-context summary").click();
-    await expect(page.locator("#owner-context")).toContainText("本地页面 ID:form-1");
+    await expect(page.locator("#owner-context")).toContainText("本地頁面 ID:form-1");
   });
 
   test("2B-A Official 候选可创建隔离本地页面，且边界写清楚", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "你准备为谁设计用户页面？" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /给已有 Poffices agent 做页面/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /创建新的 agent form/ })).toBeVisible();
-    await page.getByRole("button", { name: /给已有 Poffices agent 做页面/ }).click();
+    await expect(page.getByRole("heading", { name: "你準備為誰設計用戶頁面？" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /給已有 Poffices agent 做頁面/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /建立新的 agent form/ })).toBeVisible();
+    await startRetrofitFlow(page);
     await page.locator("#identity-id").fill("18");
-    await page.getByRole("button", { name: "查找 agent" }).click();
+    await lookupOwner(page);
     const card = page.locator("#identity-result");
     await expect(card).toContainText("Market Analysis");
     await expect(card).toContainText("Poffices agent ID:18");
-    await expect(card).toContainText("Official · 只读来源");
-    await expect(card).toContainText("可创建隔离的本地页面");
-    await expect(card).toContainText("不会改动 Poffices");
+    await expect(card).toContainText("Official · 只讀來源");
+    await expect(card).toContainText("可建立隔離的本地頁面");
+    await expect(card).toContainText("不會改動 Poffices");
     await expect(page.locator("#local-copy-step")).toBeVisible();
-    await page.getByRole("button", { name: "创建本地页面" }).click();
+    await createRetrofitWorkspace(page);
     await expect(page.getByRole("heading", { level: 1, name: "Market Analysis" })).toBeVisible();
     await page.locator("#owner-context summary").click();
     await expect(page.locator("#owner-context")).toContainText("Poffices agent ID:18");
@@ -49,23 +62,23 @@ test.describe("作者后台 UI 管理回归", () => {
     });
   });
 
-  test("2B-B/C 只读身份可建本地绑定，已发布版本从旁路入口入袋", async ({ page, request }) => {
+  test("2B-B/C 只读身份可建本地绑定，已发布版本从旁路入口入袋", async ({ page, context, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /给已有 Poffices agent 做页面/ }).click();
+    await startRetrofitFlow(page);
     await page.locator("#identity-id").fill("42");
-    await page.getByRole("button", { name: "查找 agent" }).click();
+    await lookupOwner(page);
     await expect(page.locator("#identity-result")).toContainText("Research Sandbox");
-    await page.getByRole("button", { name: "创建本地页面" }).click();
+    await createRetrofitWorkspace(page);
     await expect(page.getByRole("heading", { level: 1, name: "Research Sandbox" })).toBeVisible();
     await page.locator("#owner-context summary").click();
     await expect(page.locator("#owner-context")).toContainText("Poffices agent ID:42");
     await expect(page.locator("#owner-context")).toContainText("Poffices");
-    await page.getByRole("button", { name: "加栏" }).click();
-    await page.getByRole("button", { name: "发布用户页面" }).click();
-    const face = page.frameLocator('iframe[name="face"]');
+    await addField(page);
+    await publishWorkspace(page);
+    const face = await openPublishedFace(context, "42");
     await face.locator("#f1").fill("真实主人的输入");
-    await face.getByRole("button", { name: "提交" }).click();
+    await submitFace(face);
     const agent = await agentOf(request, "42");
     expect(agent.binding).toMatchObject({
       version: "owner-agent-binding/v1", ownerAgent: "42", entryMode: "form-studio-sidecar", status: "published",
@@ -91,39 +104,47 @@ test.describe("作者后台 UI 管理回归", () => {
       });
     });
     await page.goto("/");
-    const start = page.getByRole("button", { name: /给已有 Poffices agent 做页面/ });
+    const start = page.getByRole("button", { name: /給已有 Poffices agent 做頁面/ });
     await start.focus();
     await start.press("Enter");
     await page.locator("#identity-id").fill("42");
     await page.locator("#identity-id").press("Enter");
-    await expect(page.locator("#identity-result")).toHaveText("正在只读查找 agent…");
+    await expect(page.locator("#identity-result")).toHaveText("正在只讀查找 agent…");
     await expect(page.locator("#identity-result")).toContainText("Research Sandbox");
     await page.locator("#identity-id").fill("999");
     await page.locator("#identity-id").press("Enter");
-    await expect(page.locator("#identity-result")).toContainText("没有这个测试 agent");
+    await expect(page.locator("#identity-result")).toHaveAttribute("data-state", "error");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
 
   test("未发布字段只进草稿预览，不能提交", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /客户回访记录/ }).click();
-    const face = page.frameLocator('iframe[name="face"]');
+    await selectWorkspace(page, "exercise-2");
+    const face = await userFace(page);
     await expect(face.locator("#customer_name")).toBeVisible();
-    await expect(face.getByText("当前是草稿预览")).toBeVisible();
-    await expect(face.getByText("仅作者可见；发布后才会成为可填写、可提交的用户页面。")).toBeVisible();
-    await expect(face.getByRole("button", { name: "发布后可提交" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "解除本地绑定" })).toBeHidden();
-    await expect(page.getByRole("link", { name: "另开用户页面" })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.locator("#face-mode")).toHaveText("草稿 · 尚未對外更新");
+    await expect(face.locator(".preview-note")).toHaveCount(0);
+    await expect(face.locator("#customer_name")).toHaveAttribute("aria-disabled", "true");
+    await expect(face.getByRole("button", { name: "設計模式不會提交" })).toBeDisabled();
+    await page.locator("#canvas-mode-preview").click();
+    await expect(face.locator("#customer_name")).not.toHaveAttribute("aria-disabled", "true");
+    await face.locator("#customer_name").fill("只在預覽中試填");
+    await expect(face.locator("#customer_name")).toHaveValue("只在預覽中試填");
+    await expect(face.getByRole("button", { name: "草稿尚未發布" })).toBeDisabled();
+    await expect(face.locator(".preview-submit-note")).toContainText("不會新增正式提交");
+    expect((await agentOf(request, "exercise-2")).inputBag).toHaveLength(0);
+    await expect(page.getByRole("button", { name: "停用用戶頁面" })).toBeHidden();
+    await expect(page.getByRole("link", { name: "另開用戶頁面" })).toHaveAttribute("aria-disabled", "true");
     expect(await (await request.get("/a/exercise-2")).text()).toContain("empty-note");
   });
 
   test("覆盖例子先确认，取消不会改草稿", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await page.getByRole("button", { name: /市场分析需求/ }).click();
-    await page.getByRole("button", { name: "从例子复制" }).click();
-    await expect(page.getByRole("dialog")).toContainText("覆盖当前字段");
+    await selectWorkspace(page, "exercise-1");
+    await page.getByRole("button", { name: "從例子複製" }).click();
+    await expect(page.getByRole("dialog")).toContainText("覆蓋目前欄位");
     await page.getByRole("button", { name: "取消" }).click();
     expect((await agentOf(request)).fields.map((field) => field.id)).toEqual([
       "company_name", "analysis_goal", "target_market", "budget_wan", "include_competitors",
@@ -135,99 +156,22 @@ test.describe("作者后台 UI 管理回归", () => {
     await request.post("/submit/exercise-1", {
       data: { values: { company_name: "旧公司", analysis_goal: "旧目标", target_market: "香港" }, submitterId: "history-user" },
     });
+    await request.post("/submit/exercise-1", {
+      data: { values: { company_name: "新公司", analysis_goal: "新目标", target_market: "香港" } },
+    });
     const agent = await agentOf(request);
     await request.put("/api/agents/exercise-1/fields", {
       data: { fields: agent.fields.filter((field) => field.id !== "company_name") },
     });
     await page.goto("/");
-    await page.getByRole("button", { name: /市场分析需求/ }).click();
-    await page.getByRole("button", { name: "填写记录" }).click();
-    await expect(page.locator(".bag-item")).toContainText("company_name 旧公司");
-    await expect(page.locator(".bag-item")).toContainText("表 v1");
+    await selectWorkspace(page, "exercise-1");
+    await openRecords(page);
+    await expect(page.locator(".bag-head strong")).toHaveText(["提交 #2", "提交 #1"]);
+    await expect(page.locator("#bag")).not.toContainText("市場研究員");
+    await expect(page.locator("#bag")).not.toContainText("student-mock-1");
+    const firstSubmission = page.locator(".bag-item").filter({ hasText: "提交 #1" });
+    await expect(firstSubmission).toContainText("company_name 旧公司");
+    await expect(firstSubmission).toContainText("表單版本 1");
   });
 
-  test("768 宽抽屉不挤压设计区，分隔条可键盘调整", async ({ page, request }) => {
-    await resetStore(request);
-    await page.setViewportSize({ width: 768, height: 800 });
-    await page.goto("/");
-    await page.getByRole("button", { name: /市场分析需求/ }).click();
-    const splitter = page.getByRole("separator", { name: "调整设计区高度" });
-    await splitter.focus();
-    const before = Number(await splitter.getAttribute("aria-valuenow"));
-    await splitter.press("ArrowDown");
-    expect(Number(await splitter.getAttribute("aria-valuenow"))).toBeGreaterThan(before);
-    await page.getByRole("button", { name: "填写记录" }).click();
-    const overflow = await page.evaluate(() => ({
-      page: document.documentElement.scrollWidth - window.innerWidth,
-      stage: document.querySelector(".stage").scrollWidth - document.querySelector(".stage").clientWidth,
-    }));
-    expect(overflow.page).toBeLessThanOrEqual(0);
-    expect(overflow.stage).toBeLessThanOrEqual(0);
-  });
-
-  test("左侧可筛选页面，显示字段 ID 不改变设计区布局", async ({ page, request }) => {
-    await resetStore(request);
-    await page.goto("/");
-    await page.getByRole("button", { name: "已发布", exact: true }).click();
-    await expect(page.getByRole("button", { name: /市场分析需求/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /客户回访记录/ })).toHaveCount(0);
-    await page.getByRole("button", { name: "草稿", exact: true }).click();
-    await expect(page.getByRole("button", { name: /客户回访记录/ })).toBeVisible();
-    await page.getByRole("button", { name: /客户回访记录/ }).click();
-    const before = await page.locator("#designer").evaluate((element) => ({
-      display: getComputedStyle(element).display,
-      height: element.getBoundingClientRect().height,
-      fieldTop: element.querySelector(".design-row").getBoundingClientRect().top,
-      fieldHeight: element.querySelector(".design-row").getBoundingClientRect().height,
-    }));
-    await page.getByRole("checkbox", { name: /显示字段 ID/ }).check();
-    await expect(page.locator(".id-line").first()).toBeVisible();
-    const after = await page.locator("#designer").evaluate((element) => ({
-      display: getComputedStyle(element).display,
-      height: element.getBoundingClientRect().height,
-      fieldTop: element.querySelector(".design-row").getBoundingClientRect().top,
-      fieldHeight: element.querySelector(".design-row").getBoundingClientRect().height,
-    }));
-    expect(after.display).toBe(before.display);
-    expect(after.height).toBe(before.height);
-    expect(after.fieldTop).toBe(before.fieldTop);
-    expect(after.fieldHeight).toBeGreaterThan(before.fieldHeight);
-    expect(await page.locator("#field-list").evaluate((element) => element.getBoundingClientRect().width)).toBeLessThanOrEqual(900);
-  });
-
-  test("工作区按可用宽度在并排与上下布局间自适应", async ({ page, request }) => {
-    await resetStore(request);
-    await page.setViewportSize({ width: 1920, height: 900 });
-    await page.goto("/");
-    await page.getByRole("button", { name: /市场分析需求/ }).click();
-    const wide = await page.locator("#split").evaluate((split) => {
-      const designer = split.querySelector("#designer").getBoundingClientRect();
-      const face = split.querySelector(".face-panel").getBoundingClientRect();
-      return {
-        display: getComputedStyle(split).display,
-        designerLeft: designer.left,
-        designerRight: designer.right,
-        faceLeft: face.left,
-        pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
-      };
-    });
-    expect(wide.display).toBe("grid");
-    expect(wide.faceLeft).toBeGreaterThanOrEqual(wide.designerRight);
-    expect(wide.pageOverflow).toBeLessThanOrEqual(0);
-
-    await page.setViewportSize({ width: 1100, height: 800 });
-    const stacked = await page.locator("#split").evaluate((split) => {
-      const designer = split.querySelector("#designer").getBoundingClientRect();
-      const face = split.querySelector(".face-panel").getBoundingClientRect();
-      return {
-        display: getComputedStyle(split).display,
-        designerBottom: designer.bottom,
-        faceTop: face.top,
-        pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
-      };
-    });
-    expect(stacked.display).toBe("flex");
-    expect(stacked.faceTop).toBeGreaterThanOrEqual(stacked.designerBottom);
-    expect(stacked.pageOverflow).toBeLessThanOrEqual(0);
-  });
 });

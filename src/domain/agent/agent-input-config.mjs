@@ -1,3 +1,5 @@
+import { expandFields } from "../form/expand-fields.mjs";
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -24,7 +26,9 @@ function checkMapping(mapping, profile, fields) {
   if (mapping.inputMode !== profile.inputMode) throw new TypeError("inputMode 漂移");
   if (!Number.isInteger(mapping.formVersion) || mapping.formVersion < 1) throw new TypeError("formVersion 非法");
   if (!Array.isArray(mapping.fields) || !mapping.fields.length) throw new TypeError("input mapping fields[] 必填");
-  const known = new Map((fields || []).map((field) => [field.id, field]));
+  const expanded = expandFields(fields || []);
+  if (expanded.errorCode) throw new TypeError(`input mapping 字段展开失败：${expanded.errorCode}`);
+  const known = new Map(expanded.fields.map((field) => [field.id, field]));
   const fieldIds = new Set(), targetKeys = new Set();
   for (const item of mapping.fields) {
     if (!known.has(item.fieldId)) throw new TypeError(`input mapping 未知字段：${item.fieldId}`);

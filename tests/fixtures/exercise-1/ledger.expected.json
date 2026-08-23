@@ -5,10 +5,10 @@
   "status": "published",
   "fields": [
     { "id": "company_name", "label": "公司或品牌", "control": "text", "required": true },
-    { "id": "analysis_goal", "label": "分析目标", "control": "textarea", "required": true },
-    { "id": "target_market", "label": "目标市场", "control": "select", "required": true, "options": ["中国内地", "香港", "东南亚", "北美", "欧洲"] },
-    { "id": "budget_wan", "label": "预算（万元）", "control": "number", "required": false },
-    { "id": "include_competitors", "label": "包含竞品对比", "control": "checkbox", "required": false }
+    { "id": "analysis_goal", "label": "分析目標", "control": "textarea", "required": true },
+    { "id": "target_market", "label": "目標市場", "control": "select", "required": true, "options": ["中國內地", "香港", "東南亞", "北美", "歐洲"] },
+    { "id": "budget_wan", "label": "預算（萬元）", "control": "number", "required": false },
+    { "id": "include_competitors", "label": "包含競品對比", "control": "checkbox", "required": false }
   ],
   "submit": { "label": "提交", "to": "agent-input" }
 }

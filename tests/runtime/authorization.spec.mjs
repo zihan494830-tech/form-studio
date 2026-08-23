@@ -21,6 +21,14 @@ test.describe("3A-B 服务端身份与范围", () => {
     const body = await response.json();
     expect(body.envelope.submitterId).toBe("student-2");
     expect((await agentOf(request)).inputBag[0].submitterId).toBe("student-2");
+    const authorInbox = await request.get("/api/agents/exercise-1/submissions");
+    expect(authorInbox.status()).toBe(200);
+    expect(await authorInbox.json()).toMatchObject({
+      records: [{ actorId: "student-2", actorName: "市場研究員陳凱", formVersion: 1 }],
+    });
+    expect((await request.get("/api/agents/exercise-1/submissions", {
+      headers: actorHeader("student-2"),
+    })).status()).toBe(403);
   });
 
   test("未验证、错角色和跨班级请求默认拒绝", async ({ request }) => {
@@ -32,7 +40,7 @@ test.describe("3A-B 服务端身份与范围", () => {
       data: { values: validValues },
     });
     expect(crossClass.status()).toBe(403);
-    expect((await crossClass.json()).error).toContain("其他班级或租户");
+    expect(await crossClass.json()).toMatchObject({ errorCode: "cross_scope_forbidden" });
     expect((await agentOf(request)).inputBag).toHaveLength(0);
   });
 
