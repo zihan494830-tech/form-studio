@@ -20,6 +20,7 @@ export function ownerIdentity({
   if (!id) throw new Error("真实身份缺 externalId");
   if (!displayName) throw new Error("真实身份缺 name");
   if (!observationTime) throw new Error("真实身份缺 observedAt");
+  if (typeof official !== "boolean") throw new Error("真实身份 official 必须是 boolean");
 
   return {
     version: "owner-agent-identity/v1",
@@ -29,7 +30,7 @@ export function ownerIdentity({
     sourceSystem: source,
     externalId: id,
     agentType: agentType == null ? null : String(agentType),
-    official: Boolean(official),
+    official,
     updatedAt: updatedAt == null ? null : String(updatedAt),
     observedAt: observationTime,
     readOnly: true,

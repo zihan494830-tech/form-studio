@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { agentOf, resetStore } from "../support/project-fixture.mjs";
+import { agentOf, resetStore, saveAgentFields } from "../support/project-fixture.mjs";
 import { openRecords, selectWorkspace, userFace, workspaceButton } from "../support/ui-actions.mjs";
 
 test.describe("作者工作台布局与响应式", () => {
-  test("统一 mock 来源公开版本身份并默认打开 v0.27 验收场景", async ({ page, request }) => {
+  test("统一 mock 来源公开版本身份并默认打开验收场景", async ({ page, request }) => {
     await resetStore(request);
     await page.setViewportSize({ width: 1920, height: 900 });
     await page.goto("/?scenario=financial-grid-v027");
-    await expect(page.locator("#demo-badge")).toContainText("TEST MOCK · 0.27.0 · mock-v0.27.1");
+    await expect(page.locator("#demo-badge")).toContainText("TEST MOCK · 1.0.0-alpha.1 · mock-v0.27.1");
     await expect(page.locator("#stage-title")).toHaveText("財務矩陣示例");
     await expect(page.frameLocator('iframe[name="face"]').locator(".grid-table")).toBeVisible();
     await expect(page.locator("#property-inspector")).toContainText("表格");
@@ -35,7 +35,7 @@ test.describe("作者工作台布局与响应式", () => {
 
   test("旧身份选择地址回到统一工作区，页面资产不再暴露", async ({ page, request }) => {
     await page.goto("/session?next=/");
-    await expect(page).toHaveURL("http://127.0.0.1:4190/");
+    await expect(page).toHaveURL(new RegExp(`^http://127\\.0\\.0\\.1:${process.env.FORM_STUDIO_TEST_PORT || 4191}/$`));
     await expect(page.getByText("選擇這次要體驗的身份")).toHaveCount(0);
     expect((await request.get("/session/main.js")).status()).toBe(404);
   });
@@ -83,7 +83,7 @@ test.describe("作者工作台布局与响应式", () => {
       const inspector = element.querySelector("#property-inspector").getBoundingClientRect();
       return { canvasWidth: canvas.width, inspectorWidth: inspector.width };
     });
-    const trigger = page.getByRole("button", { name: "查看接口資訊" });
+    const trigger = page.getByRole("button", { name: "高級：數據接口" });
     await trigger.click();
     const contractDialog = page.getByRole("dialog", { name: /接口資訊/ });
     await expect(contractDialog).toBeVisible();
@@ -105,21 +105,21 @@ test.describe("作者工作台布局与响应式", () => {
     await expect(trigger).toBeFocused();
   });
 
-  test("目录只显示发布状态，标题区明确展示线上与编辑版本", async ({ page, request }) => {
+  test("目录与标题区显示发布标签，不把内部 formVersion 当产品文案", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
 
     const published = workspaceButton(page, "exercise-1");
     const unpublished = workspaceButton(page, "exercise-2");
-    await expect(published.locator(".mini-status")).toHaveText("已發布");
+    await expect(published.locator(".mini-status")).toHaveText("已發布 · v1.0");
     await expect(unpublished.locator(".mini-status")).toHaveText("未發布");
-    await expect(published.locator(".mini-status")).not.toContainText(/v\d/i);
-    await expect(unpublished.locator(".mini-status")).not.toContainText(/v\d/i);
 
     await selectWorkspace(page, "exercise-1");
-    await expect(page.locator("#publication-badge")).toHaveText("已發布");
-    await expect(page.locator("#owner-context .version-summary")).toHaveText("線上版本 1");
-    const deactivate = page.getByRole("button", { name: "停用用戶頁面" });
+    await expect(page.locator("#publication-badge")).toHaveText("已發布 · v1.0");
+    await page.locator("#owner-context summary").click();
+    await expect(page.locator("#owner-context .owner-popover")).toContainText("線上 v1.0");
+    await page.locator("#more-actions > summary").click();
+    const deactivate = page.getByRole("button", { name: "停用填寫頁" });
     await expect(deactivate).toBeVisible();
     await deactivate.click();
     await expect(page.locator("#confirm-dialog")).toContainText("草稿設計和歷史提交會保留");
@@ -127,21 +127,20 @@ test.describe("作者工作台布局与响应式", () => {
     await page.locator("#confirm-dialog").getByRole("button", { name: "取消" }).click();
 
     const agent = await agentOf(request, "exercise-1");
-    await request.put("/api/agents/exercise-1/fields", {
-      data: { fields: [...agent.fields, { id: "next_step", label: "下一步", control: "text", required: false }] },
-    });
+    await saveAgentFields(request, "exercise-1", [...agent.fields, { id: "next_step", label: "下一步", control: "text", required: false }]);
     await page.reload();
     await selectWorkspace(page, "exercise-1");
-    await expect(workspaceButton(page, "exercise-1").locator(".mini-status")).toHaveText("待發布");
-    await expect(page.locator("#publication-badge")).toHaveText("待發布");
-    await expect(page.locator("#owner-context .version-summary")).toHaveText("線上版本 1 · 編輯版本 2");
+    await expect(workspaceButton(page, "exercise-1").locator(".mini-status")).toHaveText("線上 v1.0 · 草稿有更新");
+    await expect(page.locator("#publication-badge")).toHaveText("線上 v1.0 · 草稿有更新");
+    await page.locator("#owner-context summary").click();
+    await expect(page.locator("#owner-context .owner-popover")).toContainText("線上 v1.0 · 草稿有未發布更新");
   });
 
   test("字段接口信息默认只读，明确修改后只更新草稿 ID", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
     await selectWorkspace(page, "exercise-1");
-    await page.getByRole("button", { name: "查看接口資訊" }).click();
+    await page.getByRole("button", { name: "高級：數據接口" }).click();
     const dialog = page.getByRole("dialog", { name: /接口資訊/ });
     const companyRow = dialog.locator(".field-contract-row").filter({ hasText: "公司或品牌" });
     await expect(companyRow).toContainText("company_name");
@@ -164,7 +163,7 @@ test.describe("作者工作台布局与响应式", () => {
     await selectWorkspace(page, "exercise-1");
     const face = await userFace(page);
     await expect(face.locator(".form-shell")).toBeVisible();
-    await expect(page.locator("#face-mode")).toHaveText("已發布版本");
+    await expect(page.locator("#face-mode")).toHaveText("已發布 · v1.0");
     await expect(face.locator(".preview-note")).toHaveCount(0);
     await expect(face.getByRole("button", { name: "設計模式不會提交" })).toBeDisabled();
     await page.locator("#canvas-mode-preview").click();

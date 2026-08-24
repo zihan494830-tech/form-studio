@@ -1,13 +1,19 @@
 /** Contextual editor for the currently selected field or grid axis. */
 import { CONTROLS, controlLabel, escapeHtml } from "/workbench/modules/form-model.js";
-import { applyGridEdit, defaultGrid } from "/workbench/modules/grid-editor.mjs";
+import { applyGridEdit, defaultGrid, moveItem } from "/workbench/modules/grid-editor.mjs";
 
 const COLUMN_CONTROLS = CONTROLS.filter((item) => item.value !== "grid");
-
+const AUTOSAVE_DELAY = 700;
 export function createPropertyInspector({
   root, getAgent, getSelection, setSelection, saveFields, settleSaves,
-  confirmAction, showError, openContract, onClose, t,
+  confirmAction, showError, openContract, onClose, onEditState, t,
 }) {
+  let dirtyTarget = null;
+  let commitPromise = null;
+  let blockingError = false;
+  let editVersion = 0;
+  let autosaveTimer = null;
+  let autosaveTarget = null;
   const optionsHtml = (items, selected) => items.map((item) =>
     `<option value="${item.value}"${item.value === selected ? " selected" : ""}>${escapeHtml(item.label)}</option>`).join("");
 
@@ -16,7 +22,14 @@ export function createPropertyInspector({
   }
 
   function interfaceSummary(id) {
-    return `<div class="inspector-interface"><span>${escapeHtml(t("ui.workbench.inspector_stable_id"))}</span><code>${escapeHtml(id)}</code><button type="button" data-inspector-action="open-contract">${escapeHtml(t("ui.workbench.inspector_interface_action"))}</button></div>`;
+    return `<div class="inspector-interface"><button type="button" data-inspector-action="open-contract" data-interface-id="${escapeHtml(id)}">${escapeHtml(t("ui.workbench.inspector_interface_advanced"))}</button></div>`;
+  }
+
+  function moveControls(prefix, index, length) {
+    return `<div class="inspector-move" role="group" aria-label="${escapeHtml(t("ui.workbench.inspector_order"))}">
+      <button type="button" data-inspector-action="move-${prefix}-up"${index <= 0 ? " disabled" : ""}>${escapeHtml(t("ui.workbench.move_up"))}</button>
+      <button type="button" data-inspector-action="move-${prefix}-down"${index >= length - 1 ? " disabled" : ""}>${escapeHtml(t("ui.workbench.move_down"))}</button>
+    </div>`;
   }
 
   function header(kicker, title) {
@@ -24,13 +37,15 @@ export function createPropertyInspector({
   }
 
   function fieldControls(field) {
+    const agent = getAgent();
+    const index = agent?.fields?.findIndex((item) => item.id === field.id) ?? -1;
     const options = field.control === "select" || field.control === "radio"
-      ? `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_options"))}</span><input data-inspector-change="field-options" value="${escapeHtml((field.options || []).join(", "))}" /></label>` : "";
+      ? `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_options_lines"))}</span><textarea rows="4" data-inspector-change="field-options">${escapeHtml((field.options || []).join("\n"))}</textarea></label>` : "";
     const decimals = field.control === "number"
       ? `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_decimals"))}</span><input data-inspector-change="field-decimals" type="number" min="0" max="6" value="${field.decimals ?? ""}" placeholder="0" /></label>` : "";
     const required = field.control === "grid" ? ""
       : `<label class="inspector-check"><input data-inspector-change="field-required" type="checkbox"${field.required ? " checked" : ""} /><span>${escapeHtml(t("ui.workbench.required"))}</span></label>`;
-    return `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_label"))}</span><input data-inspector-change="field-label" value="${escapeHtml(field.label)}" /></label>
+    return `${moveControls("field", index, agent?.fields?.length || 0)}<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_label"))}</span><input data-inspector-change="field-label" value="${escapeHtml(field.label)}" /></label>
       <label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_control"))}</span><select data-inspector-change="field-control">${optionsHtml(CONTROLS, field.control)}</select></label>
       ${required}${options}${decimals}`;
   }
@@ -45,10 +60,12 @@ export function createPropertyInspector({
 
   function rowPanel(field, selection) {
     const selected = field.grid.rows.find((row) => row.id === selection.rowId) || field.grid.rows[0];
-    const items = field.grid.rows.map((row) => `<button type="button" class="inspector-item${row.id === selected?.id ? " active" : ""}" data-select-row="${escapeHtml(row.id)}"><span>${escapeHtml(row.label)}</span><code>${escapeHtml(row.id)}</code></button>`).join("");
+    const selectedIndex = field.grid.rows.findIndex((row) => row.id === selected?.id);
+    const items = field.grid.rows.map((row) => `<button type="button" class="inspector-item${row.id === selected?.id ? " active" : ""}" data-select-row="${escapeHtml(row.id)}"><span>${escapeHtml(row.label)}</span></button>`).join("");
     return `<div class="inspector-list-head"><strong>${escapeHtml(t("ui.workbench.inspector_row_list"))}</strong><button type="button" data-inspector-action="add-row">${escapeHtml(t("ui.workbench.grid_add_row"))}</button></div>
       <div class="inspector-item-list">${items}</div>
       ${selected ? `<div class="inspector-section"><h3>${escapeHtml(t("ui.workbench.inspector_selected_row"))}</h3>
+        ${moveControls("row", selectedIndex, field.grid.rows.length)}
         <label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_label"))}</span><input data-inspector-change="row-label" value="${escapeHtml(selected.label)}" /></label>
         ${interfaceSummary(selected.id)}
         <button type="button" class="danger-action" data-inspector-action="delete-row">${escapeHtml(t("ui.workbench.inspector_delete_row"))}</button>
@@ -57,14 +74,16 @@ export function createPropertyInspector({
 
   function columnPanel(field, selection) {
     const selected = field.grid.columns.find((column) => column.id === selection.columnId) || field.grid.columns[0];
-    const items = field.grid.columns.map((column) => `<button type="button" class="inspector-item${column.id === selected?.id ? " active" : ""}" data-select-column="${escapeHtml(column.id)}"><span>${escapeHtml(column.label)}<small>${escapeHtml(controlLabel(column.control))}${column.required ? ` · ${escapeHtml(t("ui.workbench.required"))}` : ""}</small></span><code>${escapeHtml(column.id)}</code></button>`).join("");
+    const selectedIndex = field.grid.columns.findIndex((column) => column.id === selected?.id);
+    const items = field.grid.columns.map((column) => `<button type="button" class="inspector-item${column.id === selected?.id ? " active" : ""}" data-select-column="${escapeHtml(column.id)}"><span>${escapeHtml(column.label)}<small>${escapeHtml(controlLabel(column.control))}${column.required ? ` · ${escapeHtml(t("ui.workbench.required"))}` : ""}</small></span></button>`).join("");
     const options = selected?.control === "select" || selected?.control === "radio"
-      ? `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_options"))}</span><input data-inspector-change="column-options" value="${escapeHtml((selected.options || []).join(", "))}" /></label>` : "";
+      ? `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_options_lines"))}</span><textarea rows="4" data-inspector-change="column-options">${escapeHtml((selected.options || []).join("\n"))}</textarea></label>` : "";
     const decimals = selected?.control === "number"
       ? `<label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_decimals"))}</span><input data-inspector-change="column-decimals" type="number" min="0" max="6" value="${selected.decimals ?? ""}" placeholder="0" /></label>` : "";
     return `<div class="inspector-list-head"><strong>${escapeHtml(t("ui.workbench.inspector_column_list"))}</strong><button type="button" data-inspector-action="add-column">${escapeHtml(t("ui.workbench.grid_add_column"))}</button></div>
       <div class="inspector-item-list">${items}</div>
       ${selected ? `<div class="inspector-section"><h3>${escapeHtml(t("ui.workbench.inspector_selected_column"))}</h3>
+        ${moveControls("column", selectedIndex, field.grid.columns.length)}
         <label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_label"))}</span><input data-inspector-change="column-label" value="${escapeHtml(selected.label)}" /></label>
         <label class="inspector-control"><span>${escapeHtml(t("ui.workbench.inspector_control"))}</span><select data-inspector-change="column-control">${optionsHtml(COLUMN_CONTROLS, selected.control)}</select></label>
         <label class="inspector-check"><input data-inspector-change="column-required" type="checkbox"${selected.required ? " checked" : ""} /><span>${escapeHtml(t("ui.workbench.required"))}</span></label>
@@ -82,7 +101,7 @@ export function createPropertyInspector({
     }
     const field = selectedField(agent, selection);
     if (!field) {
-      root.innerHTML = `${header(t("ui.workbench.inspector_page"), agent.name)}<div class="inspector-summary"><span>${escapeHtml(t("ui.workbench.inspector_field_count", { count: (agent.fields || []).length }))}</span><code>ownerAgent ${escapeHtml(agent.id)}</code></div><p class="inspector-hint">${escapeHtml(t("ui.workbench.inspector_choose_field"))}</p><button type="button" class="secondary-wide" data-inspector-action="open-contract">${escapeHtml(t("ui.workbench.field_contract_title"))}</button>`;
+      root.innerHTML = `${header(t("ui.workbench.inspector_page"), agent.name)}<div class="inspector-summary"><span>${escapeHtml(t("ui.workbench.inspector_field_count", { count: (agent.fields || []).length }))}</span></div><p class="inspector-hint">${escapeHtml(t("ui.workbench.inspector_choose_field"))}</p><button type="button" class="secondary-wide" data-inspector-action="open-contract">${escapeHtml(t("ui.workbench.inspector_interface_advanced"))}</button>`;
       return;
     }
     if (field.control !== "grid") {
@@ -96,12 +115,12 @@ export function createPropertyInspector({
     root.innerHTML = `${header(t("ui.workbench.inspector_grid"), field.label)}${gridTabs(field, active)}<div id="inspector-tab-panel" class="inspector-tab-panel" role="tabpanel" aria-labelledby="inspector-tab-${active}">${content}</div>`;
   }
 
-  async function replaceField(fieldId, updater, selectionAfterSave = getSelection()) {
+  async function replaceField(fieldId, updater, selectionAfterSave = getSelection(), { refreshInspector = true } = {}) {
     const agent = getAgent();
     const index = agent?.fields?.findIndex((field) => field.id === fieldId) ?? -1;
     if (index < 0) return false;
     const fields = agent.fields.map((field, fieldIndex) => fieldIndex === index ? updater(field) : field);
-    return saveFields(fields, { selectionAfterSave });
+    return saveFields(fields, { selectionAfterSave, refreshInspector });
   }
 
   function typeSpecificLoss(control, nextControl) {
@@ -142,17 +161,170 @@ export function createPropertyInspector({
     }) } }), getSelection());
   }
 
-  async function persistControl(target, task) {
+  async function persistControl(target, task, committedSnapshot) {
     const saved = await task;
-    if (saved !== false || !target.isConnected) return saved;
-    const control = target.closest(".inspector-control, .inspector-check") || target;
-    control.querySelector?.(".inspector-control-error")?.remove();
-    control.insertAdjacentHTML("beforeend", `<span class="inspector-control-error" role="alert">${escapeHtml(t("ui.workbench.inspector_save_error"))}</span>`);
+    if (saved !== false) {
+      if (!dirtyTarget || (dirtyTarget.element === target && dirtyTarget.version === committedSnapshot.version)) {
+        dirtyTarget = null;
+        blockingError = false;
+        onEditState?.("clean");
+      }
+      return saved;
+    }
+    if (!dirtyTarget || dirtyTarget.element === target) dirtyTarget = snapshotTarget(target);
+    blockingError = true;
+    onEditState?.("error");
+    if (target.isConnected) {
+      const control = target.closest(".inspector-control, .inspector-check") || target;
+      control.querySelector?.(".inspector-control-error")?.remove();
+      control.insertAdjacentHTML("beforeend", `<span class="inspector-control-error" role="alert">${escapeHtml(t("ui.workbench.inspector_save_error"))}</span>`);
+    }
     return false;
   }
 
+  function snapshotTarget(target) {
+    return {
+      element: target,
+      change: target.dataset.inspectorChange,
+      value: target.value,
+      checked: target.checked,
+      selection: JSON.parse(JSON.stringify(getSelection() || { kind: "form" })),
+      version: editVersion,
+    };
+  }
+
+  function markDirty(target) {
+    editVersion += 1;
+    dirtyTarget = snapshotTarget(target);
+    blockingError = false;
+    target.closest(".inspector-control, .inspector-check")?.querySelector(".inspector-control-error")?.remove();
+    onEditState?.("dirty");
+  }
+
+  function localInvalid(target, message) {
+    blockingError = true;
+    dirtyTarget = { ...snapshotTarget(target), ...dirtyTarget };
+    onEditState?.("error");
+    const control = target.closest(".inspector-control, .inspector-check") || target;
+    control.querySelector?.(".inspector-control-error")?.remove();
+    control.insertAdjacentHTML("beforeend", `<span class="inspector-control-error" role="alert">${escapeHtml(message)}</span>`);
+    target.focus();
+    return false;
+  }
+
+  function normalizedLines(value) {
+    return String(value).split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+  }
+
+  async function applyTarget(snapshot) {
+    const target = snapshot.element;
+    const { change, value, checked, selection } = snapshot;
+    if (!change) return true;
+    await settleSaves();
+    const field = selectedField(getAgent(), selection);
+    if (!field) return false;
+    if ((change === "field-label" || change === "row-label" || change === "column-label") && !value.trim()) {
+      const code = change === "field-label" ? "error.field_label_required"
+        : change === "row-label" ? "error.grid_row_label_required" : "error.grid_column_label_required";
+      return localInvalid(target, t(code, { id: field.id, grid: field.id, row: 0, column: 0 }));
+    }
+    if (change.endsWith("decimals") && value !== "" && (!Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 6)) {
+      const code = change === "field-decimals" ? "error.decimals_invalid" : "error.grid_column_decimals_invalid";
+      return localInvalid(target, t(code, { id: field.id, grid: field.id, column: 0 }));
+    }
+    if (change.endsWith("options") && normalizedLines(value).length === 0) {
+      const code = change === "field-options" && field.control === "radio" ? "error.radio_options_required"
+        : change === "field-options" ? "error.select_options_required" : "error.grid_column_options_required";
+      return localInvalid(target, t(code, { id: field.id, grid: field.id, column: 0 }));
+    }
+    if (change === "field-control") return persistControl(target, changeFieldControl(field, value), snapshot);
+    if (change === "column-control") return persistControl(target, changeColumnControl(field, selection.columnId, value), snapshot);
+    if (change.startsWith("field-")) {
+      return persistControl(target, replaceField(field.id, (current) => {
+        const next = { ...current };
+        if (change === "field-label") next.label = value.trim();
+        if (change === "field-required") next.required = checked;
+        if (change === "field-options") next.options = normalizedLines(value);
+        if (change === "field-decimals") {
+          if (value === "") delete next.decimals; else next.decimals = Number(value);
+        }
+        return next;
+      }, selection, { refreshInspector: false }), snapshot);
+    }
+    if (change === "row-label") {
+      return persistControl(target, replaceField(field.id, (current) => ({ ...current, grid: { ...current.grid, rows: current.grid.rows.map((row) => row.id === selection.rowId ? { ...row, label: value.trim() } : row) } }), selection, { refreshInspector: false }), snapshot);
+    }
+    if (change.startsWith("column-")) {
+      return persistControl(target, replaceField(field.id, (current) => ({ ...current, grid: { ...current.grid, columns: current.grid.columns.map((column) => {
+        if (column.id !== selection.columnId) return column;
+        const next = { ...column };
+        if (change === "column-label") next.label = value.trim();
+        if (change === "column-required") next.required = checked;
+        if (change === "column-options") next.options = normalizedLines(value);
+        if (change === "column-decimals") {
+          if (value === "") delete next.decimals; else next.decimals = Number(value);
+        }
+        return next;
+      }) } }), selection, { refreshInspector: false }), snapshot);
+    }
+    return true;
+  }
+
+  function clearAutosave(target = null) {
+    if (target && autosaveTarget !== target) return;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+    autosaveTarget = null;
+  }
+
+  function scheduleAutosave(target) {
+    clearAutosave();
+    autosaveTarget = target;
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      autosaveTarget = null;
+      if (target.isConnected && dirtyTarget?.element === target) commitTarget(target);
+    }, AUTOSAVE_DELAY);
+  }
+
+  function commitTarget(target) {
+    if (!target?.dataset.inspectorChange) return Promise.resolve(true);
+    clearAutosave(target);
+    const snapshot = dirtyTarget?.element === target ? dirtyTarget : snapshotTarget(target);
+    if (commitPromise?.target === target && commitPromise.version === snapshot.version) return commitPromise.task;
+    const previous = commitPromise?.task || Promise.resolve(true);
+    const task = previous.then(() => applyTarget(snapshot)).finally(() => {
+      if (commitPromise?.task === task) commitPromise = null;
+    });
+    commitPromise = { target, task, version: snapshot.version };
+    return task;
+  }
+
+  async function flushPending() {
+    clearAutosave();
+    const saved = dirtyTarget?.element?.isConnected
+      ? await commitTarget(dirtyTarget.element)
+      : commitPromise ? await commitPromise.task : true;
+    await settleSaves();
+    return saved !== false && !blockingError;
+  }
+
+  function discardPending() {
+    clearAutosave();
+    dirtyTarget = null;
+    blockingError = false;
+    onEditState?.("clean", { discarded: true });
+    render();
+  }
+
   root.addEventListener("input", (event) => {
-    event.target.closest(".inspector-control, .inspector-check")?.querySelector(".inspector-control-error")?.remove();
+    if (!event.target.dataset.inspectorChange || event.target.matches("select, [type=checkbox]")) return;
+    markDirty(event.target);
+    scheduleAutosave(event.target);
+  });
+
+  root.addEventListener("focusout", (event) => {
+    if (event.target === dirtyTarget?.element) commitTarget(event.target);
   });
 
   root.addEventListener("keydown", (event) => {
@@ -168,13 +340,15 @@ export function createPropertyInspector({
       queueMicrotask(() => root.querySelector(`[data-inspector-tab="${nextName}"]`)?.focus());
       return;
     }
-    if (!event.target.matches("input") || (event.key !== "Escape" && event.key !== "Enter")) return;
+    if (!event.target.matches("[data-inspector-change]") || (event.key !== "Escape" && event.key !== "Enter")) return;
     if (event.key === "Escape") {
       event.preventDefault();
-      render();
+      discardPending();
       return;
     }
+    if (!event.target.matches("input:not([type=checkbox])")) return;
     event.preventDefault();
+    commitTarget(event.target);
     event.target.blur();
   });
 
@@ -195,10 +369,25 @@ export function createPropertyInspector({
     if (button.dataset.selectColumn && field) return setSelection({ kind: "grid-column", fieldId: field.id, columnId: button.dataset.selectColumn }, { source: "inspector" });
     const action = button.dataset.inspectorAction;
     if (!action || !field) return;
-    if (["add-row", "add-column", "delete-row", "delete-column", "delete-field"].includes(action)) {
-      await settleSaves();
+    if (["add-row", "add-column", "delete-row", "delete-column", "delete-field"].includes(action) || action.startsWith("move-")) {
+      if (!await flushPending()) return false;
       selection = getSelection(); field = selectedField(getAgent(), selection);
       if (!field) return;
+    }
+    if (action.startsWith("move-")) {
+      const offset = action.endsWith("-up") ? -1 : 1;
+      if (action.startsWith("move-field-")) {
+        const index = getAgent().fields.findIndex((item) => item.id === field.id);
+        return saveFields(moveItem(getAgent().fields, index, offset), { selectionAfterSave: selection });
+      }
+      const fieldIndex = getAgent().fields.findIndex((item) => item.id === field.id);
+      const axis = action.startsWith("move-row-") ? "rows" : "columns";
+      const selectedId = axis === "rows" ? selection.rowId : selection.columnId;
+      const itemIndex = field.grid[axis].findIndex((item) => item.id === selectedId);
+      const fields = getAgent().fields.map((item, index) => index === fieldIndex
+        ? { ...item, grid: { ...item.grid, [axis]: moveItem(item.grid[axis], itemIndex, offset) } }
+        : item);
+      return saveFields(fields, { selectionAfterSave: selection });
     }
     if (action === "add-row" || action === "add-column") {
       const index = getAgent().fields.findIndex((item) => item.id === field.id);
@@ -243,47 +432,18 @@ export function createPropertyInspector({
     }
   });
 
-  root.addEventListener("change", async (event) => {
-    const change = event.target.dataset.inspectorChange;
-    if (!change) return;
-    const target = event.target;
-    const value = target.value;
-    const checked = target.checked;
-    await settleSaves();
-    const selection = getSelection();
-    const field = selectedField(getAgent(), selection);
-    if (!field) return;
-    if (change === "field-control") return persistControl(target, changeFieldControl(field, value));
-    if (change === "column-control") return persistControl(target, changeColumnControl(field, selection.columnId, value));
-    if (change.startsWith("field-")) {
-      return persistControl(target, replaceField(field.id, (current) => {
-        const next = { ...current };
-        if (change === "field-label") next.label = value.trim();
-        if (change === "field-required") next.required = checked;
-        if (change === "field-options") next.options = value;
-        if (change === "field-decimals") {
-          if (value === "") delete next.decimals; else next.decimals = Number(value);
-        }
-        return next;
-      }, selection));
-    }
-    if (change === "row-label") {
-      return persistControl(target, replaceField(field.id, (current) => ({ ...current, grid: { ...current.grid, rows: current.grid.rows.map((row) => row.id === selection.rowId ? { ...row, label: value.trim() } : row) } }), selection));
-    }
-    if (change.startsWith("column-")) {
-      return persistControl(target, replaceField(field.id, (current) => ({ ...current, grid: { ...current.grid, columns: current.grid.columns.map((column) => {
-        if (column.id !== selection.columnId) return column;
-        const next = { ...column };
-        if (change === "column-label") next.label = value.trim();
-        if (change === "column-required") next.required = checked;
-        if (change === "column-options") next.options = value;
-        if (change === "column-decimals") {
-          if (value === "") delete next.decimals; else next.decimals = Number(value);
-        }
-        return next;
-      }) } }), selection));
-    }
+  root.addEventListener("change", (event) => {
+    if (!event.target.dataset.inspectorChange) return;
+    if (event.target.matches("select, [type=checkbox]")) markDirty(event.target);
+    commitTarget(event.target);
   });
 
-  return { render };
+  async function retryPending() {
+    if (!dirtyTarget?.element?.isConnected) return false;
+    blockingError = false;
+    onEditState?.("dirty");
+    return commitTarget(dirtyTarget.element);
+  }
+
+  return { render, flushPending, discardPending, retryPending };
 }

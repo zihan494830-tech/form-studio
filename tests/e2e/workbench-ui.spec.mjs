@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { agentOf, resetStore } from "../support/project-fixture.mjs";
+import { agentOf, resetStore, saveAgentFields, submitAgent } from "../support/project-fixture.mjs";
 import {
   addField,
   createRetrofitWorkspace,
@@ -21,22 +21,22 @@ test.describe("作者后台 UI 管理回归", () => {
     await startBornFlow(page);
     const flow = page.locator("#born-flow");
     await expect(flow).toContainText("獨立設計、發布和持續接收提交");
-    await expect(flow).toContainText("不會建立、連接或修改 Poffices agent");
+    await expect(flow).toContainText("不會建立、連接或修改 Poffices Agent");
     await expect(flow).toContainText("不能改綁成已有 agent");
     await expect(flow).not.toContainText("ownerAgent");
     await page.locator("#new-name").fill("课堂练习入口");
     await page.locator("#create-btn").click();
-    await expect(page.locator("#owner-context")).toContainText("Form Studio 新增");
     await page.locator("#owner-context summary").click();
+    await expect(page.locator("#owner-context")).toContainText("Form Studio 新增");
     await expect(page.locator("#owner-context")).toContainText("本地頁面 ID:form-1");
   });
 
   test("2B-A Official 候选可创建隔离本地页面，且边界写清楚", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "你準備為誰設計用戶頁面？" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /給已有 Poffices agent 做頁面/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /建立新的 agent form/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "你準備建立哪一種 Agent 表單？" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /為已有 Agent 設計表單/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /新建獨立的 Agent 表單/ })).toBeVisible();
     await startRetrofitFlow(page);
     await page.locator("#identity-id").fill("18");
     await lookupOwner(page);
@@ -104,7 +104,7 @@ test.describe("作者后台 UI 管理回归", () => {
       });
     });
     await page.goto("/");
-    const start = page.getByRole("button", { name: /給已有 Poffices agent 做頁面/ });
+    const start = page.getByRole("button", { name: /為已有 Agent 設計表單/ });
     await start.focus();
     await start.press("Enter");
     await page.locator("#identity-id").fill("42");
@@ -123,7 +123,7 @@ test.describe("作者后台 UI 管理回归", () => {
     await selectWorkspace(page, "exercise-2");
     const face = await userFace(page);
     await expect(face.locator("#customer_name")).toBeVisible();
-    await expect(page.locator("#face-mode")).toHaveText("草稿 · 尚未對外更新");
+    await expect(page.locator("#face-mode")).toHaveText("草稿試填");
     await expect(face.locator(".preview-note")).toHaveCount(0);
     await expect(face.locator("#customer_name")).toHaveAttribute("aria-disabled", "true");
     await expect(face.getByRole("button", { name: "設計模式不會提交" })).toBeDisabled();
@@ -134,44 +134,42 @@ test.describe("作者后台 UI 管理回归", () => {
     await expect(face.getByRole("button", { name: "草稿尚未發布" })).toBeDisabled();
     await expect(face.locator(".preview-submit-note")).toContainText("不會新增正式提交");
     expect((await agentOf(request, "exercise-2")).inputBag).toHaveLength(0);
-    await expect(page.getByRole("button", { name: "停用用戶頁面" })).toBeHidden();
-    await expect(page.getByRole("link", { name: "另開用戶頁面" })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByRole("button", { name: "停用填寫頁" })).toBeHidden();
+    await expect(page.locator("#user-page-link")).toBeHidden();
+    await expect(page.locator("#user-page-link")).toHaveAttribute("aria-disabled", "true");
     expect(await (await request.get("/a/exercise-2")).text()).toContain("empty-note");
   });
 
-  test("覆盖例子先确认，取消不会改草稿", async ({ page, request }) => {
+  test("示例只在空表出现，不会覆盖已有字段", async ({ page, request }) => {
     await resetStore(request);
     await page.goto("/");
     await selectWorkspace(page, "exercise-1");
-    await page.getByRole("button", { name: "從例子複製" }).click();
-    await expect(page.getByRole("dialog")).toContainText("覆蓋目前欄位");
-    await page.getByRole("button", { name: "取消" }).click();
+    await expect(page.getByRole("button", { name: "使用市場分析示例" })).toBeHidden();
     expect((await agentOf(request)).fields.map((field) => field.id)).toEqual([
       "company_name", "analysis_goal", "target_market", "budget_wan", "include_competitors",
     ]);
+    await saveAgentFields(request, "exercise-2", []);
+    await page.goto("/?scenario=exercise-2");
+    await page.getByRole("button", { name: "使用市場分析示例" }).click();
+    await expect(page.getByRole("button", { name: "使用市場分析示例" })).toBeHidden();
+    await expect.poll(async () => (await agentOf(request, "exercise-2")).fields.length).toBeGreaterThan(0);
   });
 
   test("历史信封按自己的 values[id] 展示", async ({ page, request }) => {
     await resetStore(request);
-    await request.post("/submit/exercise-1", {
-      data: { values: { company_name: "旧公司", analysis_goal: "旧目标", target_market: "香港" }, submitterId: "history-user" },
-    });
-    await request.post("/submit/exercise-1", {
-      data: { values: { company_name: "新公司", analysis_goal: "新目标", target_market: "香港" } },
-    });
+    await submitAgent(request, "exercise-1", { company_name: "旧公司", analysis_goal: "旧目标", target_market: "香港" });
+    await submitAgent(request, "exercise-1", { company_name: "新公司", analysis_goal: "新目标", target_market: "香港" });
     const agent = await agentOf(request);
-    await request.put("/api/agents/exercise-1/fields", {
-      data: { fields: agent.fields.filter((field) => field.id !== "company_name") },
-    });
+    await saveAgentFields(request, "exercise-1", agent.fields.filter((field) => field.id !== "company_name"));
     await page.goto("/");
     await selectWorkspace(page, "exercise-1");
     await openRecords(page);
     await expect(page.locator(".bag-head strong")).toHaveText(["提交 #2", "提交 #1"]);
-    await expect(page.locator("#bag")).not.toContainText("市場研究員");
     await expect(page.locator("#bag")).not.toContainText("student-mock-1");
     const firstSubmission = page.locator(".bag-item").filter({ hasText: "提交 #1" });
-    await expect(firstSubmission).toContainText("company_name 旧公司");
-    await expect(firstSubmission).toContainText("表單版本 1");
+    await firstSubmission.click();
+    await expect(page.locator("#submission-detail")).toContainText("旧公司");
+    await expect(page.locator("#submission-detail")).toContainText("v1.0");
   });
 
 });

@@ -23,36 +23,35 @@ function legacyAgent() {
   };
 }
 
-test("demo 按 dataset revision 整体替换旧 mock，同版重启保留编辑且允许显式恢复", async () => {
+test("demo 只在新数据库明确初始化，之后按 revision 替换受管 mock", async () => {
   const directory = mkdtempSync(join(tmpdir(), "form-studio-demo-data-"));
   const databasePath = join(directory, "studio.sqlite");
-  const agents = createSqliteAgentRepository({ databasePath, seed: [legacyAgent()] });
+  const catalog = loadCanonicalMockCatalog();
+  const agents = createSqliteAgentRepository({ databasePath, seed: catalog.agents });
   const submissions = createSqliteSubmissionRepository({ databasePath });
   const inputPort = createSqliteLocalAgentInputPort({ databasePath, now: () => "2026-08-23T00:00:00.000Z" });
-  const catalog = loadCanonicalMockCatalog();
 
   try {
-    submissions.append({
-      ownerAgent: "old-mock",
-      receivedAt: "2026-08-22T00:00:00.000Z",
-      envelope: { ownerAgent: "old-mock", formVersion: 1, submittedAt: "2026-08-22T00:00:00.000Z", values: {} },
-    });
-    await inputPort.deliver({
-      idempotencyKey: "old-input",
-      submissionId: "submission-1",
-      ownerAgent: "old-mock",
-      target: { kind: "local-recording", target: "old-mock" },
-    });
-
     const first = synchronizeDemoDataset({
       databasePath,
       catalog,
       now: () => "2026-08-23T01:00:00.000Z",
+      allowInitialize: true,
     });
     expect(first).toMatchObject({ changed: true, previousRevision: null, datasetRevision: catalog.datasetRevision });
     expect(agents.list().map((agent) => agent.id)).toEqual(catalog.agents.map((agent) => agent.id));
-    expect(submissions.list()).toEqual([]);
-    expect(inputPort.list()).toEqual([]);
+
+    submissions.append({
+      ownerAgent: catalog.defaultScenario,
+      receivedAt: "2026-08-22T00:00:00.000Z",
+      envelope: { ownerAgent: catalog.defaultScenario, formVersion: 1, submittedAt: "2026-08-22T00:00:00.000Z", submitterId: "demo-user", values: {} },
+    });
+    await inputPort.deliver({
+      idempotencyKey: "demo-input",
+      submissionId: "submission-1",
+      ownerAgent: catalog.defaultScenario,
+      target: { kind: "local-recording", target: catalog.defaultScenario },
+    });
 
     const edited = { ...agents.get(catalog.defaultScenario), name: "本次开发编辑" };
     agents.save(edited);
@@ -62,6 +61,8 @@ test("demo 按 dataset revision 整体替换旧 mock，同版重启保留编辑�
     const reset = synchronizeDemoDataset({ databasePath, catalog, force: true });
     expect(reset).toMatchObject({ changed: true, forced: true, datasetRevision: catalog.datasetRevision });
     expect(agents.get(catalog.defaultScenario).name).toBe("財務矩陣示例");
+    expect(submissions.list()).toEqual([]);
+    expect(inputPort.list()).toEqual([]);
 
     expect(() => synchronizeDemoDataset({
       databasePath,
@@ -88,19 +89,36 @@ test("demo 按 dataset revision 整体替换旧 mock，同版重启保留编辑�
   }
 });
 
-test("显式恢复拒绝未受 canonical mock 管理的数据库", () => {
+test("自动升级和显式恢复都拒绝未受 canonical mock 管理的数据库", async () => {
   const directory = mkdtempSync(join(tmpdir(), "form-studio-unmanaged-data-"));
   const databasePath = join(directory, "studio.sqlite");
   const agents = createSqliteAgentRepository({ databasePath, seed: [legacyAgent()] });
   const submissions = createSqliteSubmissionRepository({ databasePath });
   const inputPort = createSqliteLocalAgentInputPort({ databasePath });
   try {
+    submissions.append({
+      ownerAgent: "old-mock",
+      receivedAt: "2026-08-22T00:00:00.000Z",
+      envelope: { ownerAgent: "old-mock", formVersion: 1, submittedAt: "2026-08-22T00:00:00.000Z", submitterId: "real-user", values: { answer: "must survive" } },
+    });
+    await inputPort.deliver({
+      idempotencyKey: "unmanaged-input",
+      submissionId: "submission-1",
+      ownerAgent: "old-mock",
+      target: { kind: "local-recording", target: "old-mock" },
+    });
+    expect(() => synchronizeDemoDataset({
+      databasePath,
+      catalog: loadCanonicalMockCatalog(),
+    })).toThrow(/未受 canonical mock 管理/);
     expect(() => synchronizeDemoDataset({
       databasePath,
       catalog: loadCanonicalMockCatalog(),
       force: true,
     })).toThrow(/未受 canonical mock 管理/);
     expect(agents.list().map((agent) => agent.id)).toEqual(["old-mock"]);
+    expect(submissions.list()).toHaveLength(1);
+    expect(inputPort.list()).toHaveLength(1);
   } finally {
     inputPort.close();
     submissions.close();

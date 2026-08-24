@@ -28,23 +28,17 @@ export function isDirty(agent) {
     JSON.stringify(agent.fields || []) !== JSON.stringify(agent.published.fields || []));
 }
 export function publicationState(agent) {
-  if (isDirty(agent)) return { label: t("ui.workbench.pending_publish"), className: "dirty" };
+  if (isDirty(agent)) return { label: t("ui.workbench.release_pending", { release: agent.releaseVersion || "v1.x" }), className: "dirty" };
   if (agent.binding && agent.published) {
-    return { label: t("ui.workbench.published"), className: "published" };
+    return { label: t("ui.workbench.release_published", { release: agent.releaseVersion || "v1.x" }), className: "published" };
   }
   return { label: t("ui.workbench.not_published"), className: "draft" };
 }
 export function versionSummary(agent) {
-  const draftVersion = agent?.formVersion || 1;
-  const publishedVersion = agent?.published?.formVersion;
-  if (!publishedVersion) {
-    return t("ui.workbench.version_unpublished", { draft: draftVersion });
-  }
-  if (isDirty(agent)) {
-    return t("ui.workbench.version_pending", { published: publishedVersion, draft: draftVersion });
-  }
-  return t("ui.workbench.version_published", { published: publishedVersion });
+  if (!agent?.published?.formVersion) return t("ui.workbench.release_unpublished");
+  if (isDirty(agent)) return t("ui.workbench.release_summary_pending", { release: agent.releaseVersion || "v1.x" });
+  return t("ui.workbench.release_summary", { release: agent.releaseVersion || "v1.x" });
 }
 export function escapeHtml(value) {
-  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }

@@ -1,7 +1,7 @@
 import { SUBMISSION_READ } from "../domain/access/capabilities.mjs";
 import { activePublishedBinding } from "../domain/agent/owner-agent-binding.mjs";
 import { expandFields } from "../domain/form/expand-fields.mjs";
-import { publishedDefinitionForVersion } from "../domain/form/published-definition.mjs";
+import { currentReleaseVersion, publishedDefinitionForVersion, releaseVersionForFormVersion } from "../domain/form/published-definition.mjs";
 import { problem } from "../domain/problem.mjs";
 
 function denied(status = 403, errorCode = "submission_read_denied", parameters = {}) {
@@ -46,6 +46,10 @@ function latestKnownFormVersion(agent) {
   return definitions.reduce((latest, definition) => Math.max(latest, Number(definition?.formVersion) || 0), 0) || null;
 }
 
+function recordPrincipal(record) {
+  return record?.principal || record?.actor || null;
+}
+
 /**
  * Application port for reading submission projections.
  * Authorization is injected and evaluated for both the owner resource and every returned record.
@@ -83,6 +87,7 @@ export function createSubmissionReader(repository, { authorizeRead } = {}) {
           ownerAgent: agent.id,
           name: agent.name,
           formVersion: agent.published.formVersion,
+          releaseVersion: currentReleaseVersion(agent),
           submissionCount: repository.listSubmissions({ ownerAgent: agent.id })
             .filter((record) => visibleRecord(record, principal)).length,
         }));
@@ -92,25 +97,48 @@ export function createSubmissionReader(repository, { authorizeRead } = {}) {
       const access = loadAuthorized(ownerAgent, principal);
       if (!access.agent) return access;
       const { agent } = access;
-      const records = repository.listSubmissions({
-        ownerAgent: agent.id,
-        actorId: String(actorId || "").trim() || undefined,
-      }).filter((record) => visibleRecord(record, principal));
+      const allRecords = repository.listSubmissions({ ownerAgent: agent.id })
+        .filter((record) => visibleRecord(record, principal));
+      const requestedActor = String(actorId || "").trim();
+      const records = requestedActor
+        ? allRecords.filter((record) => recordPrincipal(record)?.id === requestedActor)
+        : allRecords;
+      const submissionNumbers = new Map(allRecords.map((record, index) => [record.id, index + 1]));
       return {
         status: 200,
-        page: { ownerAgent: agent.id, name: agent.name, formVersion: latestKnownFormVersion(agent) },
-        records: records.map((record, index) => {
+        page: {
+          ownerAgent: agent.id,
+          name: agent.name,
+          formVersion: latestKnownFormVersion(agent),
+          releaseVersion: currentReleaseVersion(agent),
+        },
+        records: records.map((record) => {
           const projection = fieldProjection(agent, record.envelope);
+          const management = repository.getSubmissionManagement?.(record.id) || null;
           return ({
             id: record.id,
             ownerAgent: record.ownerAgent,
-            submissionNumber: index + 1,
+            submissionNumber: submissionNumbers.get(record.id),
             receivedAt: record.receivedAt,
-            actorId: record.actor?.id || null,
-            actorName: record.actor?.displayName || record.actor?.id || null,
+            actorId: recordPrincipal(record)?.id || null,
+            actorName: recordPrincipal(record)?.displayName || recordPrincipal(record)?.id || null,
             fieldCount: Object.keys(record.envelope.values || {}).length,
+            management: management ? {
+              status: management.status,
+              tags: management.tags,
+              assignee: management.assignee,
+              archivedAt: management.archivedAt,
+              revision: management.revision,
+            } : {
+              status: "new",
+              tags: [],
+              assignee: null,
+              archivedAt: null,
+              revision: 1,
+            },
             ...(includeFields ? {
               formVersion: record.envelope.formVersion,
+              releaseVersion: releaseVersionForFormVersion(agent, record.envelope.formVersion),
               fields: projection.fields,
               formDefinitionAvailable: projection.definitionAvailable,
               delivery: deliveryProjection(repository, record),
@@ -135,9 +163,10 @@ export function createSubmissionReader(repository, { authorizeRead } = {}) {
           ownerAgent: record.ownerAgent,
           pageName: access.agent.name,
           receivedAt: record.receivedAt,
-          actorId: record.actor?.id || null,
-          actorName: record.actor?.displayName || record.actor?.id || null,
+          actorId: recordPrincipal(record)?.id || null,
+          actorName: recordPrincipal(record)?.displayName || recordPrincipal(record)?.id || null,
           formVersion: record.envelope.formVersion,
+          releaseVersion: releaseVersionForFormVersion(access.agent, record.envelope.formVersion),
           fields: projection.fields,
           formDefinitionAvailable: projection.definitionAvailable,
           delivery: deliveryProjection(repository, record),

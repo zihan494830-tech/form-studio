@@ -10,7 +10,7 @@
     "id": { "type": "string", "pattern": "^outbox-[1-9][0-9]*$" },
     "submissionId": { "type": "string", "pattern": "^submission-[1-9][0-9]*$" },
     "ownerAgent": { "type": "string", "minLength": 1 },
-    "status": { "enum": ["pending", "delivering", "delivered", "failed"] },
+    "status": { "enum": ["pending", "delivering", "delivered", "failed", "mapping_review_required"] },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
     "attempts": { "type": "integer", "minimum": 0 },

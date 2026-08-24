@@ -54,11 +54,14 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
     expect(created.response.status).toBe(201);
     expect(created.body.id).toBe("form-1");
 
-    await json(running.base, "/api/agents/form-1/fields", {
+    const fieldsSaved = await json(running.base, "/api/agents/form-1/fields", {
       method: "PUT",
+      headers: { "If-Match": `"agent-${created.body.revision}"` },
       body: JSON.stringify({ fields: [{ id: "answer", label: "答案", control: "textarea", required: true }] }),
     });
-    const published = await json(running.base, "/api/agents/form-1/publish", { method: "POST" });
+    const published = await json(running.base, "/api/agents/form-1/publish", {
+      method: "POST", headers: { "If-Match": `"agent-${fieldsSaved.body.revision}"` },
+    });
     expect(published.body).toMatchObject({
       id: "form-1",
       formVersion: 2,
@@ -66,6 +69,7 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
     });
     await json(running.base, "/api/agents/form-1/fields", {
       method: "PUT",
+      headers: { "If-Match": `"agent-${published.body.revision}"` },
       body: JSON.stringify({ fields: [
         { id: "answer", label: "答案", control: "textarea", required: true },
         { id: "teacher_note", label: "作者草稿备注", control: "text", required: false },
@@ -73,7 +77,8 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
     });
     const submitted = await json(running.base, "/submit/form-1", {
       method: "POST",
-      body: JSON.stringify({ submitterId: "student-1", values: { answer: "保留下来" } }),
+      headers: { "Idempotency-Key": "72991271-b4cf-4e42-af5a-20ed817ba1d7" },
+      body: JSON.stringify({ formVersion: 2, values: { answer: "保留下来" } }),
     });
     expect(submitted.response.status).toBe(200);
 
@@ -112,7 +117,9 @@ test("2C 新生身份、发布版本和提交跨服务重启保持", async () =>
     });
     expect(secondBorn.body.id).toBe("form-2");
 
-    await json(running.base, "/api/agents/form-1/unpublish", { method: "POST" });
+    await json(running.base, "/api/agents/form-1/unpublish", {
+      method: "POST", headers: { "If-Match": `"agent-${restored.body.revision}"` },
+    });
     await close(running.server);
     repository.close();
     repository = persistentRepository(databasePath);

@@ -1,5 +1,7 @@
 /** 把仓储对象投影成作者面可读状态；不改变 agent 本体。 */
+import { agentInputReadiness } from "../domain/agent/agent-input-config.mjs";
 import { expandFields } from "../domain/form/expand-fields.mjs";
+import { currentReleaseVersion, releaseHistory } from "../domain/form/published-definition.mjs";
 
 export function ledgerFromFields(agent, fields, status) {
   return {
@@ -36,5 +38,15 @@ export function decorateAgent(agent) {
     required: Boolean(field.required),
     ...(field.grid ? { grid: field.grid } : {}),
   }));
-  return { ...agent, origin: agent.origin || "retrofit", fields, ledger, fieldInterfaces };
+  return {
+    ...agent,
+    revision: Number.isInteger(agent.revision) && agent.revision > 0 ? agent.revision : 1,
+    origin: agent.origin || "retrofit",
+    fields,
+    ledger,
+    fieldInterfaces,
+    releaseVersion: currentReleaseVersion(agent),
+    releaseHistory: releaseHistory(agent),
+    agentInputReadiness: agentInputReadiness(agent, fields, agent.formVersion || 1),
+  };
 }

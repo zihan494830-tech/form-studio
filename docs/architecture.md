@@ -25,6 +25,10 @@ presentation ──────────────────────�
 
 Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` 映射为 `owner-agent-identity/v1`，再交给 application。适配事实与升级条件集中在 [`docs/poffices-integration.md`](./poffices-integration.md)；外部响应不得直接变成账本或提交信封。
 
+Alpha 1 新增两条明确分层：`src/domain/form/published-definition.mjs` 从不可变发布定义计算只读 `releaseVersion`，不改写 Agent JSON；`src/application/manage-submissions.mjs` 编排提交管理和修正，存储分别由 in-memory 与 SQLite adapter 实现。管理 revision 与 Agent revision、整数 formVersion 相互独立，原始 submission record/outbox 不进入更新语句。
+
+正式主界面不显示角色，但这不是取消授权。HTTP adapter 仍要求 capability 并检查对应 ownerAgent：读取 `submission:read`，管理/修正 `submission:manage`；demo/test 中的 author/student/teacher 只是参考身份适配器词汇，`/classroom` 继续与产品主导航隔离。
+
 第 2 段保持三类对象分离：身份合同回答「主人是谁」，`form-ledger/v1` 回答「发布了哪些字段」，`owner-agent-binding/v1` 只回答「哪个本地已发布版本属于哪个只读主人」。绑定规则位于 `src/domain/agent/owner-agent-binding.mjs`，不塞入 Poffices adapter，也不把远端详情复制成本地 agent 本体。`local-shadow-only` 只授权 Form Studio 自己的数据域，不代表 Poffices 写权。作者面信息架构见 [`docs/authoring-experience.md`](./authoring-experience.md)。
 
 依赖规则是本仓拍板项：外层可以依赖内层，`domain` 不反向依赖 `server`、`infrastructure` 或 `public`。第 2 段替换真实 agent 身份时，优先新增/替换 infrastructure 适配器，不改提交信封形状。
@@ -66,12 +70,12 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 ## 从本地演示到真实使用的数据链路
 
-3A 已把提交从 agent JSON 拆到独立 submission 表；原信封、服务端 actor context、tenant / class scope 和接收时间一起保存。逻辑 `inputBag` 仍可读，但不再是物理真相源。现已抽出 `src/application/read-submissions.mjs`：它只通过 `principal + submission:read + resource` 调用注入的授权适配器，并对列表和详情逐资源复核。现役 HTTP 仍由课堂适配器映射 teacher/class 合同；这不能证明真实登录、多实例共享或真实第二消费者。第 3 段链路如下：
+3A 已把提交从 agent JSON 拆到独立 submission 表；v1 历史记录保留 actor/class，v2 保存 principal、authorization、通用 scope、submission intent 与原信封。逻辑 `inputBag` 仍可读，但不再是物理真相源。`src/application/read-submissions.mjs` 只通过 `principal + submission:read + resource` 调用注入的授权适配器，并对列表和详情逐资源复核。现役课堂 HTTP 仍由适配器映射 teacher/class 合同；这不能证明真实登录、多实例共享或真实第二消费者。第 3 段链路如下：
 
 当前使用 Node 内置 `node:sqlite` 和单文件 SQLite；agent 与 submission 共用数据库文件，WAL、`synchronous=FULL` 和严格表结构明确落在适配器。依据 [Node.js SQLite](https://nodejs.org/api/sqlite.html) 与 [SQLite Atomic Commit](https://www.sqlite.org/atomiccommit.html)。这是当前单机规模的低档位选择；`node:sqlite` 仍会给出实验性警告，若运行时兼容性成为部署阻碍，再评估成熟驱动或外部数据库。
 
 ```text
-学生用户页面
+正式填写页面（submission:create principal）
   -> SubmitToAgent 用例
      -> 持久 SubmissionRepository ----> 老师查询投影 / 统计
      -> 同事务 Outbox
@@ -80,7 +84,7 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
                     -> Poffices 运行时调用 adapter（仅在正式输入合同存在后）
 ```
 
-- `SubmissionRepository` 保存原提交信封以及可验证的学生、班级 / 租户归属；老师界面读取投影，不直接抓浏览器或内存对象。
+- `SubmissionRepository` 保存原提交信封、可信 principal、授权能力、通用 scope 与 UUID intent；课堂界面读取兼容投影，不直接抓浏览器或内存对象。
 - 提交信封和待投递事件必须一起落盘，避免“老师看见了、agent 没收到”或反过来的双写裂缝。该选择属于 Transactional Outbox 谱系，参考 [Microsoft Transactional Outbox](https://learn.microsoft.com/en-us/samples/azure-samples/cosmos-db-design-patterns/transactional-outbox/)；当前数据量先用同库表和后台 relay，不上消息平台。
 - `AgentInputPort` 只接受既有提交信封；它不理解 Variables / Block Diagram，也不改 `values[id]`。当并发量、独立消费者或跨服务隔离成为实测瓶颈，再升级为发布 / 订阅中间件；参考 [Azure Publisher-Subscriber pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/publisher-subscriber)。
 - Poffices 目前公开材料证明 Creator Studio 可创建、配置、测试和发布 agent，但没有给出本项目可依赖的公开输入 API；参考 [Poffices Creator Studio 介绍](https://poffices.ai/2026/08/11/build-your-own-ai-agent-in-clicks-introducing-poffices-ai-creator-studio/)。因此运行时调用 adapter 是明确升级点，不是假装已完成的接口；Creator Studio 的配置与发布能力不进入 Form Studio。
@@ -89,23 +93,27 @@ Poffices 外部字段先经 `src/infrastructure/poffices-agent-directory.mjs` �
 
 ### 3A 数据与权限边界
 
-`makeEnvelope()` 不再接受客户端身份回退；`submitToAgent` 只采用 actor resolver 给出的已验证 actor，并把其 id 写入既有 `submitterId`。外层 `submission-record/v1` 保存独立记录 id、原信封、服务端确认的 actor context、班级 / 租户 scope 和接收时间；3B 仍消费原信封，不向信封塞角色和租户字段。
+`makeEnvelope()` 不接受客户端身份回退；`submitToAgent` 只采用 resolver 给出的可信 principal，并把其 id 写入既有 `submitterId`。提交响应只返回当前 envelope、submission ID、重放与 delivery 状态，绝不返回会被仓储补齐历史 `inputBag` 的 Agent。`submission-record/v1` 冻结为历史课堂记录；新写入是 v2，保存 principal、`submission:create`、通用 scope、intent 和接收时间。3B 仍消费原信封，不向信封塞角色、scope 或授权字段。
 
-组合根现已显式区分 product、demo 和 test：product 不读取本地课堂或 mock catalog，没有正式身份提供方时 fail closed；demo 使用本地演示名单、内存 session cookie 和 SQLite 运行副本；test 使用显式测试 resolver、测试钩子和内存运行副本。demo/test 的页面内容都只经 `canonical-mock-catalog.mjs` 读取 `data/mock-agents.json`，但遵循 Playwright 的隔离原则，不共享可写数据库。demo 在端口监听前由 `synchronize-demo-dataset.mjs` 校验 `datasetRevision + checksum`；升级 revision 时用一个 SQLite 事务整体替换 mock 状态，同版重启不覆盖编辑。后两者验证授权机制，不是 Poffices 登录。联网试点前仍需 Alan / Poffices 明确学生、老师、班级和租户来自登录会话、平台 token 还是受控名单；body、query 或普通自定义 header 永远不能成为生产身份来源。
+组合根显式区分 product、demo 和 test：product 不读取本地课堂或 mock catalog，没有正式身份提供方时返回 `503 identity_provider_unconfigured`；demo 使用本地演示名单、两类带 `expiresAt` 的内存 session 与 SQLite 运行副本；test 使用显式 resolver、测试钩子和内存运行副本。authoring/submission 分别使用独立 HttpOnly cookie；同一浏览器选填表身份不会覆盖作者身份。demo 只有在打开 SQLite 前确认文件不存在，才授权建立 canonical metadata；无 metadata 的既有库 fail closed。已受管 demo 在端口监听前校验 `datasetRevision + checksum`，升级时用单事务整体替换 mock，同版重启不覆盖编辑。后两者验证授权机制，不是 Poffices 登录。
 
-权限规则已采用“默认拒绝、每次请求按具体资源复核”；老师列表、详情和 student 提交都同时校验 actor、role、ownerAgent、tenant 和 class，并在 repository 查询中带范围条件。该方向依据 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 与 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。具体认证供应商仍是外部拍板项。
+权限规则采用“默认拒绝、每次请求按具体资源复核”；核心检查 principal 的 `form:author`、`submission:create`、`submission:read` 与 owner/tenant/resource scope，课堂 adapter 再解释 teacher/class。repository 查询继续带范围条件。该方向依据 [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) 与 [OWASP Multi-Tenant Security](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)。具体认证供应商仍是外部拍板项。
 
-浏览器表面现为三个：`/` 是作者工作台（`public/workbench`），`/a/:ownerAgent` 是通用表单渲染器渲染的已发布用户页面，`/classroom` 是 Frankie 课堂参考应用。旧 `/session` 页面和静态资产已撤下；demo/test 的 profile 与 session API 只供自动进入作者态和显式测试设置身份。作者工作台内部只有「输入表单 / 收到的提交」两层：输入表单以 `/preview/:ownerAgent?mode=design|preview` 作为中央唯一真实画布，右侧上下文属性栏修改当前字段或 grid 行列；960–1279px 属性栏变成 360px 抽屉，960px 以下为工作区全宽属性视图。预览文档以 CSS `zoom` 在 60%–140% 内缩放，Ctrl/⌘ + wheel 与显式按钮共用一份状态，普通 wheel 不被截获。字段 `id` 由 `field-contract-panel.js` 在独立 modal 中投影，默认只读并提供复制；显式修改仍调用原 author-scoped fields API，只更新 draft，不能改写 published 快照或历史信封。真实 `/a/` 提交仍要求 student capability。
+浏览器表面现为三个：`/` 是设计工作台（`public/workbench`），`/a/:ownerAgent` 是正式填写页，`/classroom` 是 Frankie 课堂参考应用。旧 `/session` 页面和静态资产已撤下；demo 填写页首次打开时解释并选择参考填写者，product 不提供该入口。作者工作台内部只有「输入表单 / 收到的提交」两层：输入表单以 `/preview/:ownerAgent?mode=design|preview` 作为中央唯一真实画布，右侧上下文属性栏修改当前字段或 grid 行列；960–1279px 属性栏变成 360px 抽屉，960px 以下为工作区全宽属性视图。预览只允许 self frame，永不提交；正式填写页 `frame-ancestors 'none'`，提交完成后不再以 `postMessage("*")` 把 envelope 送回工作台。字段 `id` 面板默认只读；显式修改只更新 draft，不能改写 published 快照或历史信封。
 
-作者收件箱不再从兼容 `inputBag` 猜人类名称。`GET /api/agents/:ownerAgent/submissions` 先以 owner author 身份逐资源授权，再由通用 `read-submissions` application 按每条信封的 `formVersion` 读取不可变 definition，投影 `submissionNumber`、字段值和投递状态。definition 缺失时只显示原始字段 ID 并标注不可可靠还原，不借当前草稿或当前发布版补标签。前端主标识只显示「提交 #N」与时间；底层信封及 `submitterId` 不被改写。
+Agent repository 的作者并发版本是独立 `revision`，不复用 `formVersion`。GET/变更响应返回 `ETag: "agent-N"`，fields/copy/publish/unpublish/archive/restore 必须 `If-Match`；缺失 428、stale 412。SQLite 在 `BEGIN IMMEDIATE` 中比较与写入，客户端 412 保留本地编辑并要求重新载入。这直接采用 [RFC 9110 If-Match](https://www.rfc-editor.org/rfc/rfc9110.html#name-if-match) 的 lost-update 防护。
+
+born-form ID 仍采用可读的 `form-N`，但创建使用 `expectedRevision: 0` 条件插入；若另一个 SQLite 连接先写入同一候选 ID，application 重新扫描并重试，不允许 UPSERT 覆盖。retrofit 的外部 ownerAgent 也使用同一条件插入，消除“先查不存在、后覆盖”的竞态。
+
+作者收件箱不再从兼容 `inputBag` 猜人类名称。`GET /api/agents/:ownerAgent/submissions` 先以 owner author 身份逐资源授权，再由通用 `read-submissions` application 按每条信封的 `formVersion` 读取不可变 definition，投影 `submissionNumber`、字段值和投递状态。definition 缺失时只显示原始字段 ID 并标注不可可靠还原，不借当前草稿或当前发布版补标签。前端用 single-flight loader 区分 idle/loading/refreshing/fresh/error；未知不能投影为 0，旧快照刷新失败时继续可读并标为可能过期。主标识只显示「提交 #N」与时间；底层信封及 `submitterId` 不被改写。
 
 历史迁移已显式处理 2C 的嵌入式 `inputBag`：以 legacy key 保证同一信封只生成一条 submission record，成功导入后才清空物理旧袋并标记迁移版本。合同测试证明可重试、不丢、不重复；它不替代真实备份与恢复演练。
 
 ### 读取能力与消费者边界
 
-目标上，Form Studio 核心负责稳定的提交读取能力，课堂、CRM 或分析应用可以通过各自 adapter 和 UI 消费；新应用不应要求核心新增应用专属角色、scope 字段或页面分支。作者工作台现已加入 owner-scoped 提交诊断视图：它每次激活都重新读取当前 agent，解决独立用户页提交后工作台快照过期的问题；这不是消费者连接控制台，也不承担课堂/CRM 业务管理。
+目标上，Form Studio 核心负责稳定的提交读取能力，课堂、CRM 或分析应用可以通过各自 adapter 和 UI 消费；新应用不应要求核心新增应用专属角色、scope 字段或页面分支。作者工作台现已加入 owner-scoped 提交诊断视图：选中 Agent、切入提交页和页面重新可见时会刷新提交快照，并用当前 Agent 校验避免迟到响应污染界面；这不是消费者连接控制台，也不承担课堂/CRM 业务管理。
 
-当前已完成最小读取端口抽取：核心 application 用例不判断 teacher/class，`src/infrastructure/classroom-submission-read-authorizer.mjs` 负责把现有课堂成员关系映射为通用 `submission:read` 请求，`/api/teacher/...` 暂作兼容 HTTP adapter。`agent-access/v1` 与 `submission-record/v1` 仍保留课堂含义，没有被冒充为跨应用通用合同。product/demo/test 已在组合根隔离；测试侧 CRM adapter 以 owner allow-list 和 account scope 证明另一消费者无需修改核心。该探针不是产品 CRM 集成，下一步等待真实消费者证据，不先建设 `AppConnection`、策略引擎或管理控制台。
+当前已完成最小读取端口抽取：核心 application 用例不判断 teacher/class，`src/infrastructure/classroom-submission-read-authorizer.mjs` 负责把现有课堂成员关系映射为通用 `submission:read` 请求，`/api/teacher/...` 暂作兼容 HTTP adapter。`agent-access/v1` 与 `submission-record/v1` 仍保留课堂含义并冻结；新写入的 `submission-record/v2` 已使用通用 principal/scope/intent。product/demo/test 已在组合根隔离；测试侧 CRM adapter 以 owner allow-list 和 account scope 证明另一消费者无需修改核心。该探针不是产品 CRM 集成，下一步等待真实消费者证据，不先建设 `AppConnection`、策略引擎或管理控制台。
 
 ### 输入能力与字段映射
 
@@ -117,6 +125,8 @@ Form Studio 不能从 agent 名字或内部变量猜运行时请求。下面四�
 | `form-ledger/v1` | 用户页面收哪些稳定字段 | agent 内部怎么跑 |
 | `agent-input-profile/v1` | agent 的 skill、输入模式、transport、认证引用和可选 schema | 自动决定页面栏位、保存密钥 |
 | `agent-input-mapping/v1` | 某一 `formVersion` 的 `values[id]` 如何映射为目标请求 | 改写原提交信封、静默追随 agent 变化 |
+
+mapping 不再以“formVersion 不同就永久阻断提交”处理。发布用例先检查字段存在性、control/transform 兼容性和 required 可满足性：兼容则把 mapping 重绑到新发布版本；不兼容则阻止发布并保留旧发布页。启动迁移也只修复兼容漂移。若历史不兼容状态仍被遇到，submission 先成为独立事实，outbox 记录 `mapping_review_required`，不因投递配置债丢表单数据。
 
 发现顺序：
 

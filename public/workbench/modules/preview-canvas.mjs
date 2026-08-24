@@ -75,6 +75,31 @@ export function createPreviewCanvas({ frame, getMode, getSelection, onSelect }) 
     target?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
+  function setMode(mode = getMode()) {
+    if (!documentRef) return false;
+    const designMode = mode === "design";
+    documentRef.body.dataset.authoringMode = designMode ? "design" : "preview";
+    documentRef.querySelectorAll("[data-field-id], [data-grid-row-id], [data-grid-column-id]").forEach((node) => {
+      if (designMode) node.tabIndex = 0;
+      else node.removeAttribute("tabindex");
+    });
+    documentRef.querySelectorAll("input, textarea, select").forEach((node) => {
+      node.disabled = designMode;
+      if (designMode) {
+        node.tabIndex = -1;
+        node.setAttribute("aria-disabled", "true");
+      } else {
+        node.removeAttribute("tabindex");
+        node.removeAttribute("aria-disabled");
+      }
+    });
+    documentRef.querySelectorAll("[data-design-text][data-preview-text]").forEach((node) => {
+      node.textContent = designMode ? node.dataset.designText : node.dataset.previewText;
+    });
+    if (designMode) applySelection(); else clearSelection();
+    return true;
+  }
+
   function attach() {
     try {
       documentRef = frame.contentDocument;
@@ -82,36 +107,25 @@ export function createPreviewCanvas({ frame, getMode, getSelection, onSelect }) 
       documentRef = null;
     }
     if (!documentRef?.querySelector(".form-shell")) return false;
-    const designMode = getMode() === "design";
-    documentRef.body.dataset.authoringMode = designMode ? "design" : "preview";
-    if (!designMode) {
-      clearSelection();
-      return true;
-    }
-    documentRef.querySelectorAll("[data-field-id], [data-grid-row-id], [data-grid-column-id]").forEach((node) => {
-      node.tabIndex = 0;
-    });
-    documentRef.querySelectorAll("input, textarea, select, button").forEach((node) => {
-      node.tabIndex = -1;
-      node.setAttribute("aria-disabled", "true");
-    });
-    documentRef.addEventListener("click", (event) => {
+    if (documentRef.body.dataset.authoringBridge !== "ready") documentRef.addEventListener("click", (event) => {
+      if (getMode() !== "design") return;
       const selection = selectionFromElement(event.target);
       if (!selection) return;
       event.preventDefault();
       event.stopPropagation();
       onSelect(selection, { source: "canvas" });
     }, true);
-    documentRef.addEventListener("keydown", (event) => {
+    if (documentRef.body.dataset.authoringBridge !== "ready") documentRef.addEventListener("keydown", (event) => {
+      if (getMode() !== "design") return;
       if (event.key !== "Enter" && event.key !== " ") return;
       const selection = selectionFromElement(event.target);
       if (!selection) return;
       event.preventDefault();
       onSelect(selection, { source: "canvas" });
     });
-    applySelection();
-    return true;
+    documentRef.body.dataset.authoringBridge = "ready";
+    return setMode();
   }
 
-  return { attach, applySelection, focusSelection };
+  return { attach, setMode, applySelection, focusSelection };
 }

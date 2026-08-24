@@ -45,7 +45,13 @@ function replaceAll(database, catalog, appliedAt) {
   }
 }
 
-export function synchronizeDemoDataset({ databasePath, catalog, now = () => new Date().toISOString(), force = false }) {
+export function synchronizeDemoDataset({
+  databasePath,
+  catalog,
+  now = () => new Date().toISOString(),
+  force = false,
+  allowInitialize = false,
+}) {
   if (!databasePath) throw new TypeError("databasePath 必填");
   if (!catalog?.datasetRevision || !catalog?.datasetChecksum || !Array.isArray(catalog.agents)) {
     throw new TypeError("canonical mock catalog 不完整");
@@ -63,13 +69,15 @@ export function synchronizeDemoDataset({ databasePath, catalog, now = () => new 
     const current = metadata(database);
     const currentRevision = current.get("dataset_revision") || null;
     const currentChecksum = current.get("dataset_checksum") || null;
-    if (currentRevision === catalog.datasetRevision) {
+    if (!currentRevision) {
+      if (force || !allowInitialize) {
+        throw new Error("拒绝替换未受 canonical mock 管理的数据库");
+      }
+    } else if (currentRevision === catalog.datasetRevision) {
       if (currentChecksum !== catalog.datasetChecksum) {
         throw new Error(`canonical mock ${catalog.datasetRevision} 内容已改变；请递增 datasetRevision`);
       }
       if (!force) return { changed: false, datasetRevision: currentRevision, datasetChecksum: currentChecksum };
-    } else if (force && !currentRevision) {
-      throw new Error("拒绝强制重置未受 canonical mock 管理的数据库");
     }
     const appliedAt = now();
     replaceAll(database, catalog, appliedAt);

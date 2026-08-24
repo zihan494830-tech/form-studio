@@ -64,6 +64,7 @@ try {
   await scenarioButton.waitFor({ state: "visible" });
   const canvas = workbench.frameLocator('iframe[name="face"]');
   await canvas.locator(".grid-table").waitFor({ state: "visible" });
+  await capture(workbench, "workbench-top-actions", { width: 1600, height: 900 });
   await canvas.locator('[data-field-id="overall_rating"]').click();
   await capture(workbench, "workbench-field-selected", { width: 1920, height: 900 });
   await canvas.locator('[data-grid-column-id="revenue"]').click();
@@ -73,7 +74,7 @@ try {
   await workbench.locator("#preview-zoom-reset").click();
 
   await workbench.setViewportSize({ width: 1600, height: 1400 });
-  await workbench.getByRole("button", { name: "查看接口資訊" }).click();
+  await workbench.locator('[data-inspector-action="open-contract"]').click();
   await workbench.locator("#field-contract-dialog").waitFor({ state: "visible" });
   fieldContractCellIds = await workbench.locator('[data-contract-action="copy-cell"]').evaluateAll((buttons) =>
     buttons.map((button) => button.dataset.cellId));
@@ -93,6 +94,12 @@ try {
   await canvas.locator('[data-field-id="overall_rating"]').click();
   await workbench.waitForTimeout(180);
   await capture(workbench, "workbench-mobile-inspector", { width: 390, height: 844 });
+
+  await workbench.setViewportSize({ width: 1600, height: 900 });
+  await workbench.locator("#view-submissions").click();
+  await workbench.locator("#submission-detail").waitFor({ state: "visible" });
+  await capture(workbench, "submission-management", { width: 1600, height: 900 });
+  await capture(workbench, "submission-single-column", { width: 920, height: 800 });
 
   const agent = await workbench.evaluate(async (ownerAgent) => {
     const response = await fetch(`/api/agents/${encodeURIComponent(ownerAgent)}`);
@@ -114,11 +121,13 @@ try {
     application: health.application,
     mode: health.mode,
     productVersion: health.productVersion,
+    schemaVersion: health.schemaVersion,
     runtimeRevision: health.runtimeRevision,
     datasetRevision: health.datasetRevision,
     datasetChecksum: health.datasetChecksum,
     ownerAgent: agent.id,
     formVersion: agent.published?.formVersion || agent.formVersion,
+    releaseVersion: agent.releaseVersion || null,
     capturedAt,
     urls: { workbench: `${baseURL}/`, userFace: faceURL },
     observations: {

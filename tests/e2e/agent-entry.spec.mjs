@@ -39,9 +39,10 @@ test.describe("改装 agent 的独占用户入口", () => {
     await face.locator("#include_competitors").check();
     await submitFace(face);
     await openRecords(page);
-    await expect(page.locator(".bag-item")).toContainText("company_name 星海科技");
-    await expect(page.locator(".bag-item")).toContainText("target_market 香港");
-    await expect(page.locator(".bag-item")).toContainText("include_competitors true");
+    await page.locator(".bag-item").click();
+    await expect(page.locator("#submission-detail")).toContainText("星海科技");
+    await expect(page.locator("#submission-detail")).toContainText("香港");
+    await expect(page.locator("#submission-detail")).toContainText("true");
   });
 
   test("解绑回到空态，但 inputBag 历史保留", async ({ page, context, request }) => {
@@ -54,10 +55,11 @@ test.describe("改装 agent 的独占用户入口", () => {
     await face.locator("#target_market").selectOption("香港");
     await submitFace(face);
     await openRecords(page);
-    await expect(page.locator(".bag-item")).toContainText("这条提交需要保留");
+    await page.locator(".bag-item").click();
+    await expect(page.locator("#submission-detail")).toContainText("这条提交需要保留");
     await unpublishWorkspace(page);
     await userFace(page);
-    await expect(page.locator("#face-mode")).toContainText("草稿 · 尚未對外更新");
+    await expect(page.locator("#face-mode")).toContainText("草稿試填");
     expect(await (await request.get("/a/exercise-1")).text()).toContain("empty-note");
     const agent = await agentOf(request);
     expect(agent.binding).toBeNull();
@@ -74,7 +76,8 @@ test.describe("改装 agent 的独占用户入口", () => {
     await face.locator("#target_market").selectOption("香港");
     await submitFace(face);
     await openRecords(page);
-    await expect(page.locator(".bag-item")).toContainText("第一次提交");
+    await page.locator(".bag-item").click();
+    await expect(page.locator("#submission-detail")).toContainText("第一次提交");
     await unpublishWorkspace(page);
     await publishWorkspace(page);
     const secondFace = await openPublishedFace(context, "exercise-1");

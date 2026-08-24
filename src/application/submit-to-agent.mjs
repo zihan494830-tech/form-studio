@@ -13,11 +13,14 @@ import { problem } from "../domain/problem.mjs";
 function readValue(field, values) {
   const raw = values[field.id];
   if (field.control === "checkbox") {
-    if (raw === true || raw === "true" || raw === "on") return "true";
-    return "false";
+    if (raw != null && !["string", "boolean", "number"].includes(typeof raw)) {
+      return { value: "false", invalid: true };
+    }
+    return { value: raw === true || raw === "true" || raw === "on" ? "true" : "false", invalid: false };
   }
-  if (raw == null) return "";
-  return String(raw);
+  if (raw == null) return { value: "", invalid: false };
+  if (!["string", "number", "boolean"].includes(typeof raw)) return { value: "", invalid: true };
+  return { value: String(raw), invalid: false };
 }
 
 function isNumberValid(value, decimals) {
@@ -33,7 +36,41 @@ function isNumberValid(value, decimals) {
   return Math.abs(scaled - Math.round(scaled)) <= tolerance;
 }
 
-export function submitToAgent(repository, agentId, payload, { actor = null } = {}) {
+export function validateSubmissionValues(fields, rawValues) {
+  if (!rawValues || typeof rawValues !== "object" || Array.isArray(rawValues)) {
+    return problem("field_values_invalid", 400);
+  }
+  const incoming = rawValues;
+  const expanded = expandFields(fields);
+  if (expanded.errorCode) return problem("form_definition_invalid", 409, { reason: expanded.errorCode });
+  const values = {};
+  const missing = [];
+  const invalid = [];
+  const knownIds = new Set(expanded.fields.map((field) => field.id));
+  for (const key of Object.keys(incoming)) {
+    if (!knownIds.has(key)) invalid.push(key);
+  }
+  for (const field of expanded.fields) {
+    const read = readValue(field, incoming);
+    const value = read.value;
+    if (read.invalid) invalid.push(field.id);
+    if (field.required) {
+      const empty = field.control === "checkbox" ? value !== "true" : value.trim() === "";
+      if (empty) missing.push(field.id);
+    }
+    if (value !== "" && field.control === "number" && !isNumberValid(value, field.decimals)) invalid.push(field.id);
+    if (value !== "" && (field.control === "select" || field.control === "radio") && !field.options.includes(value)) invalid.push(field.id);
+    values[field.id] = value;
+  }
+  if (invalid.length) {
+    const rejected = [...new Set(invalid)];
+    return { ...problem("field_values_invalid", 400, { fields: rejected }), invalid: rejected };
+  }
+  if (missing.length) return { ...problem("required_fields_missing", 400, { fields: missing }), missing };
+  return { values };
+}
+
+export function submitToAgent(repository, agentId, payload, { actor = null, submissionIntentId = "" } = {}) {
   const agent = repository.get(agentId);
   if (!agent) {
     return problem("agent_not_found", 404);
@@ -44,63 +81,75 @@ export function submitToAgent(repository, agentId, payload, { actor = null } = {
   const access = authorizeAgentAction(agent, actor, "submit");
   if (!access.allowed) return access;
 
-  const incoming =
-    payload?.values && typeof payload.values === "object" ? payload.values : {};
-  const expanded = expandFields(agent.published.fields);
-  if (expanded.errorCode) {
-    return { ...problem("form_definition_invalid", 409, { reason: expanded.errorCode }) };
+  const submittedVersion = Number(payload?.formVersion);
+  if (!Number.isInteger(submittedVersion) || submittedVersion < 1) {
+    return problem("form_version_invalid", 400);
   }
-  const values = {};
-  const missing = [];
-  const invalid = [];
-
-  for (const field of expanded.fields) {
-    const value = readValue(field, incoming);
-    if (field.required) {
-      const empty =
-        field.control === "checkbox" ? value !== "true" : value.trim() === "";
-      if (empty) missing.push(field.id);
-    }
-    if (value !== "" && field.control === "number" && !isNumberValid(value, field.decimals)) invalid.push(field.id);
-    if (value !== "" && (field.control === "select" || field.control === "radio") && !field.options.includes(value)) invalid.push(field.id);
-    values[field.id] = value;
+  if (submittedVersion !== agent.published.formVersion) {
+    return problem("form_version_conflict", 409, {
+      submittedVersion,
+      currentVersion: agent.published.formVersion,
+    });
   }
 
-  if (missing.length) {
-    return { ...problem("required_fields_missing", 400, { fields: missing }), missing };
-  }
-  if (invalid.length) {
-    return { ...problem("field_values_invalid", 400, { fields: invalid }), invalid };
-  }
+  const validated = validateSubmissionValues(agent.published.fields, payload?.values);
+  if (validated.errorCode) return validated;
+  const values = validated.values;
 
   const envelope = makeEnvelope({
     ownerAgent: agentId,
-    formVersion: agent.published.formVersion || payload.formVersion || 1,
+    formVersion: submittedVersion,
     submitterId: actor.id,
     values,
   });
 
   let delivery = null;
+  let deliveryStatus = { status: "not_configured" };
   try {
     delivery = deliveryForEnvelope(agent, envelope);
+    if (delivery) deliveryStatus = { status: "pending" };
   } catch (error) {
-    return problem("agent_input_mapping_unavailable", 409, { reason: error?.code || "invalid_mapping" });
+    const reason = error?.code || "invalid_mapping";
+    deliveryStatus = { status: "mapping_review_required", reason };
+    delivery = {
+      status: "mapping_review_required",
+      target: { kind: "mapping-review", target: agent.id },
+      profile: {
+        version: agent.agentInput?.profile?.version || "agent-input-profile/v1",
+        profileVersion: agent.agentInput?.profile?.profileVersion || 1,
+        skillId: agent.agentInput?.profile?.skillId || "mapping-review",
+      },
+      mapping: {
+        version: agent.agentInput?.mapping?.version || "agent-input-mapping/v1",
+        formVersion: envelope.formVersion,
+        profileVersion: agent.agentInput?.mapping?.profileVersion || 1,
+      },
+      payload: {},
+      lastError: reason,
+    };
   }
   const options = {
-    actor: { id: actor.id, displayName: actor.name || actor.id, role: actor.role, verifiedBy: actor.verifiedBy },
-    scope: { tenantId: actor.scope.tenantId, classId: actor.scope.classId },
+    principal: { id: actor.id, displayName: actor.name || actor.id, verifiedBy: actor.verifiedBy },
+    scope: {
+      tenantId: actor.scope.tenantId,
+      attributes: { ...(actor.scope.attributes || {}), ...(actor.scope.classId ? { classId: actor.scope.classId } : {}) },
+    },
+    submissionIntentId,
+    fingerprintSource: JSON.stringify({ formVersion: submittedVersion, values }),
     delivery,
   };
   if (repository.appendSubmission) {
     const appended = repository.appendSubmission(agentId, envelope, options);
+    if (appended?.conflict) return problem("submission_intent_conflict", 409);
     return {
       status: 200,
-      agent: appended.agent,
-      envelope,
+      envelope: appended.submission.envelope,
       submissionId: appended.submission.id,
-      delivery: appended.delivery ? { status: appended.delivery.status, eventId: appended.delivery.id } : { status: "not_configured" },
+      replayed: Boolean(appended.replayed),
+      delivery: appended.delivery ? { status: appended.delivery.status, eventId: appended.delivery.id } : deliveryStatus,
     };
   }
   const updated = repository.appendEnvelope(agentId, envelope, options);
-  return { status: 200, agent: updated, envelope, delivery: { status: "not_configured" } };
+  if (!updated) return problem("agent_not_found", 404);
+  return { status: 200, envelope, delivery: { status: "not_configured" } };
 }

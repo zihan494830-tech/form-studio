@@ -34,12 +34,89 @@ function checkMapping(mapping, profile, fields) {
     if (!known.has(item.fieldId)) throw new TypeError(`input mapping 未知字段：${item.fieldId}`);
     if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(item.targetKey || "")) throw new TypeError("targetKey 非法");
     if (!new Set(["string", "number", "boolean"]).has(item.transform)) throw new TypeError("transform 非法");
+    if (typeof item.required !== "boolean") throw new TypeError("required 必须是 boolean");
     if (fieldIds.has(item.fieldId) || targetKeys.has(item.targetKey)) throw new TypeError("input mapping 字段或目标键重复");
     if (item.transform === "boolean" && known.get(item.fieldId).control !== "checkbox") throw new TypeError("boolean 只能映射 checkbox");
     if (item.transform === "number" && known.get(item.fieldId).control !== "number") throw new TypeError("number 只能映射数字栏");
     fieldIds.add(item.fieldId);
     targetKeys.add(item.targetKey);
   }
+}
+
+function compatibilityReasons(mapping, fields) {
+  const expanded = expandFields(fields || []);
+  if (expanded.errorCode) return [{ code: expanded.errorCode }];
+  const known = new Map(expanded.fields.map((field) => [field.id, field]));
+  const reasons = [];
+  for (const item of mapping?.fields || []) {
+    const field = known.get(item.fieldId);
+    if (!field) {
+      reasons.push({ code: "mapped_field_missing", fieldId: item.fieldId, targetKey: item.targetKey });
+      continue;
+    }
+    if (item.transform === "boolean" && field.control !== "checkbox") {
+      reasons.push({
+        code: "mapped_control_incompatible",
+        fieldId: item.fieldId,
+        targetKey: item.targetKey,
+        expected: "checkbox",
+        actual: field.control,
+      });
+    }
+    if (item.transform === "number" && field.control !== "number") {
+      reasons.push({
+        code: "mapped_control_incompatible",
+        fieldId: item.fieldId,
+        targetKey: item.targetKey,
+        expected: "number",
+        actual: field.control,
+      });
+    }
+    if (item.required === true && field.required !== true) {
+      reasons.push({ code: "mapped_required_not_enforced", fieldId: item.fieldId, targetKey: item.targetKey });
+    }
+  }
+  return reasons;
+}
+
+export function agentInputReadiness(agent, fields = agent?.fields || [], formVersion = agent?.formVersion || 1) {
+  if (!agent?.agentInput) return { status: "not_configured" };
+  try {
+    const { profile, mapping } = agent.agentInput;
+    checkProfile(profile, agent.id);
+    checkMapping(mapping, profile, agent.published?.fields || fields);
+    const reasons = compatibilityReasons(mapping, fields);
+    if (reasons.length) return { status: "blocked", formVersion, reasons };
+    return {
+      status: mapping.formVersion === formVersion ? "ready" : "rebaseable",
+      formVersion,
+      mappingFormVersion: mapping.formVersion,
+    };
+  } catch (error) {
+    return {
+      status: "blocked",
+      formVersion,
+      reasons: [{ code: "mapping_contract_invalid", message: String(error?.message || error) }],
+    };
+  }
+}
+
+export function rebaseAgentInputConfig(agent, fields, formVersion) {
+  const readiness = agentInputReadiness(agent, fields, formVersion);
+  if (readiness.status === "not_configured" || readiness.status === "ready") {
+    return { agent: clone(agent), readiness };
+  }
+  if (readiness.status === "blocked") return { readiness };
+  return {
+    readiness,
+    agent: {
+      ...clone(agent),
+      agentInput: {
+        profile: clone(agent.agentInput.profile),
+        mapping: { ...clone(agent.agentInput.mapping), formVersion },
+      },
+    },
+  };
 }
 
 function transformed(item, raw) {

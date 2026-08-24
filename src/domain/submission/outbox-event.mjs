@@ -21,7 +21,7 @@ export function makeOutboxEvent({
   if (!/^outbox-[1-9][0-9]*$/.test(String(id || ""))) throw new TypeError("outbox id 非法");
   if (!/^submission-[1-9][0-9]*$/.test(String(submissionId || ""))) throw new TypeError("outbox submissionId 非法");
   if (!ownerAgent || !createdAt || !idempotencyKey) throw new TypeError("outbox 关键字段缺失");
-  if (!["pending", "delivering", "delivered", "failed"].includes(status)) throw new TypeError("outbox status 非法");
+  if (!["pending", "delivering", "delivered", "failed", "mapping_review_required"].includes(status)) throw new TypeError("outbox status 非法");
   return {
     version: "agent-input-outbox-event/v1",
     id: String(id),

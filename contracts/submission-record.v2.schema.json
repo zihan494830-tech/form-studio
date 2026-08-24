@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "submission-record/v2",
+  "title": "Form Studio submission record v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "ownerAgent",
+    "receivedAt",
+    "principal",
+    "authorization",
+    "scope",
+    "submissionIntentId",
+    "envelope"
+  ],
+  "properties": {
+    "version": { "const": "submission-record/v2" },
+    "id": { "type": "string", "pattern": "^submission-[1-9][0-9]*$" },
+    "ownerAgent": { "type": "string", "minLength": 1 },
+    "receivedAt": { "type": "string", "format": "date-time" },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "verifiedBy"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "verifiedBy": { "type": "string", "minLength": 1 }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability"],
+      "properties": {
+        "capability": { "const": "submission:create" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "attributes"],
+      "properties": {
+        "tenantId": { "type": "string", "minLength": 1 },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" }
+            ]
+          }
+        }
+      }
+    },
+    "submissionIntentId": { "type": "string", "format": "uuid" },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownerAgent", "formVersion", "submittedAt", "submitterId", "values"],
+      "properties": {
+        "ownerAgent": { "type": "string", "minLength": 1 },
+        "formVersion": { "type": "integer", "minimum": 1 },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "submitterId": { "type": "string", "minLength": 1 },
+        "values": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

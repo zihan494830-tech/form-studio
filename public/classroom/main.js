@@ -27,13 +27,18 @@ function fieldValueText(field) {
 }
 
 async function json(url) {
-  const response = await fetch(url);
-  const body = await response.json().catch(() => ({}));
+  let response;
+  try {
+    response = await fetch(url, { headers: { Accept: "application/json" } });
+  } catch {
+    throw new Error(t("ui.common.network_error"));
+  }
+  const body = await response.json().catch(() => null);
   if (response.status === 401 || response.status === 403) {
     location.assign("/");
     throw new Error(t("ui.classroom.teacher_required"));
   }
-  if (!response.ok) throw new Error(body.error || t("ui.common.read_failed"));
+  if (!response.ok) throw new Error(body?.error || `${t("ui.common.read_failed")} (HTTP ${response.status})`);
   return body;
 }
 
@@ -100,7 +105,7 @@ async function loadSubmissions(agentId) {
 
 async function init() {
   try {
-    const session = await json("/api/session");
+    const session = await json("/api/session?audience=authoring");
     if (session.actor?.role !== "teacher") return location.assign("/");
     document.getElementById("actor-name").textContent = session.actor.name || session.actor.id;
     document.getElementById("classroom-name").textContent = session.classroom?.name || session.actor.scope.classId;

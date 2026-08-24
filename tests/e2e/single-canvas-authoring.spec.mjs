@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { agentOf, resetStore } from "../support/project-fixture.mjs";
+import { agentOf, resetStore, saveAgentFields } from "../support/project-fixture.mjs";
 import { addField, selectWorkspace } from "../support/ui-actions.mjs";
 
 test.describe("单画布作者流", () => {
@@ -74,7 +74,7 @@ test.describe("单画布作者流", () => {
     const inspector = page.locator("#property-inspector");
 
     await canvas.locator('[data-grid-row-id="fy2022"]').click();
-    await inspector.getByRole("button", { name: "查看接口資訊" }).click();
+    await inspector.getByRole("button", { name: "高級：數據接口" }).click();
     const dialog = page.locator("#field-contract-dialog");
     let gridContract = dialog.locator(".field-contract-row");
     await gridContract.getByText("進階：修改草稿 ID").click();
@@ -83,7 +83,7 @@ test.describe("单画布作者流", () => {
     await gridContract.locator('[data-contract-action="save"][data-kind="row"]').click();
     await dialog.getByRole("button", { name: "完成" }).click();
     await canvas.locator('[data-grid-column-id="revenue"]').click();
-    await inspector.getByRole("button", { name: "查看接口資訊" }).click();
+    await inspector.getByRole("button", { name: "高級：數據接口" }).click();
     gridContract = dialog.locator(".field-contract-row");
     await gridContract.getByText("進階：修改草稿 ID").click();
     await gridContract.locator('[data-contract-action="edit"][data-kind="column"]').click();
@@ -101,11 +101,12 @@ test.describe("单画布作者流", () => {
     expect((await request.get("/a/financial-grid-v027")).text()).resolves.toContain('name="history_fy2022_revenue"');
   });
 
-  test("保存失败保留局部输入，Escape 恢复最后成功值", async ({ page, request }) => {
+  test("保存失败保留局部输入并可重试，Escape 恢复最后成功值", async ({ page, request }) => {
     await resetStore(request);
-    await page.route("**/api/agents/exercise-1/fields", (route) => route.fulfill({
-      status: 400, contentType: "application/json", body: JSON.stringify({ error: "simulated_save_failure" }),
-    }));
+    let shouldFail = true;
+    await page.route("**/api/agents/exercise-1/fields", (route) => shouldFail
+      ? route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "simulated_save_failure" }) })
+      : route.continue());
     await page.goto("/");
     await selectWorkspace(page, "exercise-1");
     const input = page.locator('[data-inspector-change="field-label"]');
@@ -113,13 +114,25 @@ test.describe("单画布作者流", () => {
     await input.press("Enter");
     await expect(page.locator(".inspector-control-error")).toContainText("未能儲存");
     await expect(input).toHaveValue("尚未保存的名稱");
+    await expect(page.locator("#bind-btn")).toBeDisabled();
+    await expect(page.locator("#save-status")).not.toContainText("已儲存");
+    await expect(page.locator("#save-retry-btn")).toBeVisible();
+    shouldFail = false;
+    await page.locator("#save-retry-btn").click();
+    await expect.poll(async () => (await agentOf(request, "exercise-1")).fields[0].label).toBe("尚未保存的名稱");
+    await expect(page.locator("#save-retry-btn")).toBeHidden();
+
+    shouldFail = true;
+    await input.fill("第二次未保存");
+    await input.press("Enter");
+    await expect(page.locator("#save-retry-btn")).toBeVisible();
     await input.press("Escape");
-    await expect(page.locator('[data-inspector-change="field-label"]')).toHaveValue("公司或品牌");
+    await expect(page.locator('[data-inspector-change="field-label"]')).toHaveValue("尚未保存的名稱");
   });
 
   test("空表可从 form 状态恢复，删空后回到页面属性", async ({ page, request }) => {
     await resetStore(request);
-    expect((await request.put("/api/agents/exercise-2/fields", { data: { fields: [] } })).ok()).toBeTruthy();
+    expect((await saveAgentFields(request, "exercise-2", [])).ok()).toBeTruthy();
     await page.goto("/");
     await selectWorkspace(page, "exercise-2");
     const inspector = page.locator("#property-inspector");
@@ -140,8 +153,11 @@ test.describe("单画布作者流", () => {
     await page.goto("/");
     await selectWorkspace(page, "exercise-2");
     await expect(page.locator("#face-hint")).toContainText("畫布未能載入");
+    await expect(page.locator("#refresh-btn")).toHaveText("重新載入預覽");
+    await expect(page.locator("#refresh-btn")).toBeVisible();
     await page.unroute("**/preview/exercise-2?*");
     await page.locator("#refresh-btn").click();
     await expect(page.frameLocator('iframe[name="face"]').locator(".form-shell")).toBeVisible();
+    await expect(page.locator("#refresh-btn")).toBeHidden();
   });
 });

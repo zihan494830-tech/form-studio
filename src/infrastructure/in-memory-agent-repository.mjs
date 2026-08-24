@@ -4,6 +4,10 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalize(agent) {
+  return agent ? { ...clone(agent), revision: Number.isInteger(agent.revision) && agent.revision > 0 ? agent.revision : 1 } : null;
+}
+
 function defaultSeed() {
   return loadCanonicalMockCatalog().agents;
 }
@@ -17,17 +21,18 @@ export function createInMemoryAgentRepository(seed = defaultSeed()) {
       return this.list();
     },
     list() {
-      return clone(agents);
+      return agents.map(normalize);
     },
     get(id) {
       const found = agents.find((agent) => agent.id === id);
-      return found ? clone(found) : null;
+      return normalize(found);
     },
-    save(agent) {
+    save(agent, { expectedRevision } = {}) {
       const index = agents.findIndex((item) => item.id === agent.id);
+      if (index >= 0 && expectedRevision != null && normalize(agents[index]).revision !== expectedRevision) return null;
       if (index < 0) agents.push(clone(agent));
       else agents[index] = clone(agent);
-      return clone(agent);
+      return normalize(agent);
     },
     appendEnvelope(agentId, envelope) {
       const found = agents.find((agent) => agent.id === agentId);

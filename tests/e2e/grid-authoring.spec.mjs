@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { agentOf, resetStore } from "../support/project-fixture.mjs";
+import { agentOf, resetStore, saveAgentFields } from "../support/project-fixture.mjs";
 import { openPublishedFace, publishWorkspace, selectWorkspace, submitFace } from "../support/ui-actions.mjs";
 
 test.describe("工作台表格字段编辑（v0.27）", () => {
@@ -15,7 +15,7 @@ test.describe("工作台表格字段编辑（v0.27）", () => {
         ],
       },
     }];
-    expect((await request.put("/api/agents/exercise-2/fields", { data: { fields: seeded } })).ok()).toBeTruthy();
+    expect((await saveAgentFields(request, "exercise-2", seeded)).ok()).toBeTruthy();
 
     await page.goto("/");
     await selectWorkspace(page, "exercise-2");
@@ -32,7 +32,7 @@ test.describe("工作台表格字段编辑（v0.27）", () => {
 
     await inspector.locator('[data-inspector-change="row-label"]').fill("FY2022");
     await inspector.locator('[data-inspector-change="row-label"]').press("Enter");
-    await inspector.getByRole("button", { name: "查看接口資訊" }).click();
+    await inspector.getByRole("button", { name: "高級：數據接口" }).click();
     const dialog = page.locator("#field-contract-dialog");
     let gridContract = dialog.locator(".field-contract-row");
     await expect(gridContract).toContainText("目前行");
@@ -50,7 +50,7 @@ test.describe("工作台表格字段编辑（v0.27）", () => {
     await expect(inspector.locator('[data-inspector-change="column-decimals"]')).toHaveCount(1);
     await inspector.locator('[data-inspector-change="column-decimals"]').fill("2");
     await inspector.locator('[data-inspector-change="column-decimals"]').press("Enter");
-    await inspector.getByRole("button", { name: "查看接口資訊" }).click();
+    await inspector.getByRole("button", { name: "高級：數據接口" }).click();
     gridContract = dialog.locator(".field-contract-row");
     await expect(gridContract).toContainText("目前列");
     await gridContract.getByText("進階：修改草稿 ID").click();
@@ -83,11 +83,11 @@ test.describe("工作台表格字段编辑（v0.27）", () => {
     expect(values.history_fy2022_revenue).toBe("12.34");
     expect(values.history).toBeUndefined();
 
-    // 收件箱把同一 grid 的格值聚合成小表格
+    // 收件箱详情按原定义还原 grid 格标签和值
     await page.locator("#view-submissions").click();
-    await expect(page.locator(".bag-item .mini-grid")).toBeVisible();
-    await expect(page.locator(".bag-item .mini-grid")).toContainText("12.34");
-    await expect(page.locator(".bag-item .mini-grid").locator("th[scope=row]")).toHaveText(["FY2022"]);
+    await page.locator(".bag-item").click();
+    await expect(page.locator("#submission-detail")).toContainText("12.34");
+    await expect(page.locator("#submission-detail")).toContainText("FY2022");
   });
 
   test("欄位接口資訊面板為表格列出并可复制格子 ID", async ({ page, context, request }) => {
@@ -102,10 +102,10 @@ test.describe("工作台表格字段编辑（v0.27）", () => {
         ],
       },
     }];
-    expect((await request.put("/api/agents/exercise-2/fields", { data: { fields } })).ok()).toBeTruthy();
+    expect((await saveAgentFields(request, "exercise-2", fields)).ok()).toBeTruthy();
     await page.goto("/");
     await selectWorkspace(page, "exercise-2");
-    await page.getByRole("button", { name: "查看接口資訊" }).click();
+    await page.getByRole("button", { name: "高級：數據接口" }).click();
     const dialog = page.locator("#field-contract-dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.locator(".field-contract-row")).toHaveCount(1);

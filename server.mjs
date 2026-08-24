@@ -1,5 +1,5 @@
 /** Form Studio 本地入口；HTTP 适配在 src/server。 */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createFormStudioServer } from "./src/server/create-server.mjs";
@@ -24,6 +24,7 @@ const demoMode = process.argv.includes("--demo-mode");
 const mode = testMode ? "test" : demoMode ? "demo" : String(process.env.FORM_STUDIO_MODE || "product");
 if (!["product", "demo", "test"].includes(mode)) throw new Error("FORM_STUDIO_MODE 非法");
 const productVersion = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
+const databaseExistedBeforeStartup = existsSync(DATABASE_PATH);
 const mockCatalog = mode === "demo" || mode === "test" ? loadCanonicalMockCatalog() : null;
 const dataSource = mockCatalog ? {
   kind: "canonical-mock",
@@ -58,7 +59,11 @@ const agentInputPort = testMode
   ? createInMemoryAgentInputPort()
   : createSqliteLocalAgentInputPort({ databasePath: DATABASE_PATH });
 if (mode === "demo") {
-  const sync = synchronizeDemoDataset({ databasePath: DATABASE_PATH, catalog: mockCatalog });
+  const sync = synchronizeDemoDataset({
+    databasePath: DATABASE_PATH,
+    catalog: mockCatalog,
+    allowInitialize: !databaseExistedBeforeStartup,
+  });
   if (sync.changed) {
     process.stdout.write(`demo dataset ${sync.previousRevision || "unmanaged"} -> ${sync.datasetRevision}\n`);
   }
@@ -73,7 +78,7 @@ const inputMigration = migrateAgentInputConfigs(
   JSON.parse(readFileSync(join(ROOT, "data", "local-agent-inputs.json"), "utf8")),
 );
 for (const failure of inputMigration.errors) {
-  process.stderr.write(`agent input config 未启用 ${failure.ownerAgent}: ${failure.error}\n`);
+  process.stderr.write(`agent input config 需复核 ${failure.ownerAgent}: ${failure.code || "mapping_error"} ${failure.error || JSON.stringify(failure.reasons || [])}\n`);
 }
 const deliveryRelay = createAgentInputRelay({ repository, port: agentInputPort });
 const server = createFormStudioServer({

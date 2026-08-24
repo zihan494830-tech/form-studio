@@ -4,7 +4,7 @@
 
 ## 当前计划
 
-当前没有现役实施计划。v0.27 的产品边界、消费者读取端口、grid / radio、单画布与属性栏已经收口到 `DESIGN.md`、`docs/architecture.md`、`docs/authoring-experience.md` 和 `docs/testing.md`；完成计划文件按本目录生命周期规则删除，不另建归档副本。
+- 当前无现役实施计划。
 
 ## 每份计划必须回答
 

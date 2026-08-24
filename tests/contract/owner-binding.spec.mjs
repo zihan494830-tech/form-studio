@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { changeFields, newRetrofitFormAgent, publishForm, unpublishForm } from "../../src/domain/agent/form-agent.mjs";
+import { archiveForm, changeFields, newRetrofitFormAgent, publishForm, restoreForm, unpublishForm } from "../../src/domain/agent/form-agent.mjs";
 import { activePublishedBinding, createOwnerAgentBinding } from "../../src/domain/agent/owner-agent-binding.mjs";
 
 function identity(overrides = {}) {
@@ -94,5 +94,33 @@ test.describe("2B owner-agent-binding/v1 合同", () => {
       { formVersion: 2, fields: edited.fields, submit: { label: "提交", to: "agent-input" } },
     ]);
     expect(unpublishForm(second).agent.publishedDefinitions).toEqual(second.publishedDefinitions);
+  });
+
+  test("从作者列表移除会停用入口但保留历史，并可恢复为未发布草稿", () => {
+    const base = {
+      ...newRetrofitFormAgent({ identity: identity() }).agent,
+      fields: [{ id: "question", label: "问题", control: "text", required: true }],
+      inputBag: [{ submittedAt: "2026-08-23T09:00:00.000Z", values: { question: "keep" } }],
+    };
+    const published = publishForm(base).agent;
+    const archived = archiveForm(published, "2026-08-23T10:00:00.000Z").agent;
+
+    expect(archived).toMatchObject({
+      archivedAt: "2026-08-23T10:00:00.000Z",
+      published: null,
+      binding: null,
+      inputBag: base.inputBag,
+      publishedDefinitions: published.publishedDefinitions,
+    });
+    expect(changeFields(archived, [])).toMatchObject({ status: 409, errorCode: "agent_archived" });
+
+    const restored = restoreForm(archived).agent;
+    expect(restored).not.toHaveProperty("archivedAt");
+    expect(restored).toMatchObject({
+      published: null,
+      binding: null,
+      inputBag: base.inputBag,
+      publishedDefinitions: published.publishedDefinitions,
+    });
   });
 });

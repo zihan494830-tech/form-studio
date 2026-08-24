@@ -10,7 +10,8 @@ function escapeHtml(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function controlHtml(field, { labelledBy = "" } = {}) {
@@ -37,7 +38,7 @@ function controlHtml(field, { labelledBy = "" } = {}) {
         const v = escapeHtml(opt);
         const optionId = `option-${id}-${index + 1}`;
         const optionAria = labelledBy ? ` aria-labelledby="${escapeHtml(`${labelledBy} ${optionId}`)}"` : "";
-        return `<label class="radio-item"><input type="radio" name="${id}" value="${v}"${req}${optionAria} /><span id="${optionId}">${v}</span></label>`;
+        return `<label class="radio-item"><input id="${optionId}-input" type="radio" name="${id}" value="${v}"${req}${optionAria} /><span id="${optionId}">${v}</span></label>`;
       })
       .join("");
     return `<div class="radio-group"${aria ? ` role="group"${aria}` : ""}>${radios}</div>`;
@@ -68,7 +69,7 @@ function gridHtml(field, cells) {
           // Concatenate the grid, row and column labels as in W3C ARIA9's table-input example:
           // https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA9.html
           const labelledBy = `label-${field.id} ${field.id}-row-${row.id} ${field.id}-col-${column.id}`;
-          return `<td>${controlHtml(cell, { labelledBy })}</td>`;
+          return `<td>${controlHtml(cell, { labelledBy })}<span id="error-${escapeHtml(cell.id)}" class="field-error" data-error-for="${escapeHtml(cell.id)}"></span></td>`;
         })
         .join("");
       return `<tr><th id="${gridId}-row-${escapeHtml(row.id)}" scope="row" data-grid-row-id="${escapeHtml(row.id)}">${escapeHtml(row.label)}</th>${rowCells}</tr>`;
@@ -85,15 +86,25 @@ function gridHtml(field, cells) {
 }
 
 function submitAreaHtml({ preview, publishedPreview, authoringMode }) {
-  if (!preview) return `<button type="submit">${t("ui.face.submit")}</button>`;
+  if (!preview) return `<button type="submit">${t("ui.face.submit")}</button>
+            <button id="submit-another" class="secondary-action" type="button" hidden>${t("ui.face.submit_another")}</button>`;
   const state = authoringMode === "design"
     ? "design"
     : publishedPreview ? "published" : "draft";
-  return `<p class="preview-submit-note">${t(`ui.face.preview_${state}_note`)}</p>
-            <button type="button" disabled>${t(`ui.face.preview_${state}_submit`)}</button>`;
+  const previewState = publishedPreview ? "published" : "draft";
+  return `<p class="preview-submit-note" data-design-text="${escapeHtml(t("ui.face.preview_design_note"))}" data-preview-text="${escapeHtml(t(`ui.face.preview_${previewState}_note`))}">${t(`ui.face.preview_${state}_note`)}</p>
+            <button type="button" disabled data-design-text="${escapeHtml(t("ui.face.preview_design_submit"))}" data-preview-text="${escapeHtml(t(`ui.face.preview_${previewState}_submit`))}">${t(`ui.face.preview_${state}_submit`)}</button>`;
 }
 
-export function renderFormHtml(agent, fields, { formVersion, preview = false, publishedPreview = false, authoringMode = null } = {}) {
+export function renderFormHtml(agent, fields, {
+  formVersion,
+  preview = false,
+  publishedPreview = false,
+  authoringMode = null,
+  demoMode = false,
+  submissionIntentId = "",
+  releaseVersion = null,
+} = {}) {
   const list = Array.isArray(fields) ? fields : [];
   const version = formVersion || agent.formVersion || 1;
   const expanded = expandFields(list);
@@ -110,12 +121,14 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false, pu
       if (field.control === "radio") {
         return `<fieldset class="field-group field-radio" data-field-id="${id}">
         <legend id="label-${id}">${label}${reqMark}</legend>
-        ${controlHtml(field)}
+        ${controlHtml(field, { labelledBy: `label-${field.id}` })}
+        <span id="error-${id}" class="field-error" data-error-for="${id}"></span>
       </fieldset>`;
       }
       return `<div class="field-group field-${escapeHtml(field.control)}" data-field-id="${id}" role="group" aria-labelledby="label-${id}">
         <label id="label-${id}" for="${id}">${label}${reqMark}</label>
         ${controlHtml(field)}
+        <span id="error-${id}" class="field-error" data-error-for="${id}"></span>
       </div>`;
     })
     .join("\n      ");
@@ -284,8 +297,21 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false, pu
       outline: 2px solid var(--danger);
       outline-offset: 1px;
     }
+    [aria-invalid="true"] { outline: 2px solid var(--danger); outline-offset: 1px; }
+    .field-error { display: block; min-height: 0; margin-top: 0.35rem; color: var(--danger); font-size: 0.84rem; font-weight: 650; }
+    .field-error:empty { display: none; }
+    .error-summary { margin: 0 0 1.4rem; padding: 1rem 1.1rem; color: #7f1d1d; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; }
+    .error-summary:focus { outline: 3px solid rgba(180, 35, 24, 0.25); outline-offset: 2px; }
+    .error-summary h2 { margin: 0 0 0.45rem; font-size: 1rem; }
+    .error-summary ul { margin: 0; padding-left: 1.25rem; }
+    .error-summary a { color: #991b1b; font-weight: 650; }
     textarea { min-height: 7.5rem; resize: vertical; }
     .form-footer { margin-top: 0.35rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+    .identity-gate { margin: 0 0 1.25rem; padding: 1rem; border: 1px solid var(--line); border-radius: 0.75rem; background: #f7faf9; }
+    .identity-gate h2 { margin: 0 0 0.35rem; font-size: 1rem; }
+    .identity-gate p { margin: 0 0 0.75rem; color: var(--muted); font-size: 0.88rem; }
+    .identity-gate select { margin-bottom: 0.65rem; }
+    .identity-gate button { min-height: 2.75rem; padding: 0.65rem 1rem; color: var(--on-accent); background: var(--accent); border: 1px solid var(--accent); border-radius: 0.55rem; font: inherit; font-weight: 700; cursor: pointer; }
     .required-note { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.82rem; }
     .preview-submit-note { margin: 0 0 0.75rem; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
     #agent-form button {
@@ -302,6 +328,9 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false, pu
     }
     #agent-form button:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
     #agent-form button:disabled { opacity: 0.65; cursor: not-allowed; }
+    #agent-form .secondary-action { margin-top: 0.65rem; color: var(--accent); background: #fff; }
+    #agent-form .secondary-action:hover:not(:disabled) { color: #fff; }
+    #agent-form[data-submitted="true"] .fields-stack { opacity: 0.72; }
     .receipt {
       display: none;
       margin: 0 0 1rem;
@@ -312,7 +341,7 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false, pu
       border-radius: 0.75rem;
     }
     .receipt.show { display: block; }
-    ${preview && authoringMode === "design" ? `
+    ${preview ? `
     body[data-authoring-mode="design"] [data-field-id] { cursor: pointer; border-radius: 0.55rem; transition: outline-color 120ms ease, background-color 120ms ease; }
     body[data-authoring-mode="design"] [data-field-id]:hover { outline: 1px solid #7cb8ae; outline-offset: 0.35rem; }
     body[data-authoring-mode="design"] [data-field-id]:focus-visible,
@@ -340,22 +369,27 @@ export function renderFormHtml(agent, fields, { formVersion, preview = false, pu
     }
   </style>
 </head>
-<body${preview && authoringMode ? ` data-authoring-mode="${escapeHtml(authoringMode)}"` : ""}>
+<body${preview ? ` data-authoring-mode="${escapeHtml(authoringMode || "preview")}"` : ""}>
   <main>
     <article class="form-shell" aria-labelledby="face-title">
       <header class="top">
         <p class="kicker">${t("ui.face.kicker")}</p>
         <h1 id="face-title">${escapeHtml(agent.name || agent.id)}</h1>
-        <p class="form-meta">${t("ui.face.form_meta")}</p>
+        <p class="form-meta">${escapeHtml(releaseVersion || (preview ? t("ui.face.draft_tryout") : t("ui.face.version_unavailable")))} · ${t("ui.face.form_meta")}</p>
       </header>
       <div class="form-body">
         ${preview ? "" : `<p class="lead">${t("ui.face.lead")}</p>`}
         <p id="receipt" class="receipt" role="status"></p>
+        <section id="form-errors" class="error-summary" role="alert" tabindex="-1" hidden></section>
+        ${preview ? "" : `<section id="submission-session" class="identity-gate" aria-live="polite" hidden></section>`}
         <form
           id="agent-form"
+          novalidate
           data-owner-agent="${escapeHtml(agent.id)}"
           data-agent-name="${escapeHtml(agent.name || agent.id)}"
           data-form-version="${escapeHtml(String(version))}"
+          data-submission-intent-id="${escapeHtml(submissionIntentId)}"
+          data-demo-mode="${demoMode ? "true" : "false"}"
         >
           <div class="fields-stack">${rows}</div>
           <div class="form-footer">

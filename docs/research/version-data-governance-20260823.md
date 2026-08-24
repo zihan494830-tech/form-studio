@@ -85,15 +85,17 @@ Form Studio 不必接入 OTel，但可以沿用字段含义。
 
 ## 建议的 Form Studio 最小规范
 
-### 五个独立版本轴
+### 七个独立版本轴
 
 | 轴 | 示例 | 什么时候变化 | 用途 |
 |---|---|---|---|
-| `productVersion` | `0.27.0` | 产品能力发布 | 人类沟通与路线图 |
+| `productVersion` | `1.0.0-alpha.1` | 产品能力发布 | SemVer 预发布、人类沟通与路线图 |
 | `runtimeRevision` | Git short SHA | 代码构建变化 | 精确确认当前运行代码 |
-| `schemaVersion` | `1` | SQLite 表结构变化 | 数据库迁移 |
+| `schemaVersion` | `3` | SQLite 表结构变化 | 数据库迁移 |
 | `datasetRevision` | `mock-v0.27.1` | canonical mock 内容变化 | demo/test 内容一致性 |
-| `formVersion` | `2` | 某 ownerAgent 发布新定义 | 历史信封语义解释 |
+| `releaseVersion` | `v1.1` | 成功发布一个新的不同定义 | 面向人的表单发布标签，只读投影 |
+| `formVersion` | `9` | 字段定义保存变化 | 历史信封、mapping 和不可变定义键 |
+| `agentRevision` | `9` | 任一作者侧状态变更 | ETag/If-Match 并发控制；不得与 formVersion 合并 |
 
 不要把其中任意两个合并成一个数字。
 

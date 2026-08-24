@@ -1,5 +1,7 @@
+import { FORM_AUTHOR, SUBMISSION_CREATE, SUBMISSION_MANAGE, SUBMISSION_READ } from "../../src/domain/access/capabilities.mjs";
+
 const profiles = new Map([
-  ["author-1", { id: "author-1", name: "测试作者", role: "author" }],
+  ["author-1", { id: "author-1", name: "測試帳號", role: "author" }],
   ["teacher-1", { id: "teacher-1", name: "测试老师", role: "teacher" }],
   ["student-mock-1", { id: "student-mock-1", name: "市場研究員林悅", role: "student" }],
   ["student-2", { id: "student-2", name: "市場研究員陳凱", role: "student" }],
@@ -8,27 +10,40 @@ const profiles = new Map([
 ]);
 
 function actor(profile) {
+  const capabilities = profile.role === "author" ? [FORM_AUTHOR, SUBMISSION_READ, SUBMISSION_MANAGE]
+    : profile.role === "teacher" ? [SUBMISSION_READ]
+      : profile.role === "student" ? [SUBMISSION_CREATE] : [];
   return {
     id: profile.id,
     name: profile.name,
     role: profile.role,
     verifiedBy: "test-actor-resolver",
-    scope: { tenantId: "test-tenant", classId: profile.classId || "class-1" },
+    capabilities,
+    scope: {
+      tenantId: "test-tenant",
+      attributes: { classId: profile.classId || "class-1" },
+      classId: profile.classId || "class-1",
+    },
   };
 }
 
 export function createTestActorResolver() {
   return {
     mode: "test",
-    resolve(req, { expectedRole } = {}) {
+    resolve(req, { expectedRole, audience } = {}) {
       const requested = String(req.headers["x-form-studio-test-actor"] || "");
-      const fallback = expectedRole === "student" ? "student-mock-1"
+      const fallback = audience === "submission" || expectedRole === "student" ? "student-mock-1"
         : expectedRole === "teacher" ? "teacher-1" : "author-1";
       const profile = profiles.get(requested || fallback);
       return profile ? actor(profile) : null;
     },
-    listProfiles() {
-      return [...profiles.values()].map(({ id, name, role }) => ({ id, name, role }));
+    listProfiles({ audience = "authoring" } = {}) {
+      return [...profiles.values()]
+        .filter((profile) => audience === "submission" ? profile.role === "student" : profile.role !== "student")
+        .map(({ id, name, role }) => ({ id, name, role }));
+    },
+    defaultProfileId({ audience = "authoring" } = {}) {
+      return audience === "submission" ? "student-mock-1" : "author-1";
     },
     startSession(profileId) {
       const profile = profiles.get(String(profileId || ""));

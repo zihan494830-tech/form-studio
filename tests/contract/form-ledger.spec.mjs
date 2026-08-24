@@ -20,6 +20,13 @@ test.describe("form-ledger 合同", () => {
     expect(result).toMatchObject({ errorCode: "select_options_required", parameters: { id: "choice" } });
   });
 
+  test("数组选项保留英文逗号，不再按逗号拆分", () => {
+    const result = normalizeFields([
+      { id: "region", label: "地区", control: "select", required: false, options: ["香港, 九龍", "新界"] },
+    ]);
+    expect(result.fields[0].options).toEqual(["香港, 九龍", "新界"]);
+  });
+
   test("已发布示例可抽出 ownerAgent，字段 id 不是中文标签", () => {
     const html = readFileSync(join(ROOT, "tests", "fixtures", "exercise-1", "form.html"), "utf8");
     expect(extractFromHtml(html)).toEqual(expectedLedger);
@@ -57,5 +64,18 @@ test.describe("form-ledger 合同", () => {
     expect(html).not.toContain('name="company_name"');
     expect(html).not.toContain('name="analysis_goal"');
     expect(html).not.toContain('name="target_market"');
+  });
+
+  test("HTML 抽取器与 schema 共用字段不变量：选项去重，空选项和非法 ID 拒绝", () => {
+    const duplicate = extractFromHtml(`<form data-owner-agent="a1" data-form-version="1">
+      <label for="choice">选择</label><select id="choice" name="choice"><option value="A">A</option><option value="A">A2</option></select>
+      <button type="submit">提交</button></form>`);
+    expect(duplicate.fields[0].options).toEqual(["A"]);
+    expect(validateLedger(duplicate), JSON.stringify(validateLedger.errors)).toBe(true);
+
+    expect(() => extractFromHtml(`<form data-owner-agent="a1"><label><input type="radio" name="choice" value="" />空</label></form>`))
+      .toThrow(/radio_options_required/);
+    expect(() => extractFromHtml(`<form data-owner-agent="a1"><label for="9bad">坏 ID</label><input id="9bad" name="9bad" /></form>`))
+      .toThrow(/field_id_invalid/);
   });
 });

@@ -28,9 +28,12 @@ export async function submitFace(face) {
 
 export async function publishWorkspace(page) {
   await page.locator("#bind-btn").click();
+  await page.locator("#publish-confirm").click();
+  await page.locator("#publish-receipt").waitFor({ state: "visible" });
 }
 
 export async function unpublishWorkspace(page) {
+  await page.locator("#more-actions > summary").click();
   await page.locator("#unbind-btn").click();
   await page.locator("#confirm-accept").click();
 }

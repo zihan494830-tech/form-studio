@@ -5,7 +5,7 @@
 #
 # 维护语义（“定期维护可更新”）：
 #   · git pull：配置了远端时才拉取，否则明确跳过而不报错
-#   · npm install：按 package.json / package-lock.json 内容指纹判断，仅变化时重装
+#   · npm ci：按 package.json / package-lock.json 内容指纹判断，仅变化时按锁文件重装
 #   · 可选 npm run check：结构 + 行为回归
 #   · 每次启动 / 退出写一行到 logs/form-studio-YYYYMMDD.log（按天自动轮换）
 #
@@ -57,7 +57,7 @@ function Write-Log([string]$Line) {
     Add-Content -Path $LogFile -Value ("{0}  {1}" -f $stamp, $Line)
 }
 
-# 依赖指纹：只在 package.json / package-lock.json 内容真正变化时才 npm install
+# 依赖指纹：只在 package.json / package-lock.json 内容真正变化时才 npm ci
 function Get-DepsFingerprint {
     $parts = @()
     foreach ($f in @((Join-Path $ProjectRoot "package.json"), (Join-Path $ProjectRoot "package-lock.json"))) {
@@ -150,9 +150,9 @@ function Invoke-Update {
     $needInstall = (-not (Test-Path $nmPath)) -or ($saved -ne $fingerprint)
 
     if ($needInstall) {
-        Write-Host "  npm install（依赖已变化）" -ForegroundColor DarkGray
-        npm install
-        if ($LASTEXITCODE -ne 0) { throw "npm install 失败，终止启动" }
+        Write-Host "  npm ci（依赖已变化，按 package-lock.json 重装）" -ForegroundColor DarkGray
+        npm ci
+        if ($LASTEXITCODE -ne 0) { throw "npm ci 失败，终止启动" }
         Set-Content -Path $sentinel -Value $fingerprint -NoNewline
     }
     else {
@@ -198,7 +198,7 @@ Write-Host "  日志：$LogFile"
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     Write-Host ""
-    Write-Host "[错误] 未找到 node。请先安装 Node.js >= 22.13（https://nodejs.org）。" -ForegroundColor Red
+    Write-Host "[错误] 未找到 node。请先安装 Node.js 22.13+ 或 24.x LTS（https://nodejs.org）。" -ForegroundColor Red
     exit 1
 }
 

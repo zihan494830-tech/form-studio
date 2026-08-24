@@ -5,7 +5,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const DEFAULT_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const REQUIRED = ["contracts", "data", "docs", "public", "scripts", "src", "tests"];
 const FORBIDDEN_ROOT_LEGACY = ["engine", "face", "fixtures", "mocks", "runtime", "spec", "verify", "workbench"];
-const ALLOWED_ROOT_MARKDOWN = new Set(["DESIGN.md", "README.md"]);
+const ALLOWED_ROOT_MARKDOWN = new Set([
+  "CHANGELOG.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "DESIGN.md", "README.md", "SECURITY.md",
+]);
+const ALLOWED_COMMUNITY_MARKDOWN = new Set([".github/pull_request_template.md"]);
 const ROOT_IGNORED = new Set([".git", ".learnings", "node_modules", "test-results"]);
 const SPEC_PATTERN = /\.spec\.[cm]?js$/i;
 const SOURCE_PATTERN = /\.[cm]?js$/i;
@@ -99,7 +102,8 @@ export function checkStructure(root = DEFAULT_ROOT) {
   for (const file of walk(root, root, failures)) {
     const rel = normalized(root, file);
     const extension = extname(file).toLowerCase();
-    if (extension === ".md" && !rel.startsWith("docs/") && !ALLOWED_ROOT_MARKDOWN.has(rel)) {
+    if (extension === ".md" && !rel.startsWith("docs/") &&
+        !ALLOWED_ROOT_MARKDOWN.has(rel) && !ALLOWED_COMMUNITY_MARKDOWN.has(rel)) {
       failures.push(`Markdown 不在文档区：${rel}`);
     }
     if (SPEC_PATTERN.test(rel) && !/^tests\/(contract|runtime|e2e)\//i.test(rel)) {

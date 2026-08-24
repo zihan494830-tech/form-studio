@@ -1,10 +1,10 @@
 # Form Studio 项目设计
 
-> **版本：** v0.27 · 2026-08-22
+> **版本：** v1.0 Alpha 1（`1.0.0-alpha.1`）· 2026-08-24
 > **性质：** 产品方向真相源。仓内不再保留内容重复副本。  
 > **来源：** Alan 对日报的定义与应用设想、2026-08-20 复听会议（改页面 / agent form）、2026-08-21 产品边界确认、只读 Poffices Creator Studio（v1.26.1）、2026-08-22 Gravity 表单编辑器截图复核（SurveyJS 系参考实现）。
 > **不是：** Poffices agent 配置、发布状态或官方入口的修改工具，也不是外部写权授权令，更不是无主问卷站或任意网站嵌入组件。
-> **相对 v0.26：** 明确「设计表达力属核心能力，封闭词表可扩展」；词表新增 `radio` 与固定行列 `grid`（格子展开为 `gridId_rowId_colId` 扁平字段，信封不变），`number` 增加可选小数位。被排除的只是无主问卷、任意嵌入、匿名续填与主题品牌——它们改变表的归属与独占交付合同，不是设计能力。动态行（Dynamic Panel）、Tags、条件 Logic、匿名续填进入延期清单，各自等待业务触发证据。
+> **Alpha 1 边界：** 主流程不暴露作者/学生/老师角色，而以 capability 授权；表单发布展示为 `v1.x`，内部整数 `formVersion`、不可变发布定义和提交信封保持不变。提交编辑采用“原文不可变 + 可审计修正”，SQLite 为 schema 3。
 
 ---
 
@@ -38,13 +38,30 @@ form-studio/
   scripts/                  ← 结构门禁
 ```
 
-第 0–1b、第 2 段本地旁路、第 3 段的 3A / 3B / 3C 本地切片，以及 v0.27 固定行列设计表达力均已落地。3C 已跑通“学生提交 → 老师查看 → 本地 `AgentInputPort` 收件”，但旧 `agent-access/v1` 和 `submission-record/v1` 仍是课堂合同，由 adapter 兼容，不能据此称为通用消费者产品。**当前不自动建设 AppConnection、第二套业务 UI 或 AI 制表**。下一件先用真实作者任务复核合同一致性、历史版本解释与 fixed grid 的作者安全；消费者 binding / projection 等待第一个真实非课堂消费者证据，Poffices adapter 等待正式输入合同与获授权 sandbox trace。手写基准示例只做回归，不当万用模板。
+第 0–1b、第 2 段本地旁路、第 3 段的 3A / 3B / 3C 本地切片、v0.27 固定行列、v0.28 作者安全闭环与 v0.29 身份/并发/提交整改均已落地。核心现在只理解可信 principal、capability 和通用 scope；课堂 role/class 只留在 demo/test adapter。`submission-record/v1` 冻结为历史课堂合同，v2 承担通用 principal/scope/intent；这仍不能据此称为通用消费者产品。**当前不自动建设 AppConnection、第二套业务 UI 或 AI 制表**。下一件先由无项目背景的人完成一次真实创建到发布任务；消费者 binding / projection 等待第一个真实非课堂消费者证据，Poffices adapter 等待正式输入合同与获授权 sandbox trace。手写基准示例只做回归，不当万用模板。
 
 ---
 
 ## 1. 一句话
 
-Form Studio 是和 Creator Studio 同一类的作者后台。作者**设计**一张能提交的 web 表，并把它变成某一个 agent 的用户 UI。用户打开该 agent 时只填这张表；校验通过后，字段成为这个 agent 的输入。
+Form Studio 是和 Creator Studio 同一类的表单工作台：**设计表单 → 试填草稿 → 发布 → 打开填写页 → 正式提交 → 管理提交**。界面不要求用户切换“作者/学生/老师”人格；服务端仍按 `form:author`、`submission:create`、`submission:read`、`submission:manage` 默认拒绝并逐资源授权。
+
+### Alpha 1 的四条版本轴
+
+| 轴 | 表示 | 规则 |
+|---|---|---|
+| 产品版本 | `1.0.0-alpha.1` | SemVer 预发布；后续为 `alpha.2`，满足外部验收条件前不称 `1.0.0` |
+| 发布展示版本 | `v1.0`、`v1.1`… | 由可证明的不同不可变发布定义投影；同定义重发不增加 |
+| 内部表单合同 | 整数 `formVersion` | 字段定义变化时推进，继续作为提交、mapping 与历史读取键 |
+| SQLite | `schemaVersion=3` | 增加提交管理、修正和审计表；不改写历史 envelope |
+
+`releaseVersion` 只用于展示。历史不完整时从最早可证明定义标为 `v1.0`，找不到原定义的提交显示“历史版本不可用”，绝不猜测缺失次数。
+
+只有外部合同/兼容政策冻结、非 demo 身份 provider 验收、真实 Poffices 调用 trace、非 mock 备份恢复演练和两种真实作者任务端到端成立后，才能去掉预发布标记。预发布语法依据 [Semantic Versioning 2.0.0](https://semver.org/)。
+
+### 提交管理合同
+
+管理状态 `new | in_review | processed`、标签、内部备注、负责人和归档位于独立可变投影；原始 envelope、submitter、submittedAt、ownerAgent、整数 formVersion、intent 和既有 outbox 永不覆盖。修正必须记录原因与字段变化，按原提交版本的不可变定义重新校验，并使用独立 management revision + ETag/If-Match 防止并发覆盖；修正不会自动重新投递 Agent。
 
 **页面 = 该 agent 的用户 UI。** 就是用户点开这个 agent 时先看见的界面。可以这么理解，但不要扩成「本工作室的界面」或「Creator Studio 的框图」。
 
@@ -135,9 +152,10 @@ Form Studio 是和 Creator Studio 同一类的作者后台。作者**设计**一
 - Form Studio 核心负责造表、发布、收表和把同一份提交可靠交给已声明端口。
 - 课堂统计、CRM 工单处理、业务分析等应用专属流程不进入 Form Studio 核心。它们可以有自己的 UI；“应用外置”不是“新应用不准有页面”，而是新应用不应迫使核心新增应用专属角色、scope 字段或页面分支。
 - 作者已经明确需要在同一 agent 下核对字段合同、已发布页面和实际提交，因此工作台提供「提交记录」作为 owner-scoped 诊断视图。它不包含课堂评分、CRM 工单、统计大屏或消费者业务状态机。
-- 正式身份应由外部认证上下文提供。本地 demo 自动进入作者工作区；旧 `/session` 页面撤下，显式测试身份继续由 API/测试 resolver 提供，不成为产品登录或导航。
+- 正式身份应由外部认证上下文提供，并规范化为可信 `principal: {id, name, verifiedBy, capabilities, scope}`。核心只检查 `form:author`、`submission:create`、`submission:read` 与具体资源，不把“学生/老师”当产品身份。本地 demo 的角色词只存在于参考适配器。
+- authoring 与 submission 是两个 audience：分别使用独立 HttpOnly、SameSite=Strict、8 小时会话；填写者切换不能覆盖作者工作台。product 未配置身份提供方时返回 `503 identity_provider_unconfigured`，不得回退到 demo profile。
 
-当前实现已完成读取端口和组合根两层边界：`agent-access/v1`、`submission-record/v1` 仍保留 `teacher/student/classId/teach` 的课堂含义，但读取 application 已不再解释这些词，由课堂 adapter 映射；`/classroom` 继续调用兼容课堂 API，但只在 demo/test 组合注册。课堂现在是**已从 product 组合隔离的本地参考应用**，仍不能描述成已经验证的多应用消费者产品。
+当前实现已完成读写两侧的能力边界和组合根隔离：`agent-access/v1`、`submission-record/v1` 仍保留 `teacher/student/classId/teach` 的历史课堂含义，仅由兼容 adapter 读取；新 submission 使用通用 v2。`/classroom` 继续调用兼容课堂 API，但只在 demo/test 组合注册。课堂现在是**已从 product 组合隔离的本地参考应用**，仍不能描述成已经验证的多应用消费者产品。
 
 现役形态是一条稳定的读提交能力边界，由外部身份/应用适配为 `principal + capability + resource scope`；版本化合同不得原地改义。课堂和测试 CRM adapter 已分别验证同一端口，但测试探针不是第二个真实应用，也不证明需要连接注册表。
 
@@ -223,6 +241,8 @@ flowchart TD
 
 - **改装：** 撤掉首页表 → 该 agent 回到无表 → 主站输入框恢复。  
 - **新生：** 这个 agent 天生是 form，没有「恢复输入框」。下架 / 解绑 = 该 agent 不再作为可打开的 form 出现（未发布或删除），不假装它有过聊天首页。
+
+作者面的“移除表单”统一采用可恢复归档，不物理抹除版本真相：agent 记录增加 `archivedAt`，当前 `published` 和 `binding` 清空，默认作者列表与用户入口都不再出现；字段、不可变 `publishedDefinitions` 和历史提交保留在 Form Studio，可从“已移除”恢复为未发布草稿。移除和恢复都不修改 Poffices agent，也不自动重新发布用户页。
 
 v1 不提供「表还在、同时用输入框」。
 
@@ -354,6 +374,8 @@ flowchart TD
 
 `grid` 不改变信封形状：每个格子展开为 `gridId_rowId_colId` 普通字段 id，仍平铺进 `values[id]`；agent 输入映射可按格映射，也可以在 mapper 层聚合，信封本身不改。
 
+v0.29 的 HTTP 提交合同固定为：`POST /submit/:ownerAgent` 必须携带 UUID `Idempotency-Key` 和 `{formVersion, values}`，且服务端 principal 具有 `submission:create`。缺/坏版本 400，旧版本 409 且零写入；相同 principal/owner/intent 与相同规范化内容返回原 submission，不同内容返回 `submission_intent_conflict`。成功后填写页锁定，只有重新载入取得新 intent 才能再填。text/textarea 只接受标量，未知字段、非法 option/number 和对象/数组全部拒绝。
+
 ### 7.4 mock agent
 
 最少五样：`id`、`name`、`origin`（`retrofit` \| `born-form`）、已绑定的表（或 `null`）、`inputBag`（提交信封列表，追加写）。打开该 id 时：有表则只渲染该表；改装且无表则走「无首页」分支（空白说明，不假装已挂上）；新生且未发布则不可作为使用面打开。
@@ -380,13 +402,19 @@ flowchart TD
 
 ### 7.6 提交记录、读取能力与当前课堂投影
 
-`submission-record/v1` 是当前提交的物理真相源：独立记录 id、原提交信封、服务端验证的 actor context、tenant / class scope 和接收时间。repository 已能按 `ownerAgent`、actor、scope 和时间查询；原提交信封与 agent 输入投递仍以稳定 `values[id]` 为中心。
+`submission-record/v1` 是历史只读真相：独立记录 id、原提交信封、服务端验证的 actor context、tenant / class scope 和接收时间。它不重写、不原地改义。
 
-但 `v1` 不是已经验证的跨应用通用消费者合同：它枚举 `student/teacher/author` 并要求 `classId`。现役读取 application 已通过注入授权适配器改为主体、能力和具体资源输入，课堂 adapter 仍负责 teacher/class 解释；已经成立的是“通用读取端口 + 课堂范围内默认拒绝的列表/详情投影”，不是“角色与作用域任意参数化的提交台账”。
+新 submission 使用 `submission-record/v2`：`principal` 不含课堂角色枚举，授权固定记录 `submission:create`，scope 是 `tenantId + attributes`，并保存 `submissionIntentId`；原 envelope 继续保持 `ownerAgent/formVersion/submittedAt/submitterId/values`。读取投影同时支持 v1/v2，repository 可按 owner、principal、scope 和时间查询；课堂 adapter 继续负责 teacher/class 解释。已经成立的是“通用提交记录 + 通用读取端口 + 课堂范围内默认拒绝的列表/详情投影”，不是已经验证的多应用产品。
 
 目标中的通用读取能力必须保持三条边界：消费者不能改写提交或字段定义；核心按主体、能力和具体资源范围授权；课堂 adapter 负责把老师/班级关系映射到该能力。若需要改变 `v1` 含义，必须新增版本或显式兼容转换，不能原地改 schema 后仍称同一合同。
 
 非课堂 CRM 测试探针已验证：新增消费者可以只提供 owner allow-list、`submission:read` 和自己的 account scope 映射，不必修改核心 schema、权限动作、工作台或路由。它只提供结构证据，不是产品 CRM 集成。消费者框架、策略引擎、插件市场和通用提交管理 UI 继续等待真实任务触发。
+
+### 7.7 作者 revision 与 mapping 发布规则
+
+`formVersion` 只表示已发布表单定义；Agent 另有作者状态 `revision`。字段保存、复制示例、发布、停用、移除与恢复都递增 revision，HTTP 返回 `ETag: "agent-N"`；写入必须 `If-Match`，缺少条件为 428，落后为 412。SQLite 在 `BEGIN IMMEDIATE` 内比较后写入，跨标签页只有一个 stale writer 能成功；客户端收到 412 必须保留本地编辑并要求重新载入。
+
+发布前必须评估 `agent-input-mapping`：字段仍存在、control/transform 兼容且 required 可满足时，mapping 自动重绑到新 `formVersion`；不兼容时发布失败并列出 fieldId/targetKey/reason，旧发布页继续服务。启动时同样修复兼容历史漂移；遗留不兼容状态下 submission 仍先保存，delivery 标为 `mapping_review_required`，不得因投递配置问题丢失表单事实。`mapping.fields[].required` 必须是 boolean。
 
 ---
 
@@ -516,9 +544,15 @@ flowchart LR
 
 **开发数据与验收身份（2026-08-23）：** 当前页面和提交均被用户确认为可丢弃 mock。`form-studio-mock-catalog/v1` 因而成为 demo/test 唯一内容源；desktop demo 与自动测试只共享 catalog，不共享可写运行库。`datasetRevision` 变化允许在 demo 初始化阶段整体替换 agents、submissions、outbox 与本地投递，同 revision 的 checksum 漂移则拒绝启动；真实数据、product 模式或需保留草稿出现后必须停止破坏性同步。产品版本、运行源码 revision、SQLite schema 版本、dataset revision 与 `ownerAgent + formVersion` 是五个独立身份，前端与视觉证据不得再只写“v0.27”。依据与升级条件见 [`docs/research/version-data-governance-20260823.md`](./docs/research/version-data-governance-20260823.md)。
 
+**v0.29 审计整改证据（2026-08-24）：** 核心身份已从课堂 role 改为 principal/capability，authoring/submission 双 cookie 在同浏览器共存；提交用发布版本 + UUID intent 防旧页和重复写，作者用独立 revision + ETag/If-Match 防 lost update；mapping 可兼容升版或阻断发布。`submission-record/v1` 冻结，通用 v2 与 SQLite schema 2 已落地。受管 mock 迁移前先产生 v1 一致性备份，迁移后 agent/submission 计数、envelope hash 和 dataset identity 不变。完整逐项证据、标准依据和回滚见 [`docs/research/form-studio-v028-audit-remediation-20260824.md`](./docs/research/form-studio-v028-audit-remediation-20260824.md)。
+
+**1.0 Alpha 1 落地证据（2026-08-24）：** 产品、发布展示、内部表单合同和 SQLite 已分成四条版本轴；工作台主流程收口为编辑、草稿试填、发布、正式填写和提交管理。提交管理以独立 revision 保存状态、标签、备注、负责人、归档和可审计修正，原 envelope 与 intent 不覆盖。受管 demo 已由 schema 2 备份迁移到 schema 3，并以真实浏览器完成正式提交、收件箱读取、管理资料保存及重启恢复；`npm run check` 为 151/151。备份哈希、迁移计数与十张视觉证据见 [`docs/research/form-studio-100-alpha1-workflow-version-remediation-20260824.md`](./docs/research/form-studio-100-alpha1-workflow-version-remediation-20260824.md)。
+
+**作者工作台收件与保存收口（2026-08-24）：** 提交计数把“尚未读取”与真实 0 分开；选中 Agent、切入收件箱和页面重新可见时使用 single-flight 刷新，失败保留旧快照并标为可能过期。桌面收件箱为左右独立滚动，窄屏恢复单列自然滚动；详情显示 `not_configured / pending / delivering / delivered / failed / mapping_review_required`，其中未配置只表示提交已保存在 Form Studio、尚未转交 Agent。文本编辑停顿 700ms 自动保存，select/checkbox 即时保存，切换和生命周期动作前强制 flush；失败保留本地输入、可重试并维持离页警告。画布继续保留“编辑 / 试填草稿”，顶部不重复试填；主行动按未发布、已发布无修改、已发布有修改三态切换，停用和可恢复移除归入“更多”。这些变化不新增 Poffices adapter、不改 submission/envelope/outbox，也不补投历史提交；统一 `npm run check` 为 `structure ok + 155/155`。
+
 **当前下一件：** 先用至少两种真实作者任务验证 fixed grid 与普通字段能否安全完成首稿、修改、发布和历史回看；不要预建 AppConnection，也不要只改一句文档就转正 AI 制表。AI 候选建议只在合同与历史解释稳定后立项，并以首稿时间 / 返工量为效果指标，保持逐项接受、修改、拒绝和完全不用。消费者 binding 等待真实非课堂消费者；3B-P 继续等待正式 endpoint、最小认证、schema 与获授权 sandbox trace。
 
-**当前阶段判定：** 作者设计、发布、入口校验、独立提交记录、本地 actor / scope、老师最小消费界面和本地 agent 输入投递机制（outbox → relay → `AgentInputPort`）已经成立，仍属于本地可演示 Alpha。真实身份提供方、跨机器运维和 Poffices 侧 agent 输入投递尚未成立，因此不得称为学生 / 老师可用的联网 MVP，也不得说“真实 agent 已交互”。
+**当前阶段判定：** 作者设计、发布、条件写入、版本化正式提交、独立 v1/v2 记录、本地 principal/scope、老师最小消费界面和本地 agent 输入投递机制（outbox → relay → `AgentInputPort`）已经成立，仍属于本地可演示 Alpha。真实身份提供方、跨机器运维和 Poffices 侧 agent 输入投递尚未成立，因此不得称为学生 / 老师可用的联网 MVP，也不得说“真实 agent 已交互”。
 
 **当前问题账本（按阻断顺序）：**
 

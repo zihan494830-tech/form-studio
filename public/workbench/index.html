@@ -12,28 +12,30 @@
     <header>
       <div class="brand">
         <strong>Form Studio</strong>
-        <span class="brand-sub">作者後台</span>
+        <span class="brand-sub">設計工作台</span>
+        <span id="product-version-label" class="product-version-label">v1.0 Alpha 1</span>
       </div>
-      <p class="phase" title="一個 agent 只對應一張用戶表。">agent 用戶頁面</p>
-      <p class="header-note">在同一個 agent 下設計與預覽輸入表單，並管理收到的提交；不修改 Poffices agent 本體。</p>
-      <div class="actor-context" aria-label="目前身份">
-        <span id="demo-badge" class="demo-badge">DEV MOCK</span>
-        <span id="actor-name">讀取身份…</span>
-      </div>
+      <p class="phase" title="一個 Agent 只對應一張表單。">Agent 表單</p>
+      <p class="header-note">為 Agent 設計、預覽和發布表單，並管理收到的提交；不修改 Poffices Agent 本體。</p>
+      <details class="actor-context" aria-label="目前身份與環境資訊">
+        <summary><span id="actor-name">讀取身份…</span></summary>
+        <div class="environment-popover"><strong>環境資訊</strong><span id="demo-badge" class="demo-badge">DEV MOCK</span></div>
+      </details>
     </header>
 
-    <aside aria-label="用戶頁面">
+    <aside aria-label="Agent 表單">
       <div class="aside-title-row">
-        <div class="list-label">用戶頁面</div>
+        <div class="list-label">Agent 表單</div>
         <span id="list-count" class="list-count" aria-live="polite"></span>
       </div>
       <button id="new-workspace-btn" class="primary wide" type="button">+&nbsp; 新增</button>
-      <label class="sr-only" for="agent-search">搜尋用戶頁面</label>
-      <input id="agent-search" class="search-input" type="search" placeholder="搜尋名稱或頁面 ID" autocomplete="off" />
-      <div class="list-filters" role="group" aria-label="篩選用戶頁面">
+      <label class="sr-only" for="agent-search">搜尋 Agent 表單</label>
+      <input id="agent-search" class="search-input" type="search" placeholder="搜尋名稱或 Agent ID" autocomplete="off" />
+      <div class="list-filters" role="group" aria-label="篩選 Agent 表單">
         <button class="list-filter active" type="button" data-list-filter="all" aria-pressed="true">全部</button>
         <button class="list-filter" type="button" data-list-filter="published" aria-pressed="false">已發布</button>
         <button class="list-filter" type="button" data-list-filter="draft" aria-pressed="false">草稿</button>
+        <button class="list-filter" type="button" data-list-filter="archived" aria-pressed="false">已移除</button>
       </div>
       <div id="agent-list"></div>
     </aside>
@@ -42,20 +44,21 @@
       <section id="onboarding" class="onboarding" aria-labelledby="onboarding-title">
         <div id="path-choice" class="path-choice">
           <p class="eyebrow">開始設計</p>
-          <h1 id="onboarding-title">你準備為誰設計用戶頁面？</h1>
-          <p class="onboarding-lead">先選擇是給已有 Poffices agent 做頁面，還是建立一個由 Form Studio 管理的新頁面身份。</p>
+          <h1 id="onboarding-title">你準備建立哪一種 Agent 表單？</h1>
+          <p class="onboarding-lead">可以連到已有 Agent 的精確身份，也可以先建立一張由 Form Studio 管理的獨立表單。</p>
+          <p id="onboarding-status" class="onboarding-status" role="alert" hidden></p>
           <div class="path-cards">
             <button id="retrofit-start" class="path-card" type="button" aria-controls="retrofit-flow" aria-expanded="false">
               <span class="path-icon" aria-hidden="true">↗</span>
-              <strong>給已有 Poffices agent 做頁面</strong>
-              <span>只讀確認 agent 身份，然後在 Form Studio 本地設計；不會改動 Poffices。</span>
-              <em>改裝 · 已有 agent</em>
+              <strong>為已有 Agent 設計表單</strong>
+              <span>用精確 ID 只讀確認 Agent 身份，然後在 Form Studio 本地設計；不會改動 Poffices。</span>
+              <em>已有 Agent</em>
             </button>
             <button id="born-start" class="path-card" type="button" aria-controls="born-flow" aria-expanded="false">
               <span class="path-icon" aria-hidden="true">+</span>
-              <strong>建立新的 agent form</strong>
-              <span>建立一個由 Form Studio 管理的新頁面身份，可以獨立設計、發布和接收提交。</span>
-              <em>新生 · 本地建立</em>
+              <strong>新建獨立的 Agent 表單</strong>
+              <span>名稱同時是 Agent 名稱和填寫者看到的頁面標題，可獨立設計、發布和接收提交。</span>
+              <em>獨立表單</em>
             </button>
           </div>
         </div>
@@ -64,8 +67,9 @@
           <button class="back-btn" data-back-to-paths type="button">← 返回選擇</button>
           <p class="eyebrow">改裝 · 已有 agent</p>
           <h1 id="retrofit-title">選擇已有 Poffices agent</h1>
-          <p class="flow-lead">目前接口只支援用數字 ID 精確查找。這一步讀取名稱和身份狀態，用來確認頁面主人；不讀取 agent 內部欄位，也不修改 Poffices。</p>
+          <p class="flow-lead">目前接口只支援用數字 ID 精確查找。這一步讀取名稱和身份狀態，用來確認表單主人；不讀取 Agent 內部欄位，也不修改 Poffices。</p>
           <label class="field-label" for="identity-id">Poffices agent ID</label>
+          <details class="id-help"><summary>在哪裡找到 Agent ID？</summary><p>打開 Poffices 中該 Agent 的詳情或網址，複製其中的數字 ID。Form Studio 目前不提供名稱搜尋，以免選錯同名 Agent。</p></details>
           <div class="identity-row">
             <input id="identity-id" inputmode="numeric" autocomplete="off" placeholder="例如 42" />
             <button id="identity-check-btn" type="button">查找 agent</button>
@@ -79,44 +83,55 @@
 
         <section id="born-flow" class="owner-flow" aria-labelledby="born-title" hidden>
           <button class="back-btn" data-back-to-paths type="button">← 返回選擇</button>
-          <p class="eyebrow">新生 · Form Studio 本地建立</p>
-          <h1 id="born-title">建立新的 agent form</h1>
-          <p class="flow-lead">它可以獨立設計、發布和持續接收提交。目前不會建立、連接或修改 Poffices agent。</p>
+          <p class="eyebrow">Form Studio 本地建立</p>
+          <h1 id="born-title">新建獨立的 Agent 表單</h1>
+          <p class="flow-lead">名稱同時用作 Agent 名稱和填寫頁標題。它可以獨立設計、發布和持續接收提交，目前不會建立、連接或修改 Poffices Agent。</p>
           <div class="flow-facts" aria-label="新增說明">
             <p><strong>建立後：</strong>系統會儲存一個本地頁面身份，重新命名和重新啟動都不會改變頁面歸屬。</p>
             <p><strong>不會發生：</strong>它不能改綁成已有 agent；需要複用時應複製欄位設計，不移動原頁面和提交記錄。</p>
           </div>
-          <label class="field-label" for="new-name">頁面名稱</label>
+          <label class="field-label" for="new-name">Agent 名稱（也是頁面標題）</label>
           <input id="new-name" class="flow-input" type="text" placeholder="例如：市場調研輸入表" autocomplete="off" />
           <button id="create-btn" class="primary" type="button">建立並開始設計</button>
           <div id="born-status" role="status"></div>
         </section>
       </section>
 
-      <section id="workspace" class="workspace" aria-label="用戶頁面工作區" hidden>
+      <section id="workspace" class="workspace" aria-label="Agent 表單工作區" hidden>
       <div class="stage-bar">
         <div>
-          <div class="list-label">目前用戶頁面</div>
+          <div class="list-label">目前 Agent 表單</div>
           <div class="title-line">
             <h1 id="stage-title"></h1>
             <span id="publication-badge" class="status-badge" hidden></span>
           </div>
           <div id="owner-context" class="owner-context"></div>
           <p id="stage-status" class="stage-status"></p>
-          <p id="save-status" class="save-status" aria-live="polite">尚未選擇</p>
+          <div class="save-feedback">
+            <p id="save-status" class="save-status" aria-live="polite">尚未選擇</p>
+            <button id="save-retry-btn" class="save-retry" type="button" hidden>重試</button>
+          </div>
         </div>
         <div class="stage-actions">
-          <button id="bind-btn" type="button" disabled>發布用戶頁面</button>
-          <button id="unbind-btn" class="danger" type="button" disabled>停用用戶頁面</button>
+          <button id="bind-btn" class="primary" type="button" disabled>發布</button>
+          <a id="user-page-link" class="secondary-action" href="#" target="_blank" rel="noopener" aria-disabled="true" hidden>去填寫</a>
+          <details id="more-actions" class="more-actions" hidden>
+            <summary>更多</summary>
+            <div class="more-actions-menu">
+              <button id="unbind-btn" class="danger" type="button" disabled>停用填寫頁</button>
+              <button id="archive-btn" class="danger" type="button" disabled>移除表單</button>
+            </div>
+          </details>
         </div>
       </div>
+      <div id="publish-receipt" class="publish-receipt" role="status" aria-live="polite" hidden></div>
       <p id="action-error" class="action-error" hidden></p>
       <nav id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="目前 agent 的管理視角">
         <button id="view-design" type="button" role="tab" aria-selected="true" aria-controls="designer" tabindex="0">
           <span>輸入表單</span><small>設計欄位並即時預覽</small>
         </button>
         <button id="view-submissions" type="button" role="tab" aria-selected="false" aria-controls="records" tabindex="-1">
-          <span>收到的提交</span><small id="view-record-count">0 筆</small>
+          <span>收到的提交</span><small id="view-record-count">讀取中…</small>
         </button>
       </nav>
       <div id="workspace-panels" class="workspace-panels">
@@ -128,20 +143,20 @@
                   <details id="add-field-menu" class="add-field-menu">
                     <summary id="add-field" data-i18n="ui.workbench.toolbar_add_field">＋ 新增欄位</summary>
                     <div class="add-field-popover" role="group" aria-label="選擇新增欄位類型">
-                      <button type="button" data-add-control="text" data-i18n="ui.workbench.control_text">單行文字</button>
-                      <button type="button" data-add-control="textarea" data-i18n="ui.workbench.control_textarea">多行文字</button>
-                      <button type="button" data-add-control="number" data-i18n="ui.workbench.control_number">數字</button>
-                      <button type="button" data-add-control="select" data-i18n="ui.workbench.control_select">下拉選擇</button>
-                      <button type="button" data-add-control="checkbox" data-i18n="ui.workbench.control_checkbox">剔選</button>
-                      <button type="button" data-add-control="radio" data-i18n="ui.workbench.control_radio">單選（評分）</button>
-                      <button type="button" data-add-control="grid" data-i18n="ui.workbench.control_grid">表格（行 × 列）</button>
+                      <button type="button" data-add-control="text"><strong>單行文字</strong><span>姓名、標題或簡短答案</span></button>
+                      <button type="button" data-add-control="textarea"><strong>多行文字</strong><span>說明、意見或較長內容</span></button>
+                      <button type="button" data-add-control="number"><strong>數字</strong><span>數量、金額或分數</span></button>
+                      <button type="button" data-add-control="select"><strong>下拉選擇</strong><span>從較多選項中選一項</span></button>
+                      <button type="button" data-add-control="checkbox"><strong>剔選</strong><span>確認同意或完成某件事</span></button>
+                      <button type="button" data-add-control="radio"><strong>單選（評分）</strong><span>直接看到並選擇一個選項</span></button>
+                      <button type="button" data-add-control="grid"><strong>表格（行 × 列）</strong><span>重複收集多組相同資料</span></button>
                     </div>
                   </details>
-                  <button id="copy-example" type="button" data-i18n="ui.workbench.toolbar_copy_example">從例子複製</button>
+                  <button id="copy-example" type="button">使用市場分析示例</button>
                 </div>
                 <div id="canvas-mode-tabs" class="canvas-mode-tabs" role="tablist" aria-label="畫布模式">
-                  <button id="canvas-mode-design" type="button" role="tab" aria-controls="face-wrap" aria-selected="true" data-canvas-mode="design" data-i18n="ui.workbench.mode_design">設計</button>
-                  <button id="canvas-mode-preview" type="button" role="tab" aria-controls="face-wrap" aria-selected="false" data-canvas-mode="preview" data-i18n="ui.workbench.mode_preview">預覽</button>
+                  <button id="canvas-mode-design" type="button" role="tab" aria-controls="face-wrap" aria-selected="true" data-canvas-mode="design">編輯</button>
+                  <button id="canvas-mode-preview" type="button" role="tab" aria-controls="face-wrap" aria-selected="false" data-canvas-mode="preview">試填草稿</button>
                 </div>
                 <div class="face-actions">
                   <span id="face-mode" class="face-mode"></span>
@@ -152,18 +167,29 @@
                     </button>
                     <button id="preview-zoom-in" type="button" aria-label="放大預覽">+</button>
                   </div>
-                  <a id="user-page-link" href="#" target="_blank" rel="noopener" aria-disabled="true" data-i18n="ui.workbench.toolbar_open_user_page">另開用戶頁面</a>
-                  <button id="refresh-btn" type="button" disabled aria-label="重新整理畫布" data-i18n="ui.workbench.toolbar_refresh">重新整理</button>
+                  <button id="refresh-btn" type="button" disabled hidden aria-label="重新載入預覽" data-i18n="ui.workbench.toolbar_reload_preview">重新載入預覽</button>
                   <button id="inspector-toggle" type="button" aria-controls="property-inspector" aria-expanded="false" data-i18n="ui.workbench.toolbar_properties">屬性</button>
                 </div>
               </div>
-              <div id="face-wrap" class="face-wrap" role="tabpanel" aria-labelledby="canvas-mode-design">
+              <aside id="empty-guide" class="empty-guide" aria-labelledby="empty-guide-title" hidden>
+                <div>
+                  <p class="eyebrow">第一次設計</p>
+                  <h2 id="empty-guide-title">三步完成 Agent 表單</h2>
+                  <ol><li><strong>新增欄位</strong><span>從上方選擇需要的輸入類型</span></li><li><strong>預覽</strong><span>切換到預覽，試一遍填寫</span></li><li><strong>發布</strong><span>確認目標和必填內容後建立用戶頁面</span></li></ol>
+                </div>
+                <button id="empty-guide-dismiss" class="guide-dismiss" type="button" aria-label="關閉新手引導">×</button>
+              </aside>
+              <div id="face-wrap" class="face-wrap" role="tabpanel" aria-labelledby="canvas-mode-design" aria-busy="false">
                 <div id="face-hint" class="hint">
                   <p id="preview-title">選中一個用戶頁面後，這裡顯示真實表單畫布。</p>
                 </div>
                 <iframe id="face" name="face" title="打開時看到的頁面" hidden></iframe>
+                <div id="canvas-loading" class="canvas-loading" aria-hidden="true" hidden><span class="spinner" aria-hidden="true"></span><span>正在更新畫布…</span></div>
               </div>
             </section>
+            <div id="property-splitter" class="property-splitter" role="separator" tabindex="0"
+              aria-label="調整屬性欄寬度" aria-orientation="vertical" aria-controls="property-inspector"
+              aria-valuemin="280" aria-valuemax="520" aria-valuenow="340"></div>
             <aside id="property-inspector" class="property-inspector" aria-label="欄位屬性">
               <div id="property-inspector-content" class="property-inspector-content">
                 <p class="empty-state">選擇畫布中的欄位以修改屬性。</p>
@@ -172,23 +198,30 @@
           </div>
         </div>
         <article id="records" class="records-panel workspace-panel" role="tabpanel" aria-labelledby="view-submissions" tabindex="0" hidden>
-          <div class="records-layout">
-            <section class="ledger-panel" aria-labelledby="ledger-title">
-              <div class="panel-heading">
-                <div><div class="pane-label">輸入結構</div><h2 id="ledger-title">這張表收到哪些內容</h2></div>
-              </div>
-              <p class="pane-hint">每筆提交都按這些穩定欄位 ID 對齊。</p>
-              <div id="ledger" class="fields"><span class="muted">還沒選</span></div>
-            </section>
-            <section class="submission-panel" aria-labelledby="records-title">
+          <div class="records-layout records-management-layout">
+            <section class="submission-panel submission-list-panel" aria-labelledby="records-title">
               <div class="panel-heading">
                 <div><div class="pane-label">收件箱</div><h2 id="records-title">收到的內容</h2></div>
                 <span id="record-count" class="record-count"></span>
               </div>
-              <p class="pane-hint">相當於接收端的收件箱；提交按時間排列，下架頁面不會刪除歷史內容。</p>
               <label class="sr-only" for="records-search">搜尋提交記錄</label>
               <input id="records-search" class="search-input" type="search" placeholder="搜尋填寫人、欄位或內容" autocomplete="off" />
+              <div class="submission-filters">
+                <label>狀態<select id="records-status-filter"><option value="">全部</option><option value="new">新提交</option><option value="in_review">處理中</option><option value="processed">已處理</option></select></label>
+                <label class="check-filter"><input id="records-archived-filter" type="checkbox" /> 顯示已歸檔</label>
+              </div>
               <div id="bag"></div>
+            </section>
+            <section class="submission-detail-panel" aria-labelledby="submission-detail-title">
+              <div id="submission-detail" class="submission-detail-empty">
+                <h2 id="submission-detail-title">選擇一筆提交</h2>
+                <p>查看原始答案、管理狀態和可審計修正。</p>
+              </div>
+              <details class="ledger-details">
+                <summary>表單結構</summary>
+                <p class="pane-hint">穩定欄位 ID 只供接口與歷史對照。</p>
+                <div id="ledger" class="fields"><span class="muted">還沒選</span></div>
+              </details>
             </section>
           </div>
         </article>
@@ -218,6 +251,19 @@
       <div class="dialog-actions">
         <button value="cancel" type="submit">取消</button>
         <button id="confirm-accept" class="danger-solid" value="confirm" type="submit">確認</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="publish-dialog" class="publish-dialog" aria-labelledby="publish-title">
+    <form method="dialog">
+      <p class="eyebrow">發布檢查</p>
+      <h2 id="publish-title">確認發布</h2>
+      <div id="publish-summary" class="publish-summary"></div>
+      <div id="publish-warnings" class="publish-warnings" hidden></div>
+      <p class="publish-scope"><strong>發布範圍</strong><span>只發布到 Form Studio，不修改 Poffices。</span></p>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit">返回修改</button>
+        <button id="publish-confirm" class="primary" value="confirm" type="submit">確認發布</button>
       </div>
     </form>
   </dialog>

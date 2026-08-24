@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { resetStore } from "../support/project-fixture.mjs";
 
-const actor = (id) => ({ "x-form-studio-test-actor": id });
+const actor = (id, { submit = false } = {}) => ({
+  "x-form-studio-test-actor": id,
+  ...(submit ? { "Idempotency-Key": "8b14fc2a-502f-494f-ad2d-8b51b847930f" } : {}),
+});
 const values = {
   company_name: "星海科技",
   analysis_goal: "课堂分析",
@@ -15,7 +18,7 @@ test.describe("3A-C 老师查询端口", () => {
 
   test("获授权老师能按页面、学生和字段 ID 查看提交", async ({ request }) => {
     const submitted = await request.post("/submit/exercise-1", {
-      headers: actor("student-2"), data: { values },
+      headers: actor("student-2", { submit: true }), data: { formVersion: 1, values },
     });
     expect(submitted.ok()).toBeTruthy();
 
@@ -54,7 +57,7 @@ test.describe("3A-C 老师查询端口", () => {
   });
 
   test("学生、其他老师和其他班级默认不能读取", async ({ request }) => {
-    await request.post("/submit/exercise-1", { headers: actor("student-mock-1"), data: { values } });
+    await request.post("/submit/exercise-1", { headers: actor("student-mock-1", { submit: true }), data: { formVersion: 1, values } });
     const list = await request.get("/api/teacher/agents/exercise-1/submissions", { headers: actor("teacher-1") });
     const id = (await list.json()).records[0].id;
 

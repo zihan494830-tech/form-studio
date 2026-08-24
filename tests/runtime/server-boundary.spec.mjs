@@ -4,13 +4,17 @@ import { createInMemoryAgentRepository } from "../../src/infrastructure/in-memor
 import { submitToAgent } from "../../src/application/submit-to-agent.mjs";
 import { createFormStudioServer } from "../../src/server/create-server.mjs";
 import { ROOT } from "../support/project-fixture.mjs";
+import { SUBMISSION_CREATE } from "../../src/domain/access/capabilities.mjs";
+
+const TEST_PORT = Number(process.env.FORM_STUDIO_TEST_PORT || 4191);
 
 const studentActor = {
   id: "student-mock-1",
   name: "测试学生",
   role: "student",
   verifiedBy: "server-boundary-test",
-  scope: { tenantId: "test-tenant", classId: "class-1" },
+  capabilities: [SUBMISSION_CREATE],
+  scope: { tenantId: "test-tenant", attributes: { classId: "class-1" }, classId: "class-1" },
 };
 
 function seed() {
@@ -44,8 +48,12 @@ function seed() {
 
 function rawPost(path, body) {
   return new Promise((resolve, reject) => {
-    const req = httpRequest({ hostname: "127.0.0.1", port: 4190, path, method: "POST",
-      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) } }, (res) => {
+    const req = httpRequest({ hostname: "127.0.0.1", port: TEST_PORT, path, method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body),
+        "Idempotency-Key": "6bc7a75b-60dd-4b00-b5db-c0831ea8993f",
+      } }, (res) => {
       const chunks = [];
       res.on("data", (chunk) => chunks.push(chunk));
       res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
@@ -55,11 +63,23 @@ function rawPost(path, body) {
   });
 }
 
+function rawGet(path) {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest({ hostname: "127.0.0.1", port: TEST_PORT, path, method: "GET" }, (res) => {
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 test("绕过浏览器时，404/409/缺必填 400 仍由服务端守住", () => {
   const repository = createInMemoryAgentRepository(seed());
   expect(submitToAgent(repository, "missing", { values: {} }).status).toBe(404);
   expect(submitToAgent(repository, "exercise-2", { values: {} }).status).toBe(409);
-  const missing = submitToAgent(repository, "exercise-1", { values: {} }, { actor: studentActor });
+  const missing = submitToAgent(repository, "exercise-1", { formVersion: 1, values: {} }, { actor: studentActor });
   expect(missing).toMatchObject({ status: 400, missing: ["q1"] });
   expect(repository.get("exercise-1").inputBag).toHaveLength(0);
 });
@@ -68,6 +88,12 @@ test("坏 JSON 返回 400，不冒充服务端 500", async () => {
   const response = await rawPost("/submit/exercise-1", "{bad-json");
   expect(response.status).toBe(400);
   expect(JSON.parse(response.body)).toMatchObject({ errorCode: "invalid_json" });
+});
+
+test("坏 URL 百分号编码返回 400，不冒充服务端 500", async () => {
+  const response = await rawGet("/preview/%E0%A4%A");
+  expect(response.status).toBe(400);
+  expect(JSON.parse(response.body)).toMatchObject({ errorCode: "invalid_path_encoding" });
 });
 
 test("普通服务不注册 fixture 与 reset 测试钩子", async () => {
@@ -98,6 +124,7 @@ test("健康端点公开当前运行源码指纹，供启动器拒绝复用旧�
       datasetRevision: null,
       datasetChecksum: null,
       defaultScenario: null,
+      schemaVersion: 3,
     });
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

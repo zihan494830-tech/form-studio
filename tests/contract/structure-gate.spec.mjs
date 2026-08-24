@@ -35,6 +35,16 @@ test("嵌套 test-results 与源码区 Markdown 不能隐身", () => {
   expect(failures).toContain("Markdown 不在文档区：src/note.md");
 });
 
+test("标准开源社区 Markdown 可位于根目录和 GitHub 配置区", () => {
+  const root = fixtureRoot();
+  for (const file of ["CHANGELOG.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "SECURITY.md"]) {
+    writeFileSync(join(root, file), `${file}\n`);
+  }
+  mkdirSync(join(root, ".github"), { recursive: true });
+  writeFileSync(join(root, ".github", "pull_request_template.md"), "evidence\n");
+  expect(checkStructure(root)).toEqual([]);
+});
+
 test("domain 和 application 的反向 import 会被拦住", () => {
   const root = fixtureRoot();
   mkdirSync(join(root, "src", "domain"), { recursive: true });

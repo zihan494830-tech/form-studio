@@ -8,8 +8,8 @@ export function defaultGrid() {
       { id: "r2", label: t("ui.workbench.grid_default_row", { index: 2 }) },
     ],
     columns: [
-      { id: "c1", label: t("ui.workbench.grid_default_col", { index: 1 }), control: "text", required: true },
-      { id: "c2", label: t("ui.workbench.grid_default_col", { index: 2 }), control: "text", required: true },
+      { id: "c1", label: t("ui.workbench.grid_default_col", { index: 1 }), control: "text", required: false },
+      { id: "c2", label: t("ui.workbench.grid_default_col", { index: 2 }), control: "text", required: false },
     ],
   };
 }
@@ -28,7 +28,7 @@ export function applyGridEdit(fields, index, action, itemIndex) {
   if (action === "add-row") {
     grid.rows.push({ id: nextItemId(grid.rows, "r"), label: t("ui.workbench.grid_default_row", { index: grid.rows.length + 1 }) });
   } else if (action === "add-col") {
-    grid.columns.push({ id: nextItemId(grid.columns, "c"), label: t("ui.workbench.grid_default_col", { index: grid.columns.length + 1 }), control: "text", required: true });
+    grid.columns.push({ id: nextItemId(grid.columns, "c"), label: t("ui.workbench.grid_default_col", { index: grid.columns.length + 1 }), control: "text", required: false });
   } else if (action === "del-row") {
     if (grid.rows.length <= 1) return null;
     grid.rows.splice(itemIndex, 1);
@@ -39,4 +39,13 @@ export function applyGridEdit(fields, index, action, itemIndex) {
     return null;
   }
   return fields.map((item, fieldIndex) => (fieldIndex === index ? { ...item, grid } : item));
+}
+
+export function moveItem(items, index, offset) {
+  const nextIndex = index + offset;
+  if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(index, 1);
+  next.splice(nextIndex, 0, item);
+  return next;
 }

@@ -13,10 +13,12 @@ export function createClassroomSubmissionReadAuthorizer(repository) {
     const decision = authorizeAgentAction(agent, principal, "teach");
     if (!decision.allowed || resource.scope == null) return decision;
     const scope = resource.scope;
+    const resourceClassId = scope.attributes?.classId || scope.classId;
+    const principalClassId = principal.scope.attributes?.classId || principal.scope.classId;
     if (scope.tenantId !== agent.access.tenantId
-      || scope.classId !== agent.access.classId
+      || resourceClassId !== agent.access.classId
       || scope.tenantId !== principal.scope.tenantId
-      || scope.classId !== principal.scope.classId) {
+      || resourceClassId !== principalClassId) {
       return { allowed: false, ...problem("cross_scope_forbidden", 403) };
     }
     return decision;

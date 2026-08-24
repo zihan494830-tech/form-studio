@@ -23,6 +23,8 @@
 | `docs/maintenance.md` | Git、文档生命周期、清理和规则变更方法 |
 | `docs/poffices-integration.md` | Poffices 适配事实、身份映射、失败合同与升级条件 |
 | `docs/authoring-experience.md` | 作者面信息架构、已证实可用性问题和渐进演进路线 |
+| `docs/research/form-studio-v028-audit-remediation-20260824.md` | v0.28 外审逐项复核、v0.29 难回滚合同与 SQLite 迁移/回滚证据 |
+| `docs/research/form-studio-100-alpha1-workflow-version-remediation-20260824.md` | Alpha 1 版本轴、无角色流程、提交管理与 schema v3 迁移/验收证据 |
 | `docs/plans/README.md` | 现役实施计划索引、状态和清理规则；不复制项目状态 |
 | `docs/plans/*.md` | 已获准但尚未完成的短期实施方案；不是永久真相源 |
 
@@ -40,7 +42,7 @@
 
 ## 3. Git 与工作分支
 
-`E:\Form Studio` 已于 2026-08-20 初始化为本地 Git 仓库，`main` 的第一个提交冻结第 0–1b 段基线。尚未配置远端，因此已有本地回滚和 diff，但还没有异机备份。首次建仓步骤保留为维护记录：
+仓库于 2026-08-20 初始化；早期 `main` 提交冻结第 0–1b 段基线。公开发布时必须为默认分支配置受控远端和保护规则；本地 `.git` 只能提供本机回滚，不是异机备份。首次建仓步骤保留为维护记录：
 
 1. 检查 `.gitignore`，确认依赖、测试产物、报告、密钥和本地配置不会进入基线。
 2. 运行 `npm run check`，记录已知失败；不能把未知红灯冻结成“稳定基线”。
@@ -55,11 +57,17 @@
 
 桌面 `Form Studio.lnk` 只指向仓库根目录 `start-form-studio.bat`，不固定某个 commit。启动脚本对现役源码生成 `runtimeRevision`，通过 `/api/health` 判断 4190 中已加载的进程是否仍是当前版本；只有健康响应与 `node server.mjs` 进程身份同时成立时才自动替换旧实例。这个机制解决“磁盘已更新、内存仍跑旧代码”，不替代源码分发。
 
-开发期 mock 的唯一内容源是 `data/mock-agents.json`，其 `datasetRevision` 与内容 checksum 独立于 SQLite schema version。启动器把 catalog 纳入运行指纹；demo 初始化只在 revision 升级时整体替换旧 mock，revision 相同但 checksum 改变会拒绝启动，要求先递增 revision。`npm run demo:reset` 可显式丢弃本轮交互并恢复 catalog；它只接受已带 dataset metadata 的受管数据库，未受管数据会 fail closed。当前破坏性同步的授权只来自“现有数据全是 mock”的明确判断；出现真实数据、product 模式或需保留草稿后，应撤销该策略并改为显式迁移/备份。该做法参考 [Flyway schema history](https://documentation.red-gate.com/flyway/flyway-concepts/migrations/flyway-schema-history-table) 和 [Django fixtures](https://docs.djangoproject.com/en/5.2/howto/initial-data/)，但当前不引入外部迁移框架。
+开发期 mock 的唯一内容源是 `data/mock-agents.json`，其 `datasetRevision` 与内容 checksum 独立于 SQLite schema version。仅当组合根在打开 SQLite 前确认文件原本不存在，才传入一次性 `allowInitialize` 建立 canonical ownership；无 metadata 的既有数据库不会自动升级或 reset。受管库 revision 相同但 checksum 改变会拒绝启动；revision 升级或显式 `npm run demo:reset` 才整体替换 mock。该做法参考 [Flyway schema history](https://documentation.red-gate.com/flyway/flyway-concepts/migrations/flyway-schema-history-table) 和 [Django fixtures](https://docs.djangoproject.com/en/5.2/howto/initial-data/)，但当前不引入外部迁移框架。
+
+### SQLite schema 迁移
+
+Alpha 1 repository 要求 `PRAGMA user_version=3`，不静默写入 v1/v2。`npm run data:migrate` 只接受 `form_studio_runtime_meta` 中带 canonical revision/checksum 的受管 mock：先以 SQLite `VACUUM INTO` 生成 `data/backups/form-studio-schema-v<来源版本>-<timestamp>.sqlite`，再在事务内补齐历史 v1 列（如需）并创建 `submission_management`、`submission_corrections`、`submission_management_audit`，最后核对 submission 计数、envelope hash 与 user_version。迁移不更新 submissions、outbox 或 envelope；未受管库、目标备份已存在或任何校验不一致都停止。
+
+回滚必须停服务，用记录过 SHA-256 的来源版本备份恢复数据库，并同时运行理解该 schema 的旧代码；不能只降数据库不降代码，也不能把 `demo:reset` 当 schema 回滚。实际备份路径、hash 与前后计数记录在对应永久审计文档。备份位于被 Git 忽略的数据目录，仍需另行纳入受控备份策略。
 
 建议维护顺序：
 
-1. 为当前仓库配置一个受控远端并确定唯一默认分支；在此之前，启动器显示“未配置 git 远端”是事实，不应消音。
+1. 为发布 checkout 配置受控远端并确定唯一默认分支；未配置时启动器应继续明确跳过拉取。
 2. 更新窗口先运行 `start-form-studio.bat -UpdateOnly -Check`；检查通过后再正常双击。工作树有未提交改动时，先审阅 diff，不用自动 merge / reset 掩盖冲突。
 3. 每次可回滚发布使用一个可识别 commit/tag；运行指纹定位“加载了哪份文件”，commit/tag 才回答“这份版本如何恢复”。
 4. SQLite 按停服备份 / 恢复演练单独管理；Git、桌面快捷方式和源码指纹都不是数据备份。

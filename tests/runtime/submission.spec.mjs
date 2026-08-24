@@ -52,7 +52,10 @@ test.describe("提交信封与封闭控件词表", () => {
     await page.locator("#target_market").selectOption("香港");
     await submitFace(page);
     await expect(page.locator("#receipt")).toHaveClass(/show/);
+    await page.reload();
+    await page.locator("#company_name").fill("星海科技");
     await page.locator("#analysis_goal").fill("第二次");
+    await page.locator("#target_market").selectOption("香港");
     await submitFace(page);
     const bag = (await agentOf(request)).inputBag;
     expect(bag).toHaveLength(2);
@@ -68,8 +71,17 @@ test.describe("提交信封与封闭控件词表", () => {
       { id: "choice1", label: "选择", control: "select", required: true, options: ["甲", "乙"] },
       { id: "agree1", label: "同意", control: "checkbox", required: true },
     ];
-    expect((await request.put("/api/agents/exercise-2/fields", { data: { fields } })).ok()).toBeTruthy();
-    expect((await request.post("/api/agents/exercise-2/publish")).ok()).toBeTruthy();
+    const initial = await agentOf(request, "exercise-2");
+    const saved = await request.put("/api/agents/exercise-2/fields", {
+      headers: { "If-Match": `"agent-${initial.revision}"` }, data: { fields },
+    });
+    expect(saved.ok()).toBeTruthy();
+    const savedAgent = await saved.json();
+    const published = await request.post("/api/agents/exercise-2/publish", {
+      headers: { "If-Match": `"agent-${savedAgent.revision}"` },
+    });
+    expect(published.ok()).toBeTruthy();
+    const publishedAgent = await published.json();
     await page.goto("/a/exercise-2");
     await page.locator("#text1").fill("文字");
     await page.locator("#memo1").fill("长答案");
@@ -82,6 +94,7 @@ test.describe("提交信封与封闭控件词表", () => {
       text1: "文字", memo1: "长答案", num1: "7", choice1: "甲", agree1: "true",
     });
     const rejected = await request.put("/api/agents/exercise-2/fields", {
+      headers: { "If-Match": `"agent-${publishedAgent.revision}"` },
       data: { fields: [{ id: "upload1", label: "上传", control: "file", required: true }] },
     });
     expect(rejected.status()).toBe(400);

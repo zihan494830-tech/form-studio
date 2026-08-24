@@ -75,6 +75,13 @@ test.describe("2A 真实身份合同", () => {
     expect(await readOwnerIdentity(malformed, "18")).toMatchObject({ status: 502, errorCode: "contract_invalid" });
   });
 
+  test("official 非 boolean 时拒绝上游合同，不把字符串 false 强转成 true", async () => {
+    const directory = createPofficesAgentDirectory({
+      fetchImpl: async () => response(200, { id: 18, name: "Market Analysis", is_official: "false" }),
+    });
+    expect(await readOwnerIdentity(directory, "18")).toMatchObject({ status: 502, errorCode: "contract_invalid" });
+  });
+
   test("外部读取超时后明确失败", async () => {
     const directory = createPofficesAgentDirectory({
       timeoutMs: 1,

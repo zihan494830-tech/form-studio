@@ -10,7 +10,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { loadCanonicalMockCatalog } from "./canonical-mock-catalog.mjs";
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 3;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -31,7 +31,7 @@ function decodeAgent(row) {
   const agent = JSON.parse(row.payload);
   assertAgent(agent);
   if (agent.id !== row.id) throw new Error(`持久记录 id 不一致：${row.id}`);
-  return agent;
+  return { ...agent, revision: Number.isInteger(agent.revision) && agent.revision > 0 ? agent.revision : 1 };
 }
 
 function transaction(database, work) {
@@ -65,7 +65,10 @@ export function createSqliteAgentRepository({ databasePath, seed = defaultSeed()
 
   const version = Number(database.prepare("PRAGMA user_version").get().user_version);
   if (version === 0) database.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-  else if (version !== SCHEMA_VERSION) {
+  else if (version === 1 || version === 2) {
+    database.close();
+    throw new Error("持久仓储需要先执行 npm run data:migrate 升级到 schema v3");
+  } else if (version !== SCHEMA_VERSION) {
     database.close();
     throw new Error(`不支持的持久仓储版本：${version}`);
   }
@@ -108,11 +111,15 @@ export function createSqliteAgentRepository({ databasePath, seed = defaultSeed()
       const agent = decodeAgent(getRow.get(String(id)));
       return agent ? clone(agent) : null;
     },
-    save(agent) {
+    save(agent, { expectedRevision } = {}) {
       assertAgent(agent);
-      const ordinal = Number(nextOrdinal.get().value);
-      saveAgent.run(agent.id, JSON.stringify(agent), ordinal);
-      return clone(agent);
+      return transaction(database, () => {
+        const current = decodeAgent(getRow.get(String(agent.id)));
+        if (current && expectedRevision != null && current.revision !== expectedRevision) return null;
+        const ordinal = Number(nextOrdinal.get().value);
+        saveAgent.run(agent.id, JSON.stringify(agent), ordinal);
+        return clone({ ...agent, revision: Number.isInteger(agent.revision) && agent.revision > 0 ? agent.revision : 1 });
+      });
     },
     appendEnvelope(agentId, envelope) {
       return transaction(database, () => {

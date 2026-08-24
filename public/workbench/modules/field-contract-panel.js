@@ -1,5 +1,7 @@
 import { escapeHtml } from "/workbench/modules/form-model.js";
 
+const ID_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
 async function copyText(value) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);
@@ -209,6 +211,20 @@ export function createFieldContractPanel({ dialog, openButton, list, status, get
     if (action === "save") {
       const input = list.querySelector(`[data-contract-input="${kind}:${index}:${itemIndex}"]`);
       const nextId = input?.value.trim() || "";
+      const siblings = kind === "field" ? agent.fields
+        : kind === "row" ? field.grid.rows : field.grid.columns;
+      if (!ID_PATTERN.test(nextId)) {
+        input?.setAttribute("aria-invalid", "true");
+        input?.focus();
+        setStatus(t("ui.workbench.field_contract_id_invalid"), "error");
+        return;
+      }
+      if (siblings.some((candidate) => candidate !== item && candidate.id === nextId)) {
+        input?.setAttribute("aria-invalid", "true");
+        input?.focus();
+        setStatus(t("ui.workbench.field_contract_id_duplicate", { id: nextId }), "error");
+        return;
+      }
       if (nextId === item.id) {
         editingTarget = null; setStatus(); render(); return;
       }

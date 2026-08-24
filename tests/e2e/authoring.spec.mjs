@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { agentOf, expectedLedger, resetStore } from "../support/project-fixture.mjs";
+import { agentOf, expectedLedger, publishAgent, resetStore, saveAgentFields, submitAgent, unpublishAgent } from "../support/project-fixture.mjs";
 import {
   addField,
   openPublishedFace,
@@ -50,11 +50,11 @@ test.describe("第 1b 段作者设计与新生", () => {
   test("草稿不撞使用面，重新发布后才切换", async ({ page, request }) => {
     await resetStore(request);
     const fields = [...expectedLedger.fields, { id: "draft1", label: "草稿栏", control: "text", required: true }];
-    const draft = await request.put("/api/agents/exercise-1/fields", { data: { fields } });
+    const draft = await saveAgentFields(request, "exercise-1", fields);
     expect((await draft.json()).ledger.status).toBe("draft");
     await page.goto("/a/exercise-1");
     await expect(page.locator("#draft1")).toHaveCount(0);
-    const published = await request.post("/api/agents/exercise-1/publish");
+    const published = await publishAgent(request, "exercise-1");
     expect((await published.json()).ledger.status).toBe("published");
     await page.reload();
     await expect(page.locator("#draft1")).toBeVisible();
@@ -64,14 +64,10 @@ test.describe("第 1b 段作者设计与新生", () => {
     await resetStore(request);
     const created = await (await request.post("/api/agents", { data: { name: "下架测试" } })).json();
     expect((await request.get(`/a/${created.id}`)).status()).toBe(404);
-    await request.put(`/api/agents/${created.id}/fields`, {
-      data: { fields: [{ id: "f1", label: "内容", control: "text", required: true }] },
-    });
-    await request.post(`/api/agents/${created.id}/publish`);
-    await request.post(`/submit/${created.id}`, {
-      data: { values: { f1: "留下" }, submitterId: "student-mock-1" },
-    });
-    await request.post(`/api/agents/${created.id}/unpublish`);
+    await saveAgentFields(request, created.id, [{ id: "f1", label: "内容", control: "text", required: true }]);
+    await publishAgent(request, created.id);
+    await submitAgent(request, created.id, { f1: "留下" });
+    await unpublishAgent(request, created.id);
     expect((await request.get(`/a/${created.id}`)).status()).toBe(404);
     expect((await agentOf(request, created.id)).inputBag[0].values).toEqual({ f1: "留下" });
   });

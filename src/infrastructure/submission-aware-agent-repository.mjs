@@ -44,22 +44,36 @@ export function createSubmissionAwareAgentRepository({ agents, submissions, now 
     get(id) {
       return hydrate(agents.get(id));
     },
-    save(agent) {
-      return hydrate(agents.save(stripBag(agent)));
+    save(agent, options = {}) {
+      const saved = agents.save(stripBag(agent), options);
+      return saved ? hydrate(saved) : null;
     },
-    appendSubmission(agentId, envelope, { actor = null, scope = null, delivery = null } = {}) {
+    appendSubmission(agentId, envelope, {
+      actor = null,
+      principal = null,
+      scope = null,
+      submissionIntentId = "",
+      fingerprintSource = "",
+      delivery = null,
+    } = {}) {
       if (!agents.get(agentId)) return null;
-      const submission = submissions.append({
+      const appended = submissions.append({
         ownerAgent: agentId,
         receivedAt: envelope.submittedAt,
         actor,
+        principal,
         scope,
+        submissionIntentId,
+        fingerprintSource,
         envelope,
         delivery,
       });
+      if (appended.conflict) return { conflict: true };
+      const submission = appended.record;
       return {
         agent: this.get(agentId),
         submission,
+        replayed: appended.replayed,
         delivery: submissions.getDeliveryForSubmission?.(submission.id) || null,
       };
     },
@@ -74,6 +88,21 @@ export function createSubmissionAwareAgentRepository({ agents, submissions, now 
     },
     getSubmission(id) {
       return submissions.get(id);
+    },
+    getSubmissionManagement(id) {
+      return submissions.getManagement?.(id) || null;
+    },
+    updateSubmissionManagement(id, patch, options) {
+      return submissions.updateManagement?.(id, patch, options) || null;
+    },
+    listSubmissionCorrections(id) {
+      return submissions.listCorrections?.(id) || [];
+    },
+    appendSubmissionCorrection(id, correction, options) {
+      return submissions.appendCorrection?.(id, correction, options) || null;
+    },
+    listSubmissionManagementAudit(id) {
+      return submissions.listManagementAudit?.(id) || [];
     },
     listDeliveries(query = {}) {
       return submissions.listDeliveries?.(query) || [];
@@ -96,7 +125,15 @@ export function createSubmissionAwareAgentRepository({ agents, submissions, now 
       agents.reset();
       for (const [id, config] of localConfig) {
         const agent = agents.get(id);
-        if (agent) agents.save({ ...agent, ...config });
+        if (agent) {
+          const agentInput = config.agentInput && agent.published
+            ? {
+                ...clone(config.agentInput),
+                mapping: { ...clone(config.agentInput.mapping), formVersion: agent.published.formVersion },
+              }
+            : clone(config.agentInput);
+          agents.save({ ...agent, access: config.access, agentInput });
+        }
       }
       migrateAll();
       return this.list();

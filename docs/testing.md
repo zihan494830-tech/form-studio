@@ -30,15 +30,30 @@
 | `zh-HK` 消息、错误映射和可访问名称 | `presentation-messages.spec.mjs` + `localization.spec.mjs` | 其他测试只在文案本身是产品合同的时候断言完整句子 |
 | 发布定义历史与旧提交解释 | `owner-binding.spec.mjs` + `submission-reader.spec.mjs` | 必须证明旧 `formVersion` 不读取当前草稿 / 当前发布定义；缺失时显式降级 |
 | 启动器拒绝复用旧代码 | `server-boundary.spec.mjs` + 启动烟测 | `/api/health` 返回 application / mode / runtimeRevision；端口占用者身份不明时不得终止 |
-| Canonical mock 与 demo 同步 | `canonical-mock-catalog.spec.mjs` + `demo-dataset.spec.mjs` | test/demo 从同一 catalog 物化；同 revision 保留编辑、checksum 漂移拒绝、升级时清空旧 mock 状态 |
+| Canonical mock 与 demo 同步 | `canonical-mock-catalog.spec.mjs` + `demo-dataset.spec.mjs` | 仅新数据库可明确初始化；无 metadata 的既有库拒绝自动/显式替换；同 revision 保留编辑，升级受管 mock 时清空旧状态 |
+| 全部 JSON Schema 与运行时不变量 | `all-json-schemas.spec.mjs` + 对应 domain contract specs | Ajv 2020 + `ajv-formats` 编译全部 schema；每份必须有生产对象和非法对象 |
+| 提交版本、UUID intent、响应隐私、非标量/未知字段、413/415 | `tests/runtime/v29-boundaries.spec.mjs` | stale 409 零写入；相同 intent 只写一条；响应不返回 agent/历史 `inputBag`；媒体类型必须精确为 JSON |
+| Agent revision 与跨标签页 lost update | `tests/runtime/v29-boundaries.spec.mjs` | 缺 `If-Match` 428；两个 stale writer 只能一个成功，另一个 412 |
+| born-form ID 并发 | `tests/runtime/born-form-concurrency.spec.mjs` | 两个 SQLite 连接拿到同一候选 ID 时条件插入失败并重试，不覆盖先写表单 |
+| SQLite v1/v2→v3 迁移 | `tests/runtime/sqlite-schema-migration.spec.mjs` | 只迁移受管 mock；先备份；记录数/envelope hash 不变；v1/v2 历史可读；未受管库拒绝 |
+| authoring/submission 双会话、旧页答案恢复与锁定 | `local-session.spec.mjs` + `v29-submission-flow.spec.mjs` | 同浏览器身份互不覆盖；旧版答案只恢复合法字段；成功后需新 intent 才能再填 |
+| 提交计数状态、Agent 投递文案与管理反馈 | `tests/e2e/v100-workflow.spec.mjs` | 未知不得显示 0；刷新失败保留旧数；六种 delivery 状态逐一验证 |
+| 收件箱双栏/单列滚动 | `tests/e2e/submission-workbench-layout.spec.mjs` | 1600×900 左右独立滚动；920/390px 单列且无页面横向溢出 |
+| 700ms 自动保存、串行队列、重试与离页保护 | `novice-safety.spec.mjs` + `single-canvas-authoring.spec.mjs` | 不失焦也持久化；失败保留输入；dirty/saving/failed 才拦离页 |
 
 `workbench-ui.spec.mjs` 保留作者边界说明与跨模块管理流程；响应式和布局已移到 `workbench-layout.spec.mjs`。若一个失败只发生在视觉重排，应先在布局文件定位，不能靠扩大完整流程 E2E 来兜底。
 
-2026-08-23 v0.27 单画布、矩阵视觉收口与开发数据统一后的基线为 `structure ok + 115/115`。数字只是当前测试清单计数；发布定义历史、schema 真执行、step 同构、可访问名称、滚动归属、catalog 同步与验收身份这些具体断言才是证据含义。
+2026-08-24 v0.29 分层结果为 Contract 54/54、Runtime 35/35、E2E 49/49，合计 138/138；统一 `npm run check` 的最终结果同时记录在 v0.29 审计整改文档。数字只是当前测试清单计数；版本冲突零写入、intent 唯一性、schema 真执行、迁移一致性、条件写入和双会话这些具体断言才是证据含义。
+
+Alpha 1 新增的最低责任层证据包括：`release-version.spec.mjs` 验证 `[1,9] → v1.0/v1.1`、`v1.10` 与未知历史不猜测；`v100-submission-management.spec.mjs` 验证权限、独立 ETag、归档/恢复、修正校验和 envelope/intent/outbox 不变；`v100-workflow.spec.mjs` 验证草稿试填零写入、正式入口可发现、默认 demo 填写身份、提交管理 UI 与 splitter 的键盘/响应式行为。最终总数与浏览器证据写入 Alpha 1 永久记录，不把测试数量当永久门槛。
+
+2026-08-24 开源整理前 Alpha 1 基线为 Contract 59、Runtime 40、E2E 56，合计 155；整理后完整 `npm run check` 为 Contract 60/60、Runtime 44/44、E2E 56/56，合计 160/160。新增证据覆盖响应隐私、born-form 并发、未受管 demo、畸形路径/Cookie 和标准开源社区文件边界；`check` 依次运行 structure、跨平台 syntax 和 Playwright 行为回归。
+
+Playwright web server 使用 `FORM_STUDIO_TEST_PORT`，默认 4191；desktop demo 保持 4190。不同 Playwright 命令不能并行争用同一默认端口；确需并行时必须显式分配不同端口。
 
 ### 本地视觉验收
 
-先通过桌面快捷方式启动 demo；需要验收 Git 中的 canonical 基线时，先执行 `npm run demo:reset`，再运行 `npm run visual:local`。截图命令只读连接现有 demo，拒绝 product/test，输出字段/表格选择、70% 缩放、字段接口、抽屉、移动画布/属性视图和用户页宽/窄屏共九张截图，并在同目录写 manifest。manifest 必须包含 `mode`、`productVersion`、`runtimeRevision`、`datasetRevision/checksum`、`ownerAgent`、`formVersion`、URL、viewport、时间与截图 SHA-256。测试模式截图必须明确标 `mode=test`，不能作为 desktop demo 当前数据证据。该边界依据 [Playwright Test Isolation](https://playwright.dev/docs/browser-contexts) 与 [OpenTelemetry version attributes](https://opentelemetry.io/docs/specs/semconv/resource/)。
+先通过桌面快捷方式启动 demo；需要验收 Git 中的 canonical 基线时，先执行 `npm run demo:reset`，再运行 `npm run visual:local`。截图命令只读连接现有 demo，拒绝 product/test，输出顶部操作、字段/表格选择、70% 缩放、字段接口、抽屉、移动画布/属性视图、宽屏/单列提交管理和填写页宽/窄屏共十二张截图，并在同目录写 manifest。非文案行为使用稳定 DOM action/id 定位，避免界面改词让证据脚本失效。manifest 必须包含 `mode`、`productVersion`、`schemaVersion`、`runtimeRevision`、`datasetRevision/checksum`、`ownerAgent`、`formVersion`、`releaseVersion`、URL、viewport、时间与截图 SHA-256。测试模式截图必须明确标 `mode=test`，不能作为 desktop demo 当前数据证据。该边界依据 [Playwright Test Isolation](https://playwright.dev/docs/browser-contexts) 与 [OpenTelemetry version attributes](https://opentelemetry.io/docs/specs/semconv/resource/)。
 
 字段接口信息测试必须同时量测打开前后的字段卡片 `top/height`，不能再用“布局不变”的测试名称却断言高度增加。面板默认态不得出现 textbox；显式修改已发布字段后，草稿 ID 改变而 `published.fields[].id` 保持旧值。
 

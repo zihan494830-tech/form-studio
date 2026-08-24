@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible Form Studio defect.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please remove private form answers, credentials, and production data before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Product version, commit, and Node.js version.
+      placeholder: 1.0.0-alpha.1 / commit SHA / Node 24.x
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options: [product, demo, test]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Minimal steps, request path, or test that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Logs or screenshots with identities, answers, tokens, and local paths removed.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: This report does not disclose a security vulnerability or private data.
+          required: true

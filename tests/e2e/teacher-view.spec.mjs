@@ -13,8 +13,8 @@ test.beforeEach(async ({ request }) => resetStore(request));
 
 test("老师在获授权视图看到学生提交和字段详情", async ({ browser, request }) => {
   await request.post("/submit/exercise-1", {
-    headers: { "x-form-studio-test-actor": "student-2" },
-    data: { values: validValues },
+    headers: { "x-form-studio-test-actor": "student-2", "Idempotency-Key": "bff4577f-d19a-49d7-ae30-6371062fe09f" },
+    data: { formVersion: 1, values: validValues },
   });
   const context = await browser.newContext({
     extraHTTPHeaders: { "x-form-studio-test-actor": "teacher-1" },

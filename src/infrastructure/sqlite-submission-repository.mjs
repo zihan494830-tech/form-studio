@@ -1,9 +1,11 @@
 /** 独立提交记录仓储；原提交信封作为不可改写的 JSON 快照保存。 */
+import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { makeSubmissionRecord } from "../domain/submission/submission-record.mjs";
+import { makeSubmissionRecord, makeSubmissionRecordV2 } from "../domain/submission/submission-record.mjs";
 import { makeOutboxEvent } from "../domain/submission/outbox-event.mjs";
+import { createSqliteSubmissionManagementStore } from "./sqlite-submission-management.mjs";
 
 function encode(value) {
   return value == null ? null : JSON.stringify(value);
@@ -19,6 +21,15 @@ export function createSqliteSubmissionRepository({ databasePath }) {
   mkdirSync(dirname(path), { recursive: true });
   const database = new DatabaseSync(path);
   let closed = false;
+  const existingVersion = Number(database.prepare("PRAGMA user_version").get().user_version);
+  if (existingVersion === 1 || existingVersion === 2) {
+    database.close();
+    throw new Error("提交仓储需要先执行 npm run data:migrate 升级到 schema v3");
+  }
+  if (![0, 3].includes(existingVersion)) {
+    database.close();
+    throw new Error(`不支持的提交仓储版本：${existingVersion}`);
+  }
   database.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = FULL;
@@ -34,6 +45,10 @@ export function createSqliteSubmissionRepository({ databasePath }) {
       actor_verified_by TEXT,
       tenant_id TEXT,
       class_id TEXT,
+      record_version TEXT NOT NULL DEFAULT 'submission-record/v1',
+      scope_json TEXT,
+      submission_intent_id TEXT,
+      intent_fingerprint TEXT,
       envelope_json TEXT NOT NULL,
       legacy_key TEXT UNIQUE
     ) STRICT;
@@ -45,7 +60,7 @@ export function createSqliteSubmissionRepository({ databasePath }) {
       sequence INTEGER PRIMARY KEY AUTOINCREMENT,
       submission_sequence INTEGER NOT NULL UNIQUE REFERENCES submissions(sequence) ON DELETE CASCADE,
       owner_agent TEXT NOT NULL,
-      status TEXT NOT NULL CHECK(status IN ('pending', 'delivering', 'delivered', 'failed')),
+      status TEXT NOT NULL CHECK(status IN ('pending', 'delivering', 'delivered', 'failed', 'mapping_review_required')),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       attempts INTEGER NOT NULL DEFAULT 0,
@@ -59,15 +74,61 @@ export function createSqliteSubmissionRepository({ databasePath }) {
     ) STRICT;
     CREATE INDEX IF NOT EXISTS agent_input_outbox_status
       ON agent_input_outbox(status, sequence);
+    CREATE TABLE IF NOT EXISTS submission_management (
+      submission_sequence INTEGER PRIMARY KEY REFERENCES submissions(sequence) ON DELETE CASCADE,
+      status TEXT NOT NULL CHECK(status IN ('new', 'in_review', 'processed')),
+      note TEXT NOT NULL DEFAULT '',
+      tags_json TEXT NOT NULL DEFAULT '[]',
+      assignee TEXT,
+      archived_at TEXT,
+      revision INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1),
+      updated_at TEXT,
+      updated_by TEXT
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS submission_management_filter
+      ON submission_management(status, archived_at, updated_at);
+    CREATE TABLE IF NOT EXISTS submission_corrections (
+      sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_sequence INTEGER NOT NULL REFERENCES submissions(sequence) ON DELETE CASCADE,
+      reason TEXT NOT NULL,
+      changes_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      actor_id TEXT NOT NULL,
+      actor_name TEXT NOT NULL
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS submission_corrections_submission
+      ON submission_corrections(submission_sequence, sequence);
+    CREATE TABLE IF NOT EXISTS submission_management_audit (
+      sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_sequence INTEGER NOT NULL REFERENCES submissions(sequence) ON DELETE CASCADE,
+      revision INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      actor_id TEXT NOT NULL,
+      occurred_at TEXT NOT NULL,
+      detail_json TEXT NOT NULL
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS submission_management_audit_submission
+      ON submission_management_audit(submission_sequence, sequence);
   `);
   const submissionColumns = new Set(database.prepare("PRAGMA table_info(submissions)").all().map((column) => column.name));
   if (!submissionColumns.has("actor_name")) database.exec("ALTER TABLE submissions ADD COLUMN actor_name TEXT");
+  if (!submissionColumns.has("record_version")) database.exec("ALTER TABLE submissions ADD COLUMN record_version TEXT NOT NULL DEFAULT 'submission-record/v1'");
+  if (!submissionColumns.has("scope_json")) database.exec("ALTER TABLE submissions ADD COLUMN scope_json TEXT");
+  if (!submissionColumns.has("submission_intent_id")) database.exec("ALTER TABLE submissions ADD COLUMN submission_intent_id TEXT");
+  if (!submissionColumns.has("intent_fingerprint")) database.exec("ALTER TABLE submissions ADD COLUMN intent_fingerprint TEXT");
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS submissions_intent
+      ON submissions(owner_agent, actor_id, submission_intent_id)
+      WHERE submission_intent_id IS NOT NULL;
+  `);
+  if (existingVersion === 0) database.exec("PRAGMA user_version = 3");
 
   const insert = database.prepare(`
     INSERT INTO submissions (
       owner_agent, received_at, actor_id, actor_name, actor_role, actor_verified_by,
-      tenant_id, class_id, envelope_json, legacy_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      tenant_id, class_id, record_version, scope_json, submission_intent_id,
+      intent_fingerprint, envelope_json, legacy_key
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertLegacy = database.prepare(`
     INSERT OR IGNORE INTO submissions (
@@ -76,11 +137,15 @@ export function createSqliteSubmissionRepository({ databasePath }) {
     ) VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?)
   `);
   const bySequence = database.prepare("SELECT * FROM submissions WHERE sequence = ?");
+  const byIntent = database.prepare(`
+    SELECT * FROM submissions
+    WHERE owner_agent = ? AND actor_id = ? AND submission_intent_id = ?
+  `);
   const insertDelivery = database.prepare(`
     INSERT INTO agent_input_outbox (
       submission_sequence, owner_agent, status, created_at, updated_at, attempts,
       idempotency_key, target_json, profile_json, mapping_json, payload_json, last_error, receipt_json
-    ) VALUES (?, ?, 'pending', ?, ?, 0, ?, ?, ?, ?, ?, NULL, NULL)
+    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, NULL)
   `);
   const deliveryBySequence = database.prepare("SELECT * FROM agent_input_outbox WHERE sequence = ?");
   const deliveryBySubmission = database.prepare("SELECT * FROM agent_input_outbox WHERE submission_sequence = ?");
@@ -97,6 +162,21 @@ export function createSqliteSubmissionRepository({ databasePath }) {
 
   function fromRow(row) {
     if (!row) return null;
+    if (row.record_version === "submission-record/v2") {
+      return makeSubmissionRecordV2({
+        id: `submission-${row.sequence}`,
+        ownerAgent: row.owner_agent,
+        receivedAt: row.received_at,
+        principal: {
+          id: row.actor_id,
+          ...(row.actor_name ? { displayName: row.actor_name } : {}),
+          verifiedBy: row.actor_verified_by,
+        },
+        scope: decode(row.scope_json),
+        submissionIntentId: row.submission_intent_id,
+        envelope: decode(row.envelope_json),
+      });
+    }
     const actor = row.actor_id ? {
       id: row.actor_id,
       ...(row.actor_name ? { displayName: row.actor_name } : {}),
@@ -115,15 +195,24 @@ export function createSqliteSubmissionRepository({ databasePath }) {
   }
 
   function values(input, legacyKey = null) {
+    const isV2 = Boolean(input.submissionIntentId && input.principal?.id);
+    const principal = isV2 ? input.principal : input.actor;
+    const fingerprint = isV2
+      ? createHash("sha256").update(String(input.fingerprintSource || "")).digest("hex")
+      : null;
     return [
       input.ownerAgent,
       input.receivedAt,
-      input.actor?.id ?? null,
-      input.actor?.displayName ?? null,
-      input.actor?.role ?? null,
-      input.actor?.verifiedBy ?? null,
+      principal?.id ?? null,
+      principal?.displayName ?? null,
+      isV2 ? null : input.actor?.role ?? null,
+      principal?.verifiedBy ?? null,
       input.scope?.tenantId ?? null,
-      input.scope?.classId ?? null,
+      input.scope?.attributes?.classId ?? input.scope?.classId ?? null,
+      isV2 ? "submission-record/v2" : "submission-record/v1",
+      isV2 ? encode(input.scope) : null,
+      isV2 ? input.submissionIntentId : null,
+      fingerprint,
       encode(input.envelope),
       legacyKey,
     ];
@@ -149,33 +238,59 @@ export function createSqliteSubmissionRepository({ databasePath }) {
     });
   }
 
+
   function sequenceOf(id, prefix) {
     const match = new RegExp(`^${prefix}-([1-9][0-9]*)$`).exec(String(id));
     return match ? Number(match[1]) : null;
   }
 
+  const managementStore = createSqliteSubmissionManagementStore(database, {
+    encode,
+    decode,
+    sequenceOf,
+    submissionExists: (sequence) => Boolean(bySequence.get(sequence)),
+  });
+
   return {
     append(input) {
       database.exec("BEGIN IMMEDIATE");
       try {
-        const result = insert.run(...values(input));
+        const encoded = values(input);
+        const intentId = input.submissionIntentId && input.principal?.id ? input.submissionIntentId : null;
+        if (intentId) {
+          const existing = byIntent.get(input.ownerAgent, input.principal.id, intentId);
+          if (existing) {
+            database.exec("COMMIT");
+            return existing.intent_fingerprint === encoded[11]
+              ? { record: fromRow(existing), replayed: true, conflict: false }
+              : { record: null, replayed: false, conflict: true };
+          }
+        }
+        const result = insert.run(...encoded);
         const submissionSequence = Number(result.lastInsertRowid);
         if (input.delivery) {
           const submissionId = `submission-${submissionSequence}`;
           const key = `agent-input:${submissionId}:profile-${input.delivery.profile.profileVersion}:form-${input.delivery.mapping.formVersion}`;
           insertDelivery.run(
-            submissionSequence, input.ownerAgent, input.receivedAt, input.receivedAt, key,
+            submissionSequence, input.ownerAgent, input.delivery.status || "pending", input.receivedAt, input.receivedAt, key,
             encode(input.delivery.target), encode(input.delivery.profile), encode(input.delivery.mapping), encode(input.delivery.payload),
+            input.delivery.lastError || null,
           );
         }
         database.exec("COMMIT");
-        return fromRow(bySequence.get(submissionSequence));
+        return { record: fromRow(bySequence.get(submissionSequence)), replayed: false, conflict: false };
       } catch (error) {
         database.exec("ROLLBACK");
         throw error;
       }
     },
     importLegacy(ownerAgent, envelopes) {
+      (envelopes || []).forEach((envelope) => makeSubmissionRecord({
+        id: "submission-1",
+        ownerAgent,
+        receivedAt: envelope?.submittedAt,
+        envelope,
+      }));
       database.exec("BEGIN IMMEDIATE");
       try {
         const imported = [];
@@ -207,6 +322,7 @@ export function createSqliteSubmissionRepository({ databasePath }) {
       const sequence = sequenceOf(id, "submission");
       return sequence ? fromRow(bySequence.get(sequence)) : null;
     },
+    ...managementStore,
     listDeliveries(query = {}) {
       const statuses = Array.isArray(query.statuses) ? query.statuses : query.status ? [query.status] : [];
       const clauses = [], params = [];
@@ -241,7 +357,7 @@ export function createSqliteSubmissionRepository({ databasePath }) {
       return deliveryFromRow(deliveryBySequence.get(sequence));
     },
     reset() {
-      database.exec("BEGIN IMMEDIATE; DELETE FROM agent_input_outbox; DELETE FROM submissions; DELETE FROM sqlite_sequence WHERE name IN ('submissions', 'agent_input_outbox'); COMMIT;");
+      database.exec("BEGIN IMMEDIATE; DELETE FROM submission_management_audit; DELETE FROM submission_corrections; DELETE FROM submission_management; DELETE FROM agent_input_outbox; DELETE FROM submissions; DELETE FROM sqlite_sequence WHERE name IN ('submissions', 'agent_input_outbox', 'submission_corrections', 'submission_management_audit'); COMMIT;");
       return [];
     },
     close() {

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { authorizeAgentAction, createAgentAccess } from "../../src/domain/access/agent-access.mjs";
+import { FORM_AUTHOR, SUBMISSION_CREATE, SUBMISSION_READ } from "../../src/domain/access/capabilities.mjs";
 
 const access = createAgentAccess({
   tenantId: "school-1",
@@ -12,10 +13,12 @@ const actor = (id, role, classId = "class-1") => ({
   id,
   role,
   verifiedBy: "contract-test",
-  scope: { tenantId: "school-1", classId },
+  capabilities: role === "author" ? [FORM_AUTHOR]
+    : role === "teacher" ? [SUBMISSION_READ] : [SUBMISSION_CREATE],
+  scope: { tenantId: "school-1", attributes: { classId }, classId },
 });
 
-test("agent-access/v1 只允许匹配范围和角色的操作", () => {
+test("agent-access/v1 以能力授权，并继续约束历史 owner scope", () => {
   expect(authorizeAgentAction(agent, actor("author-1", "author"), "author").allowed).toBe(true);
   expect(authorizeAgentAction(agent, actor("teacher-1", "teacher"), "teach").allowed).toBe(true);
   expect(authorizeAgentAction(agent, actor("student-1", "student"), "submit").allowed).toBe(true);

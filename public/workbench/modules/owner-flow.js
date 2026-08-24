@@ -53,6 +53,7 @@ export function createOwnerFlow({ onCreated }) {
   }
 
   async function checkIdentity() {
+    if (identityButton.disabled) return;
     const id = identityId.value.trim();
     resetIdentity();
     identityButton.disabled = true;
@@ -72,8 +73,9 @@ export function createOwnerFlow({ onCreated }) {
   }
 
   async function createRetrofitWorkspace() {
-    if (!verifiedIdentity) return;
+    if (!verifiedIdentity || createRetrofit.disabled) return;
     createRetrofit.disabled = true;
+    createRetrofit.setAttribute("aria-busy", "true");
     identityResult.dataset.state = "loading";
     identityResult.textContent = t("ui.owner.creating_workspace");
     try {
@@ -89,17 +91,27 @@ export function createOwnerFlow({ onCreated }) {
       identityResult.dataset.state = "error";
       identityResult.textContent = error.message || t("ui.owner.workspace_failed");
       createRetrofit.disabled = false;
+    } finally {
+      createRetrofit.removeAttribute("aria-busy");
     }
   }
 
   async function createBornWorkspace() {
+    if (createBorn.disabled) return;
+    const name = newName.value.trim();
+    if (!name) {
+      bornStatus.textContent = t("ui.owner.name_required");
+      newName.focus();
+      return;
+    }
     createBorn.disabled = true;
+    createBorn.setAttribute("aria-busy", "true");
     bornStatus.textContent = t("ui.owner.creating");
     try {
       const response = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.value }),
+        body: JSON.stringify({ name }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || t("ui.owner.create_failed"));
@@ -110,6 +122,7 @@ export function createOwnerFlow({ onCreated }) {
       bornStatus.textContent = error.message || t("ui.owner.create_failed");
     } finally {
       createBorn.disabled = false;
+      createBorn.removeAttribute("aria-busy");
     }
   }
 

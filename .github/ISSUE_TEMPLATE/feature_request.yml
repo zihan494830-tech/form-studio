@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a bounded product improvement with evidence.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and evidence
+      description: Describe the blocked user task and concrete evidence, not only the desired implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Product boundary
+      description: Explain how this fits ownerAgent, published definitions, submissions, and external Agent integrations.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Acceptance outcome
+      description: State the observable behavior that would prove the problem is solved.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -77,13 +77,15 @@ export function extract(form) {
   const submitLabel = submitBtn
     ? (submitBtn.textContent || submitBtn.getAttribute("value") || "提交").trim()
     : "提交";
+  const normalized = normalizeFields(fields);
+  if (normalized.errorCode) throw new Error(`表单账本损坏：${normalized.errorCode}`);
 
   return {
     version: "form-ledger/v1",
     ownerAgent,
     formVersion: Number.isFinite(formVersion) && formVersion >= 1 ? formVersion : 1,
     status: "published",
-    fields,
+    fields: normalized.fields,
     submit: { label: submitLabel, to: "agent-input" },
   };
 }

@@ -4,6 +4,7 @@ import { submitToAgent } from "../../src/application/submit-to-agent.mjs";
 import { attachAgentInputConfig, deliveryForEnvelope } from "../../src/domain/agent/agent-input-config.mjs";
 import { agentOf, resetStore } from "../support/project-fixture.mjs";
 import { submitFace } from "../support/ui-actions.mjs";
+import { SUBMISSION_CREATE } from "../../src/domain/access/capabilities.mjs";
 
 const GRID_FIELDS = [
   { id: "rating", label: "整體評分", control: "radio", required: true, options: ["1", "2", "3"] },
@@ -31,7 +32,8 @@ const studentActor = {
   name: "测试学生",
   role: "student",
   verifiedBy: "grid-submission-test",
-  scope: { tenantId: "test-tenant", classId: "class-1" },
+  capabilities: [SUBMISSION_CREATE],
+  scope: { tenantId: "test-tenant", attributes: { classId: "class-1" }, classId: "class-1" },
 };
 
 function seedGridAgent() {
@@ -59,12 +61,14 @@ test.describe("grid / radio 提交校验与输入映射", () => {
     const repository = createInMemoryAgentRepository(seedGridAgent());
 
     const missing = submitToAgent(repository, "matrix-1", {
+      formVersion: 1,
       values: { rating: "2", history_fy2022_revenue: "1.20", history_fy2022_market: "CN" },
     }, { actor: studentActor });
     expect(missing).toMatchObject({ status: 400, missing: ["history_fy2023_revenue"] });
     expect(repository.get("matrix-1").inputBag).toHaveLength(0);
 
     const invalid = submitToAgent(repository, "matrix-1", {
+      formVersion: 1,
       values: {
         rating: "9", history_fy2022_revenue: "1.20", history_fy2022_market: "CN",
         history_fy2023_revenue: "2.00", history_fy2023_market: "HK",
@@ -73,6 +77,7 @@ test.describe("grid / radio 提交校验与输入映射", () => {
     expect(invalid).toMatchObject({ status: 400, invalid: ["rating"] });
 
     const badDecimals = submitToAgent(repository, "matrix-1", {
+      formVersion: 1,
       values: {
         rating: "1", history_fy2022_revenue: "1.234", history_fy2022_market: "CN",
         history_fy2023_revenue: "2.00", history_fy2023_market: "HK",
@@ -81,6 +86,7 @@ test.describe("grid / radio 提交校验与输入映射", () => {
     expect(badDecimals).toMatchObject({ status: 400, invalid: ["history_fy2022_revenue"] });
 
     const ok = submitToAgent(repository, "matrix-1", {
+      formVersion: 1,
       values: {
         rating: "1", history_fy2022_revenue: "1.20", history_fy2022_market: "CN",
         history_fy2023_revenue: "2.00", history_fy2023_market: "HK", remark: "填好",
@@ -102,8 +108,9 @@ test.describe("grid / radio 提交校验与输入映射", () => {
       rating: "1", history_fy2022_revenue: "1.230", history_fy2022_market: "CN",
       history_fy2023_revenue: "2.00", history_fy2023_market: "HK", remark: "",
     };
-    expect(submitToAgent(repository, "matrix-1", { values }, { actor: studentActor }).status).toBe(200);
+    expect(submitToAgent(repository, "matrix-1", { formVersion: 1, values }, { actor: studentActor }).status).toBe(200);
     expect(submitToAgent(repository, "matrix-1", {
+      formVersion: 1,
       values: { ...values, history_fy2022_revenue: "1e-7" },
     }, { actor: studentActor })).toMatchObject({ status: 400, invalid: ["history_fy2022_revenue"] });
   });
@@ -138,8 +145,15 @@ test.describe("grid / radio 提交校验与输入映射", () => {
 
   test("浏览器端 radio / grid 整表提交入袋", async ({ page, request }) => {
     await resetStore(request);
-    expect((await request.put("/api/agents/exercise-2/fields", { data: { fields: GRID_FIELDS } })).ok()).toBeTruthy();
-    expect((await request.post("/api/agents/exercise-2/publish")).ok()).toBeTruthy();
+    const initial = await agentOf(request, "exercise-2");
+    const saved = await request.put("/api/agents/exercise-2/fields", {
+      headers: { "If-Match": `"agent-${initial.revision}"` }, data: { fields: GRID_FIELDS },
+    });
+    expect(saved.ok()).toBeTruthy();
+    const savedAgent = await saved.json();
+    expect((await request.post("/api/agents/exercise-2/publish", {
+      headers: { "If-Match": `"agent-${savedAgent.revision}"` },
+    })).ok()).toBeTruthy();
     await page.goto("/a/exercise-2");
     await page.locator('input[name="rating"][value="2"]').check();
     await page.locator("#history_fy2022_revenue").fill("12.34");
