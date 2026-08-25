@@ -14,15 +14,13 @@ import { createInMemoryAgentInputPort, createSqliteLocalAgentInputPort } from ".
 import { createSubmissionAwareAgentRepository } from "./src/infrastructure/submission-aware-agent-repository.mjs";
 import { loadCanonicalMockCatalog } from "./src/infrastructure/canonical-mock-catalog.mjs";
 import { synchronizeDemoDataset } from "./src/infrastructure/synchronize-demo-dataset.mjs";
+import { readRuntimeConfig, requestUsesSecureTransport } from "./src/server/runtime-config.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.FORM_STUDIO_PORT || 4190);
-const DATABASE_PATH = process.env.FORM_STUDIO_DB_PATH || join(ROOT, "data", "form-studio.sqlite");
-if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error("FORM_STUDIO_PORT 非法");
 const testMode = process.argv.includes("--test-mode");
 const demoMode = process.argv.includes("--demo-mode");
-const mode = testMode ? "test" : demoMode ? "demo" : String(process.env.FORM_STUDIO_MODE || "product");
-if (!["product", "demo", "test"].includes(mode)) throw new Error("FORM_STUDIO_MODE 非法");
+const runtime = readRuntimeConfig({ root: ROOT });
+const { host: HOST, port: PORT, databasePath: DATABASE_PATH, mode } = runtime;
 const productVersion = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
 const databaseExistedBeforeStartup = existsSync(DATABASE_PATH);
 const mockCatalog = mode === "demo" || mode === "test" ? loadCanonicalMockCatalog() : null;
@@ -42,7 +40,10 @@ const identityDirectory = testMode
 const actorResolver = testMode
   ? (await import("./tests/support/test-actor-resolver.mjs")).createTestActorResolver()
   : demoMode || mode === "demo"
-    ? createLocalSessionActorResolver({ configPath: join(ROOT, "data", "local-classroom.json") })
+    ? createLocalSessionActorResolver({
+        configPath: join(ROOT, "data", "local-classroom.json"),
+        useSecureCookie: (req) => requestUsesSecureTransport(req, runtime),
+      })
     : null;
 const rawAgentRepository = testMode
   ? createInMemoryAgentRepository(mockCatalog.agents)
@@ -92,7 +93,8 @@ const server = createFormStudioServer({
   testRouteHandler,
   productVersion,
   dataSource,
-  runtimeRevision: process.env.FORM_STUDIO_RUNTIME_REVISION || "development",
+  runtimeRevision: runtime.runtimeRevision,
+  publicOrigin: runtime.publicOrigin,
 });
 const relayTimer = setInterval(() => deliveryRelay.runOnce().catch(() => {}), 750);
 relayTimer.unref();
@@ -102,7 +104,7 @@ server.on("close", () => {
   repository.close?.();
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  process.stdout.write(`form-studio (${mode}) http://127.0.0.1:${PORT}\n`);
+server.listen(PORT, HOST, () => {
+  process.stdout.write(`form-studio (${mode}) http://${HOST}:${PORT}\n`);
   deliveryRelay.runOnce().catch(() => {});
 });

@@ -1,0 +1,30 @@
+services:
+  form-studio:
+    build:
+      context: .
+    init: true
+    environment:
+      FORM_STUDIO_HOST: "0.0.0.0"
+      FORM_STUDIO_PORT: "4190"
+      FORM_STUDIO_DB_PATH: "/data/form-studio.sqlite"
+      FORM_STUDIO_MODE: "demo"
+      FORM_STUDIO_TRUST_PROXY: "true"
+      FORM_STUDIO_PUBLIC_ORIGIN: "${FORM_STUDIO_PUBLIC_ORIGIN:-}"
+      FORM_STUDIO_RUNTIME_REVISION: "${FORM_STUDIO_RUNTIME_REVISION:-aio-host-preview}"
+    ports:
+      - "127.0.0.1:4190:4190"
+    volumes:
+      - "./data-runtime:/data"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch("http://127.0.0.1:" + process.env.FORM_STUDIO_PORT + "/api/health")
+          .then((response) => { if (!response.ok) process.exit(1); })
+          .catch(() => process.exit(1));
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s

@@ -149,3 +149,22 @@ test("product 模式不注册本地身份和课堂参考应用", async () => {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test("站点根跳转只采用显式 PUBLIC_ORIGIN，否则保持相对路径", async () => {
+  for (const [publicOrigin, expected] of [
+    [null, "/"],
+    ["https://form-studio.example", "https://form-studio.example/"],
+  ]) {
+    const server = createFormStudioServer({
+      root: ROOT, repository: createInMemoryAgentRepository(seed()), mode: "demo", publicOrigin,
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/session`, { redirect: "manual" });
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(expected);
+    } finally {
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  }
+});

@@ -23,7 +23,11 @@ function cookieValue(req, name) {
   return null;
 }
 
-export function createLocalSessionActorResolver({ configPath }) {
+function sessionCookie(name, value, maxAge, secure) {
+  return `${name}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+}
+
+export function createLocalSessionActorResolver({ configPath, useSecureCookie = () => false }) {
   const config = JSON.parse(readFileSync(configPath, "utf8"));
   const profiles = new Map(config.profiles.map((profile) => [profile.id, profile]));
   const sessions = new Map();
@@ -86,21 +90,25 @@ export function createLocalSessionActorResolver({ configPath }) {
       if (configured && profiles.has(configured) && allows(profiles.get(configured), selectedAudience)) return configured;
       return [...profiles.values()].find((profile) => allows(profile, selectedAudience))?.id || null;
     },
-    startSession(profileId, res, { audience = "authoring" } = {}) {
+    startSession(profileId, res, { audience = "authoring", req = null } = {}) {
       prune();
       const selectedAudience = audienceOf(audience);
       const profile = profiles.get(String(profileId || ""));
       if (!profile || !allows(profile, selectedAudience)) return null;
       const sessionId = randomUUID();
       sessions.set(sessionId, { profileId: profile.id, expiresAt: Date.now() + SESSION_TTL_MS });
-      res.setHeader("Set-Cookie", `${COOKIES[selectedAudience]}=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800`);
+      res.setHeader("Set-Cookie", sessionCookie(
+        COOKIES[selectedAudience], encodeURIComponent(sessionId), 28800, Boolean(useSecureCookie(req)),
+      ));
       return actorFrom(profile);
     },
     endSession(req, res, { audience = "authoring" } = {}) {
       const selectedAudience = audienceOf(audience);
       const sessionId = cookieValue(req, COOKIES[selectedAudience]);
       if (sessionId) sessions.delete(sessionId);
-      res.setHeader("Set-Cookie", `${COOKIES[selectedAudience]}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+      res.setHeader("Set-Cookie", sessionCookie(
+        COOKIES[selectedAudience], "", 0, Boolean(useSecureCookie(req)),
+      ));
     },
     defaultAgentAccess() {
       return {

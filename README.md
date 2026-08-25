@@ -2,7 +2,7 @@
 
 Form Studio `1.0.0-alpha.1` 是 Agent 表单工作台：设计、草稿试填、发布、正式填写并管理收到的提交。
 
-当前是绑定 `127.0.0.1` 的本地 Alpha。demo 只使用 canonical mock；product 模式在正式身份提供方缺失时 fail closed，不能直接当作公网服务部署。
+当前仍是默认绑定 `127.0.0.1` 的本地 Alpha。仓库只为受控的 AIO 独立 Host 反向代理预览提供显式运行配置，不代表已经公网发布。demo 只使用 canonical mock；product 模式在正式身份提供方缺失时 fail closed，不能直接当作公网服务部署。
 
 ## 从这里开始
 
@@ -11,6 +11,7 @@ Form Studio `1.0.0-alpha.1` 是 Agent 表单工作台：设计、草稿试填、
 - 测试分类与新增规则：[`docs/testing.md`](./docs/testing.md)
 - Git、文档生命周期与清理方法：[`docs/maintenance.md`](./docs/maintenance.md)
 - Poffices 只读身份与运行时调用边界：[`docs/poffices-integration.md`](./docs/poffices-integration.md)
+- AIO 独立 Host 反代、Docker 与空卷交接边界：[`docs/aio-independent-host-preview.md`](./docs/aio-independent-host-preview.md)
 - 作者面问题与演进路线：[`docs/authoring-experience.md`](./docs/authoring-experience.md)
 - v0.28 外审复核、v0.29 整改与 SQLite 迁移证据：[`docs/research/form-studio-v028-audit-remediation-20260824.md`](./docs/research/form-studio-v028-audit-remediation-20260824.md)
 - Alpha 1 无角色工作流、发布版本与 schema v3 证据：[`docs/research/form-studio-100-alpha1-workflow-version-remediation-20260824.md`](./docs/research/form-studio-100-alpha1-workflow-version-remediation-20260824.md)
@@ -29,6 +30,8 @@ npm run demo
 ```
 
 打开 <http://127.0.0.1:4190/>。如需验证代码，运行 `npm run check`。
+
+Docker、独立 Host nginx 冒烟与 AIO 交接前检查见 [`docs/aio-independent-host-preview.md`](./docs/aio-independent-host-preview.md)。直接 `docker run` 时也必须显式设置 `FORM_STUDIO_HOST=0.0.0.0`；应用的安全默认不会为容器自动改成对外监听。
 
 ## 常用命令
 

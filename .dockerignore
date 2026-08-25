@@ -1,0 +1,16 @@
+.git
+.github
+.learnings
+.env
+.env.*
+node_modules
+tests
+test-results
+playwright-report
+blob-report
+coverage
+npm-debug.log*
+data/*.sqlite*
+data/**/*.sqlite*
+data/backups
+data-runtime

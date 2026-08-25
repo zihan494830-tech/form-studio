@@ -65,7 +65,7 @@ export function createFormStudioServer({
   testRouteHandler = null,
   productVersion = "0.0.0-development",
   dataSource = null,
-  runtimeRevision = "development",
+  runtimeRevision = "development", publicOrigin = null,
   now = () => new Date().toISOString(),
 }) {
   if (!["product", "demo", "test"].includes(mode)) throw new TypeError("server mode 非法");
@@ -169,7 +169,7 @@ export function createFormStudioServer({
       if (demoEnabled && method === "POST" && pathname === "/api/session") {
         const payload = await readJsonBody(req);
         const audience = payload.audience === "submission" ? "submission" : "authoring";
-        const actor = actorResolver?.startSession(payload.profileId, res, { audience }) || null;
+        const actor = actorResolver?.startSession(payload.profileId, res, { audience, req }) || null;
         return actor ? sendJson(res, 200, { actor }) : sendProblem(res, problem("demo_profile_not_found", 400));
       }
       if (demoEnabled && method === "DELETE" && pathname === "/api/session") {
@@ -181,7 +181,7 @@ export function createFormStudioServer({
         return serveFile(res, root, join("public", "workbench", "index.html"), { "Content-Security-Policy": WORKBENCH_CSP });
       }
       if (demoEnabled && method === "GET" && pathname === "/session") {
-        return send(res, 302, "", { Location: "/" });
+        return send(res, 302, "", { Location: publicOrigin ? `${publicOrigin}/` : "/" });
       }
       if (demoEnabled && method === "GET" && pathname === "/classroom") {
         return serveFile(res, root, join("public", "classroom", "index.html"), { "Content-Security-Policy": WORKBENCH_CSP });

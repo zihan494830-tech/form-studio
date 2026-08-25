@@ -14,4 +14,4 @@ If private reporting is not yet enabled, do not publish exploit details; contact
 
 ## Deployment boundary
 
-The included server binds to `127.0.0.1`. Demo identities and canonical mock data are for local evaluation only. Product mode intentionally fails closed until a real identity provider is supplied. Exposing the process through a reverse proxy, shared host, or public network requires separate authentication, TLS, backup/restore, rate-limit, audit-log, and deployment review.
+The included server binds to `127.0.0.1` by default. An explicit `FORM_STUDIO_HOST=0.0.0.0` is only for a container or controlled reverse-proxy topology whose direct application port is not exposed to untrusted networks. Demo identities and canonical mock data are for local evaluation or an access-controlled sidecar preview only. Product mode intentionally fails closed until a real identity provider is supplied. Exposing the process through a reverse proxy, shared host, or public network requires separate authentication, TLS, backup/restore, rate-limit, audit-log, and deployment review.
