@@ -23,7 +23,7 @@
     "check": "npm run check:structure && npm run check:syntax && npm test"
   },
   "dependencies": {
-    "linkedom": "^0.18.13"
+    "linkedom": "^0.18.14"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
